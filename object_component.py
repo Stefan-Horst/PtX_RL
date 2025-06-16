@@ -673,7 +673,7 @@ class StorageComponent(Component):
                                 charging_efficiency=self.charging_efficiency,
                                 discharging_efficiency=self.discharging_efficiency,
                                 min_soc=self.min_soc, max_soc=self.max_soc,
-                                leakage=self.leakage, ratio_capacity_p=self.ratio_capacity_p,
+                                ratio_capacity_p=self.ratio_capacity_p,
                                 has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
                                 charged_quantity=self.charged_quantity, discharged_quantity=self.discharged_quantity,
                                 final_unit=self.final_unit, custom_unit=self.custom_unit)
