@@ -630,12 +630,6 @@ class StorageComponent(Component):
     def get_discharging_efficiency(self):
         return self.discharging_efficiency
 
-    def set_leakage(self, leakage):
-        self.leakage = float(leakage)
-
-    def get_leakage(self):
-        return self.leakage
-
     def set_ratio_capacity_p(self, ratio_capacity_p):
         self.ratio_capacity_p = float(ratio_capacity_p)
 
@@ -686,7 +680,7 @@ class StorageComponent(Component):
 
     def __init__(self, name, lifetime=1, fixed_om=0., variable_om=0., capex=0.,
                  charging_efficiency=1., discharging_efficiency=1., min_soc=0., max_soc=1.,
-                 leakage=0., ratio_capacity_p=1., has_fixed_capacity=False, fixed_capacity=0.,
+                 ratio_capacity_p=1., has_fixed_capacity=False, fixed_capacity=0.,
                  charged_quantity=0., discharged_quantity=0.,
                  installation_co2_emissions=0., fixed_co2_emissions=0., variable_co2_emissions=0.,
                  disposal_co2_emissions=0.,
@@ -704,7 +698,6 @@ class StorageComponent(Component):
         :param discharging_efficiency: [float] - Charging efficiency when discharging storage
         :param min_soc: [float] - minimal SOC of storage
         :param max_soc: [float] - maximal SOC of storage
-        :param leakage: [float] - Leakage over time #todo: delete or implement
         :param ratio_capacity_p: [float] - Ratio between capacity of storage and charging or discharging power
         :param final_unit: [boolean] - if part of the final optimization problem
         :param custom_unit: [boolean] - if not default component
@@ -722,7 +715,6 @@ class StorageComponent(Component):
 
         self.charging_efficiency = float(charging_efficiency)
         self.discharging_efficiency = float(discharging_efficiency)
-        self.leakage = float(leakage)
         self.ratio_capacity_p = float(ratio_capacity_p)
 
         self.min_soc = float(min_soc)

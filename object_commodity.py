@@ -156,17 +156,11 @@ class Commodity:
     def get_total_co2_emissions_production(self):
         return self.total_co2_emissions_production
 
-    def set_default(self, status):  # todo: remove
-        self.default_commodity = status
-
     def set_final(self, status):
         self.final_commodity = status
 
     def set_custom(self, status):
         self.custom_commodity = status
-
-    def is_default(self):
-        return self.default_commodity
 
     def is_final(self):
         return self.final_commodity
