@@ -5,15 +5,12 @@ from object_component import ConversionComponent
 from object_commodity import Commodity
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LinearRegression
 from copy import deepcopy
 
 import math
 
-from _transfer_results_to_parameter_object import _transfer_results_to_parameter_object
-from _create_result_files import _create_result_files
 
 idx = pd.IndexSlice
 
@@ -1376,14 +1373,6 @@ class ParameterObject:
 
     def get_operation_time_series(self):
         return self.operation_time_series
-
-    def process_results(self, model_type, path_results=None, transfer_results=True, create_results=True):
-
-        if transfer_results:
-            _transfer_results_to_parameter_object(self, model_type)
-
-        if create_results:
-            _create_result_files(self, path_results)
 
     def set_objective_function_value(self, objective_function_value):
         self.objective_function_value = objective_function_value
