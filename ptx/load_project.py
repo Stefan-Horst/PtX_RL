@@ -1,26 +1,21 @@
-from object_component import ConversionComponent, StorageComponent, GenerationComponent
-from object_commodity import Commodity
+from ptx.component import ConversionComponent, StorageComponent, GenerationComponent
+from ptx.commodity import Commodity
 
 
 def load_project(pm_object, case_data):
-    pm_object = load_011(pm_object, case_data)
-    return pm_object
-
-def load_011(pm_object, case_data):
-    """ Set general parameters """
-
+    """Load project data into ParameterObject. Works for version 0.1.1"""
+    
+    # Set general parameters
     pm_object.set_project_name(case_data['project_name'])
-
     pm_object.set_uses_representative_periods(case_data['representative_periods']['uses_representative_periods'])
     pm_object.set_covered_period(case_data['representative_periods']['covered_period'])
-
     pm_object.set_monetary_unit(case_data['monetary_unit'])
 
-    """ Add generation data """
+    # Add generation data
     pm_object.set_single_or_multiple_profiles(case_data['data']['single_or_multiple_profiles'])
     pm_object.set_profile_data(case_data['data']['profile_data'])
 
-    """Allocate components and parameters"""
+    # Allocate components and parameters
     for component in [*case_data['component'].keys()]:
         name = case_data['component'][component]['name']
         variable_om = case_data['component'][component]['variable_om']
@@ -67,7 +62,6 @@ def load_011(pm_object, case_data):
 
         elif case_data['component'][component]['component_type'] == 'generator':
             generated_commodity = case_data['component'][component]['generated_commodity']
-
             curtailment_possible = case_data['component'][component]['curtailment_possible']
 
             generator = GenerationComponent(name=name, variable_om=variable_om,
@@ -77,7 +71,7 @@ def load_011(pm_object, case_data):
                                             fixed_capacity=fixed_capacity)
             pm_object.add_component(name, generator)
 
-    """ Conversions """
+    # Conversions
     for c in [*case_data['conversions'].keys()]:
         component = pm_object.get_component(c)
         for i in [*case_data['conversions'][c]['input'].keys()]:
@@ -89,7 +83,7 @@ def load_011(pm_object, case_data):
         component.set_main_input(case_data['conversions'][c]['main_input'])
         component.set_main_output(case_data['conversions'][c]['main_output'])
 
-    """ Commodities """
+    # Commodities
     for c in [*case_data['commodity'].keys()]:
         name = case_data['commodity'][c]['name']
         commodity_unit = case_data['commodity'][c]['unit']
@@ -100,8 +94,7 @@ def load_011(pm_object, case_data):
         saleable = case_data['commodity'][c]['saleable']
         demanded = case_data['commodity'][c]['demanded']
         total_demand = case_data['commodity'][c]['total_demand']
-        final_commodity = case_data['commodity'][c]['final']
-
+        
         # Purchasable commodities
         purchase_price = case_data['commodity'][c]['purchase_price']
 
@@ -113,8 +106,8 @@ def load_011(pm_object, case_data):
 
         energy_content = case_data['commodity'][c]['energy_content']
 
-        commodity = Commodity(name=name, commodity_unit=commodity_unit, energy_content=energy_content,
-                              final_commodity=final_commodity, available=available, 
+        commodity = Commodity(name=name, commodity_unit=commodity_unit, 
+                              energy_content=energy_content, available=available, 
                               purchasable=purchasable, saleable=saleable, emittable=emittable,
                               demanded=demanded, total_demand=total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
