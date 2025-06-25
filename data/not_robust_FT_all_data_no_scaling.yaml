@@ -74,7 +74,7 @@ commodity:
     purchasable: false
     purchase_price: 0.0
     purchase_price_type: fixed
-    saleable: false
+    saleable: true
     selling_price: 0.0
     selling_price_type: fixed
     specific_co2_emissions_available: 0.0
