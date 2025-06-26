@@ -72,10 +72,18 @@ class GymEnvironment(Environment):
 
 
 # only include attributes which are variable during the simulation
-COMMODITY_ATTRIBUTES = []
-CONVERSION_ATTRIBUTES = []
-STORAGE_ATTRIBUTES = []
-GENERATOR_ATTRIBUTES = []
+# there are not enough different system configurations to properly train on those attributes
+COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quantity", 
+                         "emitted_quantity", "demanded_quantity", "charged_quantity", 
+                         "discharged_quantity", "standby_quantity", "consumed_quantity", 
+                         "produced_quantity", "generated_quantity", "selling_revenue", 
+                         "total_storage_costs", "total_production_costs", "total_generation_costs"]
+CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
+                         "consumed_commodity", "produced_commodity"] # commodity is list and must be unpacked
+STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
+                         "charged_quantity", "discharged_quantity"]
+GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
+                         "generated_quantity", "total_costs", "curtailment"]
 
 class PtxEnvironment(Environment):
     
