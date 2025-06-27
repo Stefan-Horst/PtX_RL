@@ -1,16 +1,14 @@
-import yaml
-
 from ptx.component import ConversionComponent, StorageComponent, GenerationComponent
 from ptx.commodity import Commodity
 from ptx.framework import ParameterObject
+from util import DATA_DIR, open_yaml_file
 
 
-def load_project(path_data="data/", config_file="not_robust_FT_all_data_no_scaling.yaml"):
+def load_project(path_data=DATA_DIR, config_file="not_robust_FT_all_data_no_scaling.yaml"):
     """Load project data into ParameterObject."""
     empty_po = ParameterObject(path_data=path_data)
-    ptx_config = open(path_data + config_file)
-    case_data = yaml.load(ptx_config, Loader=yaml.FullLoader)
-    initialized_po = init_project(empty_po, case_data)
+    ptx_config = open_yaml_file(path_data + config_file)
+    initialized_po = init_project(empty_po, ptx_config)
     return initialized_po
 
 def init_project(pm_object, case_data):

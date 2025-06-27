@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import yaml
 
 
 PROJECT_FOLDER = "main"
@@ -14,8 +15,14 @@ def get_root_path(project_folder=PROJECT_FOLDER):
     return path
 
 PROJECT_DIR = get_root_path()
+DATA_DIR = PROJECT_DIR / "data"
 
 
 def mkdir(path):
     if not os.path.exists(path):
         os.makedirs(get_root_path() / path)
+
+def open_yaml_file(path):
+    with open(path) as file:
+        yaml_object = yaml.load(file, Loader=yaml.FullLoader)
+    return yaml_object
