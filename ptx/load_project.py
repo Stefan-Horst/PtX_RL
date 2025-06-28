@@ -16,14 +16,14 @@ def init_project(pm_object, case_data):
     assert case_data['version'] == '0.1.1'
     
     # Set general parameters
-    pm_object.set_project_name(case_data['project_name'])
-    pm_object.set_uses_representative_periods(case_data['representative_periods']['uses_representative_periods'])
-    pm_object.set_covered_period(case_data['representative_periods']['covered_period'])
-    pm_object.set_monetary_unit(case_data['monetary_unit'])
+    pm_object.project_name = case_data['project_name']
+    pm_object.uses_representative_periods = case_data['representative_periods']['uses_representative_periods']
+    pm_object.covered_period = case_data['representative_periods']['covered_period']
+    pm_object.monetary_unit = case_data['monetary_unit']
 
     # Add generation data
-    pm_object.set_single_or_multiple_profiles(case_data['data']['single_or_multiple_profiles'])
-    pm_object.set_profile_data(case_data['data']['profile_data'])
+    pm_object.single_or_multiple_profiles = case_data['data']['single_or_multiple_profiles']
+    pm_object.profile_data = case_data['data']['profile_data']
 
     # Allocate components and parameters
     for component in [*case_data['component'].keys()]:
@@ -45,16 +45,19 @@ def init_project(pm_object, case_data):
             hot_standby_ability = case_data['component'][component]['hot_standby_ability']
             hot_standby_demand = {
                 case_data['component'][component]['hot_standby_commodity']:
-                case_data['component'][component]['hot_standby_demand']}
+                case_data['component'][component]['hot_standby_demand']
+            }
             hot_standby_startup_time = case_data['component'][component]['hot_standby_startup_time']
 
             conversion_component = ConversionComponent(name=name, variable_om=variable_om,
-                                                       min_p=min_p, max_p=max_p, ramp_up=ramp_up, ramp_down=ramp_down,
-                                                       start_up_time=start_up_time, start_up_costs=start_up_costs,
+                                                       min_p=min_p, max_p=max_p, ramp_up=ramp_up, 
+                                                       ramp_down=ramp_down, start_up_time=start_up_time, 
+                                                       start_up_costs=start_up_costs,
                                                        hot_standby_ability=hot_standby_ability,
                                                        hot_standby_demand=hot_standby_demand,
                                                        hot_standby_startup_time=hot_standby_startup_time,
-                                                       has_fixed_capacity=has_fixed_capacity, fixed_capacity=fixed_capacity)
+                                                       has_fixed_capacity=has_fixed_capacity, 
+                                                       fixed_capacity=fixed_capacity)
             pm_object.add_component(name, conversion_component)
 
         elif case_data['component'][component]['component_type'] == 'storage':
@@ -66,8 +69,10 @@ def init_project(pm_object, case_data):
 
             storage_component = StorageComponent(name=name, charging_efficiency=charging_efficiency,
                                                  discharging_efficiency=discharging_efficiency,
-                                                 min_soc=min_soc, max_soc=max_soc, ratio_capacity_p=ratio_capacity_p,
-                                                 has_fixed_capacity=has_fixed_capacity, fixed_capacity=fixed_capacity)
+                                                 min_soc=min_soc, max_soc=max_soc, 
+                                                 ratio_capacity_p=ratio_capacity_p,
+                                                 has_fixed_capacity=has_fixed_capacity, 
+                                                 fixed_capacity=fixed_capacity)
             pm_object.add_component(name, storage_component)
 
         elif case_data['component'][component]['component_type'] == 'generator':
@@ -83,15 +88,15 @@ def init_project(pm_object, case_data):
 
     # Conversions
     for c in [*case_data['conversions'].keys()]:
-        component = pm_object.get_component(c)
+        component = pm_object.components[c]
         for i in [*case_data['conversions'][c]['input'].keys()]:
             component.add_input(i, case_data['conversions'][c]['input'][i])
 
         for o in [*case_data['conversions'][c]['output'].keys()]:
             component.add_output(o, case_data['conversions'][c]['output'][o])
 
-        component.set_main_input(case_data['conversions'][c]['main_input'])
-        component.set_main_output(case_data['conversions'][c]['main_output'])
+        component.main_input = case_data['conversions'][c]['main_input']
+        component.main_output = case_data['conversions'][c]['main_output']
 
     # Commodities
     for c in [*case_data['commodity'].keys()]:
