@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from copy import copy
+import math
 from typing import Any
+import numpy as np
 import gymnasium as gym
 
 from ptx.framework import ParameterObject
@@ -73,13 +75,14 @@ class GymEnvironment(Environment):
 
 # only include attributes which are variable during the simulation
 # there are not enough different system configurations to properly train on those attributes
+# attributes which are not simple values are marked with their type in square brackets
 COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quantity", 
                          "emitted_quantity", "demanded_quantity", "charged_quantity", 
                          "discharged_quantity", "standby_quantity", "consumed_quantity", 
                          "produced_quantity", "generated_quantity", "selling_revenue", 
                          "total_storage_costs", "total_production_costs", "total_generation_costs"]
 CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
-                         "consumed_commodity", "produced_commodity"] # commodity is list and must be unpacked
+                         "[dict]consumed_commodity", "[dict]produced_commodity"]
 STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
                          "charged_quantity", "discharged_quantity"]
 GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
@@ -96,17 +99,26 @@ class PtxEnvironment(Environment):
         self.storage_attributes = storage_attributes
         self.generator_attributes = generator_attributes
         self._original_ptx_system = ptx_system
-        super().__init__(None, None, None, None, None)
+        self.ptx_system = copy(self._original_ptx_system)
+        
+        observation_space_size = len(self._get_current_observation())
+        # high, low, and dtype might change in the future and with different configurations
+        observation_space_spec = {"low": 0, 
+                                  "high": math.inf, 
+                                  "shape": (observation_space_size,), 
+                                  "dtype": np.float64}
+        super().__init__(observation_space_size, observation_space_spec, None, None, None)
         
     def initialize(self, seed=None):
         self.seed = seed
-        self.ptx_system = copy(self._original_ptx_system)
-        return None, None
+        observation, info = self.reset()
+        return observation, info
     
     def reset(self):
-        self.ptx_system = copy(self._original_ptx_system)
         self.terminated = False
-        return None, None
+        observation = self._get_current_observation()
+        info = {} # useful info might be implemented later
+        return observation, info
     
     def act(self, action):
         self._apply_action(action)
@@ -114,8 +126,35 @@ class PtxEnvironment(Environment):
         reward = self._calculate_reward()
         return None, reward, False, False, None
     
-    def _get_observation_space(self):
-        return
+    def _get_current_observation(self):
+        """Get the current observation by iterating over all elements of the 
+        ptx system and adding their attributes as specified in the constants."""
+        observation_space = []
+        commodities = self.ptx_system.get_all_commodities()
+        for commodity in commodities:
+            for attribute in self.commodity_attributes:
+                observation_space.append(getattr(commodity, attribute))
+        
+        generators = self.ptx_system.get_generator_components_objects()
+        for generator in generators:
+            for attribute in self.generator_attributes:
+                observation_space.append(getattr(generator, attribute))
+        
+        conversions = self.ptx_system.get_conversion_components_objects()
+        for conversion in conversions:
+            for attribute in self.conversion_attributes:
+                # add all values of attributes that are dictionaries
+                if attribute.startswith("[dict]"):
+                    for _, value in getattr(conversion, attribute[6:]):
+                        observation_space.append(value)
+                else:
+                    observation_space.append(getattr(conversion, attribute))
+        
+        storages = self.ptx_system.get_storage_components_objects()
+        for storage in storages:
+            for attribute in self.storage_attributes:
+                observation_space.append(getattr(storage, attribute))
+        return observation_space
     
     def _get_action_space(self):
         return
