@@ -2,23 +2,15 @@ import copy
 from copy import deepcopy
 import pandas as pd
 
-from ptx.component import ConversionComponent
-from ptx.commodity import Commodity
-
-
-idx = pd.IndexSlice
-
 
 class ParameterObject:
     
     def __init__(self, project_name='', integer_steps=5, facility_lifetime=20,
-                 names_dict=None, commodities=None, components=None,
-                 profile_data=False, single_or_multiple_profiles='single',
-                 uses_representative_periods=False, representative_periods_length=0,
-                 covered_period=8760, monetary_unit='€', path_data=None,
-                 instance=None, operation_time_series=None, copy_object=False):
+                 names_dict=None, commodities=None, components=None, profile_data=False,
+                 uses_representative_periods=False, covered_period=8760, 
+                 path_data=None, copy_object=False):
         """
-        Object, which stores all components, commodities, settings etc.
+        Object which stores all components, commodities, settings, etc.
         
         :param project_name: [string] - name of parameter object
         :param integer_steps: [int] - number of integer steps (used to split capacity)
@@ -48,37 +40,10 @@ class ParameterObject:
 
         self.covered_period = covered_period
         self.uses_representative_periods = uses_representative_periods
-        self.representative_periods_length = representative_periods_length
         self.integer_steps = integer_steps
-        self.monetary_unit = str(monetary_unit)
 
-        self.single_or_multiple_profiles = single_or_multiple_profiles
         self.profile_data = profile_data
         self.path_data = path_data
-
-        self.instance = instance
-        self.operation_time_series = operation_time_series
-
-        self.objective_function_value = None
-
-    def create_new_project(self):
-        """ Create new project """
-        # Set general parameters
-        c = 'dummy'
-        conversion_component = ConversionComponent(name=c, final_unit=True)
-        self.add_component(c, conversion_component)
-
-        input_commodity = 'Electricity'
-        output_commodity = 'Electricity'
-
-        self.components[c].add_input(input_commodity, 1)
-        self.components[c].add_output(output_commodity, 1)
-
-        self.components[c].main_input = input_commodity
-        self.components[c].main_output = output_commodity
-
-        s = Commodity('Electricity', 'MWh', final_commodity=True)
-        self.add_commodity('Electricity', s)
 
     def get_number_clusters(self):
         if self.uses_representative_periods:
@@ -130,36 +95,6 @@ class ParameterObject:
             ramp_down_dict[component_name] = component_object.ramp_down
         return ramp_down_dict
 
-    def get_shut_down_component_down_time_parameters(self):
-        down_time_dict = {}
-        for component_object in self.get_conversion_components_objects():
-            component_name = component_object.name
-            if int(component_object.start_up_time) == 0:
-                # shut down time of 0 is not possible (division). Therefore, set it to 1
-                down_time_dict[component_name] = 1
-            else:
-                down_time_dict[component_name] = int(component_object.start_up_time)
-        return down_time_dict
-
-    def get_shut_down_component_start_up_costs_parameters(self):
-        start_up_costs_dict = {}
-        for component_object in self.get_conversion_components_objects():
-            component_name = component_object.name
-            start_up_costs_dict[component_name] = component_object.start_up_costs
-        return start_up_costs_dict
-
-    def get_standby_component_down_time_parameters(self):
-        standby_time_dict = {}
-        for component_object in self.get_conversion_components_objects():
-            component_name = component_object.name
-            if component_object.hot_standby_ability:
-                if int(component_object.hot_standby_startup_time) == 0:
-                    # shut down time of 0 is not possible (division). Therefore, set it to 1
-                    standby_time_dict[component_name] = 1
-                else:
-                    standby_time_dict[component_name] = int(component_object.hot_standby_startup_time)
-        return standby_time_dict
-
     def get_storage_component_charging_efficiency(self):
         charging_efficiency_dict = {}
         for component_object in self.get_storage_components_objects():
@@ -208,9 +143,6 @@ class ParameterObject:
         maximal_power_dict = self.get_component_maximal_power_parameters()
         ramp_up_dict = self.get_component_ramp_up_parameters()
         ramp_down_dict = self.get_component_ramp_down_parameters()
-        shut_down_down_time_dict = self.get_shut_down_component_down_time_parameters()
-        shut_down_start_up_costs = self.get_shut_down_component_start_up_costs_parameters()
-        standby_down_time_dict = self.get_standby_component_down_time_parameters()
         charging_efficiency_dict = self.get_storage_component_charging_efficiency()
         discharging_efficiency_dict = self.get_storage_component_discharging_efficiency()
         minimal_soc_dict = self.get_storage_component_minimal_soc()
@@ -218,26 +150,9 @@ class ParameterObject:
         ratio_capacity_power_dict = self.get_storage_component_ratio_capacity_power()
         fixed_capacity_dict = self.get_fixed_capacities()
 
-        return variable_om_dict, minimal_power_dict, maximal_power_dict,\
-               ramp_up_dict, ramp_down_dict, shut_down_down_time_dict, shut_down_start_up_costs, \
-               standby_down_time_dict, charging_efficiency_dict, discharging_efficiency_dict, \
+        return variable_om_dict, minimal_power_dict, maximal_power_dict, ramp_up_dict, \
+               ramp_down_dict, charging_efficiency_dict, discharging_efficiency_dict, \
                minimal_soc_dict, maximal_soc_dict, ratio_capacity_power_dict, fixed_capacity_dict
-
-    def get_all_financial_component_parameters(self):
-        variable_om_dict = self.get_component_variable_om_parameters()
-        return variable_om_dict
-
-    def get_conversion_component_sub_sets(self):
-        standby_components = []
-        no_standby_components = []
-        for component_object in self.get_all_components():
-            component_name = component_object.name
-            if component_object.component_type == 'conversion':
-                if component_object.hot_standby_ability:
-                    standby_components.append(component_name)
-                else:
-                    no_standby_components.append(component_name)
-        return standby_components, no_standby_components
 
     def get_commodity_sets(self):
         commodities = []
@@ -261,7 +176,7 @@ class ParameterObject:
                 saleable_commodities.append(commodity_name)
             if commodity.demanded:
                 demanded_commodities.append(commodity_name)
-                if commodity.total_demand:
+                if commodity.is_total_demand:
                     total_demand_commodities.append(commodity_name)
 
         generated_commodities = []
@@ -364,7 +279,7 @@ class ParameterObject:
         for commodity in self.commodities:
             commodity_name = commodity.name
             if commodity.demanded:
-                if not commodity.total_demand:
+                if not commodity.is_total_demand:
                     for cl in range(self.get_number_clusters()):
                         for t in range(self.covered_period):
                             hourly_demand_dict.update(
@@ -518,17 +433,9 @@ class ParameterObject:
         names_dict = copy.deepcopy(self.names_dict)
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
-        instance = copy.deepcopy(self.instance)
-        operation_time_series = copy.deepcopy(self.operation_time_series)
         return ParameterObject(project_name=self.project_name, integer_steps=self.integer_steps, 
                                facility_lifetime=self.facility_lifetime,
                                names_dict=names_dict, commodities=commodities,
                                components=components, profile_data=self.profile_data,
-                               single_or_multiple_profiles=self.single_or_multiple_profiles,
                                uses_representative_periods=self.uses_representative_periods,
-                               representative_periods_length=self.representative_periods_length,
-                               covered_period=self.covered_period,
-                               monetary_unit=self.monetary_unit, instance=instance,
-                               operation_time_series=operation_time_series, copy_object=True)
-
-ParameterObjectCopy = type('CopyOfB', ParameterObject.__bases__, dict(ParameterObject.__dict__))
+                               covered_period=self.covered_period, copy_object=True)

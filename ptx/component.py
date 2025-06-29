@@ -31,12 +31,10 @@ class Component:
 
 class ConversionComponent(Component):
     
-    def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., start_up_time=0., 
-                 start_up_costs=0, hot_standby_ability=False, hot_standby_demand=None, 
-                 hot_standby_startup_time=0, min_p=0., max_p=1., inputs=None, outputs=None, 
-                 main_input=None, main_output=None, commodities=None, has_fixed_capacity=False, 
-                 fixed_capacity=0., consumed_commodity=None, produced_commodity=None, 
-                 standby_quantity=0., total_startup_costs=0.):
+    def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., 
+                 min_p=0., max_p=1., inputs=None, outputs=None, main_input=None, 
+                 main_output=None, commodities=None, has_fixed_capacity=False, 
+                 fixed_capacity=0., consumed_commodity=None, produced_commodity=None):
         """
         Class of conversion units
         
@@ -44,7 +42,6 @@ class ConversionComponent(Component):
         :param variable_om: [float] - variable operation and maintenance
         :param ramp_down: [float] - Ramp down between time steps in % / h
         :param ramp_up: [float] - Ramp up between time steps in % / h
-        :param start_up_time: [int] - Time to start up component
         :param inputs: [Dict] - inputs of component
         :param outputs: [Dict] - outputs of component
         :param main_input: [str] - main input of component
@@ -80,21 +77,8 @@ class ConversionComponent(Component):
         self.ramp_down = float(ramp_down)
         self.ramp_up = float(ramp_up)
 
-        self.start_up_time = int(start_up_time)
-        self.start_up_costs = float(start_up_costs)
-
-        self.hot_standby_ability = bool(hot_standby_ability)
-        if hot_standby_demand is None:
-            self.hot_standby_demand = {}
-        else:
-            self.hot_standby_demand = hot_standby_demand
-        self.hot_standby_startup_time = int(hot_standby_startup_time)
-
         self.consumed_commodity = consumed_commodity
         self.produced_commodity = produced_commodity
-        self.standby_quantity = standby_quantity
-
-        self.total_startup_costs = total_startup_costs
         
         self.initialize_result_dictionaries()
 
@@ -109,14 +93,6 @@ class ConversionComponent(Component):
                 self.set_specific_consumed_commodity(commodity, 0)
             if commodity not in [*self.produced_commodity.keys()]:
                 self.set_specific_produced_commodity(commodity, 0)
-
-    def set_hot_standby_demand(self, commodity, demand=None):
-        if demand is not None:
-            hot_standby_demand = {commodity: demand}
-            self.hot_standby_demand.clear()
-            self.hot_standby_demand = hot_standby_demand
-        else:
-            self.hot_standby_demand = commodity
 
     def add_input(self, input_commodity, coefficient):
         self.inputs.update({input_commodity: float(coefficient)})
@@ -164,9 +140,6 @@ class ConversionComponent(Component):
         else:
             return self.produced_commodity[commodity]
 
-    def get_total_costs(self):
-        return self.total_variable_costs + self.total_startup_costs
-
     def __copy__(self, name=None):
         if name is None:
             name = self.name
@@ -174,17 +147,11 @@ class ConversionComponent(Component):
         inputs = copy.deepcopy(self.inputs)
         outputs = copy.deepcopy(self.outputs)
         commodities = copy.deepcopy(self.commodities)
-        hot_standby_demand = copy.deepcopy(self.hot_standby_demand)
         return ConversionComponent(name=name, ramp_down=self.ramp_down, ramp_up=self.ramp_up,
-                                   start_up_time=self.start_up_time, hot_standby_ability=self.hot_standby_ability,
-                                   hot_standby_demand=hot_standby_demand,
-                                   hot_standby_startup_time=self.hot_standby_startup_time,
                                    min_p=self.min_p, max_p=self.max_p, inputs=inputs, outputs=outputs,
                                    main_input=self.main_input, main_output=self.main_output, commodities=commodities,
                                    has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
-                                   consumed_commodity=self.consumed_commodity,
-                                   produced_commodity=self.produced_commodity, standby_quantity=self.standby_quantity,
-                                   total_startup_costs=self.total_startup_costs)
+                                   consumed_commodity=self.consumed_commodity, produced_commodity=self.produced_commodity)
 
 
 class StorageComponent(Component):
@@ -220,9 +187,6 @@ class StorageComponent(Component):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
 
-    def get_total_costs(self):
-        return self.total_variable_costs
-
     def __copy__(self):
         return StorageComponent(name=self.name, charging_efficiency=self.charging_efficiency,
                                 discharging_efficiency=self.discharging_efficiency,
@@ -236,8 +200,7 @@ class GenerationComponent(Component):
     
     def __init__(self, name, variable_om=0., generated_commodity='Electricity', 
                  curtailment_possible=True, has_fixed_capacity=False, fixed_capacity=0.,
-                 potential_generation_quantity=0., potential_capacity_factor=0., potential_lcoe=0.,
-                 generated_quantity=0., actual_capacity_factor=0., actual_lcoe=0., curtailment=0.):
+                 potential_generation_quantity=0., generated_quantity=0., curtailment=0.):
         """
         Class of Generator component
 
@@ -258,22 +221,12 @@ class GenerationComponent(Component):
         self.fixed_capacity = float(fixed_capacity)
 
         self.potential_generation_quantity = potential_generation_quantity
-        self.potential_capacity_factor = potential_capacity_factor
-        self.potential_lcoe = potential_lcoe
         self.generated_quantity = generated_quantity
-        self.actual_capacity_factor = actual_capacity_factor
-        self.actual_lcoe = actual_lcoe
         self.curtailment = curtailment
-
-    def get_total_costs(self):
-        return self.total_variable_costs
 
     def __copy__(self):
         return GenerationComponent(name=self.name, generated_commodity=self.generated_commodity,
                                    curtailment_possible=self.curtailment_possible,
                                    has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
                                    potential_generation_quantity=self.potential_generation_quantity,
-                                   potential_capacity_factor=self.potential_capacity_factor,
-                                   potential_lcoe=self.potential_lcoe, generated_quantity=self.generated_quantity,
-                                   actual_capacity_factor=self.actual_capacity_factor, 
-                                   actual_lcoe=self.actual_lcoe, curtailment=self.curtailment)
+                                   generated_quantity=self.generated_quantity, curtailment=self.curtailment)

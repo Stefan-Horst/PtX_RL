@@ -19,10 +19,8 @@ def init_project(pm_object, case_data):
     pm_object.project_name = case_data['project_name']
     pm_object.uses_representative_periods = case_data['representative_periods']['uses_representative_periods']
     pm_object.covered_period = case_data['representative_periods']['covered_period']
-    pm_object.monetary_unit = case_data['monetary_unit']
 
     # Add generation data
-    pm_object.single_or_multiple_profiles = case_data['data']['single_or_multiple_profiles']
     pm_object.profile_data = case_data['data']['profile_data']
 
     # Allocate components and parameters
@@ -39,23 +37,9 @@ def init_project(pm_object, case_data):
             ramp_up = case_data['component'][component]['ramp_up']
             ramp_down = case_data['component'][component]['ramp_down']
 
-            start_up_time = case_data['component'][component]['start_up_time']
-            start_up_costs = case_data['component'][component]['start_up_costs']
-
-            hot_standby_ability = case_data['component'][component]['hot_standby_ability']
-            hot_standby_demand = {
-                case_data['component'][component]['hot_standby_commodity']:
-                case_data['component'][component]['hot_standby_demand']
-            }
-            hot_standby_startup_time = case_data['component'][component]['hot_standby_startup_time']
-
             conversion_component = ConversionComponent(name=name, variable_om=variable_om,
-                                                       min_p=min_p, max_p=max_p, ramp_up=ramp_up, 
-                                                       ramp_down=ramp_down, start_up_time=start_up_time, 
-                                                       start_up_costs=start_up_costs,
-                                                       hot_standby_ability=hot_standby_ability,
-                                                       hot_standby_demand=hot_standby_demand,
-                                                       hot_standby_startup_time=hot_standby_startup_time,
+                                                       min_p=min_p, max_p=max_p, 
+                                                       ramp_up=ramp_up, ramp_down=ramp_down, 
                                                        has_fixed_capacity=has_fixed_capacity, 
                                                        fixed_capacity=fixed_capacity)
             pm_object.add_component(name, conversion_component)
@@ -108,7 +92,7 @@ def init_project(pm_object, case_data):
         purchasable = case_data['commodity'][c]['purchasable']
         saleable = case_data['commodity'][c]['saleable']
         demanded = case_data['commodity'][c]['demanded']
-        total_demand = case_data['commodity'][c]['total_demand']
+        is_total_demand = case_data['commodity'][c]['total_demand']
         
         # Purchasable commodities
         purchase_price = case_data['commodity'][c]['purchase_price']
@@ -124,7 +108,7 @@ def init_project(pm_object, case_data):
         commodity = Commodity(name=name, commodity_unit=commodity_unit, 
                               energy_content=energy_content, available=available, 
                               purchasable=purchasable, saleable=saleable, emittable=emittable,
-                              demanded=demanded, total_demand=total_demand, demand=demand,
+                              demanded=demanded, is_total_demand=is_total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
         pm_object.add_commodity(name, commodity)
 

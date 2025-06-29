@@ -3,7 +3,7 @@ class Commodity:
     def __init__(self, name, commodity_unit, energy_content=None,
                  emittable=False, available=False, purchasable=False, 
                  purchase_price=0, saleable=False, sale_price=0,
-                 demanded=False, demand=0, total_demand=False,
+                 demanded=False, demand=0, is_total_demand=False,
                  purchased_quantity=0., purchase_costs=0., sold_quantity=0., 
                  selling_revenue=0., emitted_quantity=0., available_quantity=0., 
                  demanded_quantity=0., charged_quantity=0., discharged_quantity=0., 
@@ -24,7 +24,7 @@ class Commodity:
         :param sale_price: [float or list] - fixed price or time varying price
         :param demanded: [boolean] - is demanded?
         :param demand: [float] - Demand
-        :param total_demand: [boolean] - Demand over all time steps or for each time step
+        :param is_total_demand: [boolean] - Demand over all time steps or for each time step
         """
 
         self.name = name
@@ -56,7 +56,7 @@ class Commodity:
         self.sale_price = float(sale_price)
 
         self.demanded = bool(demanded)
-        self.total_demand = bool(total_demand)
+        self.is_total_demand = bool(is_total_demand)
         self.demand = float(demand)
 
         self.purchased_quantity = purchased_quantity
@@ -77,7 +77,7 @@ class Commodity:
 
         self.produced_quantity = produced_quantity
         self.consumed_quantity = consumed_quantity
-        # Important: Total production costs only derive from conversion components where commodity is main output
+        # Important: total production costs only derive from conversion components where commodity is main output
         self.total_production_costs = total_production_costs
 
         self.generated_quantity = generated_quantity
@@ -88,7 +88,7 @@ class Commodity:
             energy_content=self.energy_content, emittable=self.emittable, available=self.available,
             purchasable=self.purchasable, purchase_price=self.purchase_price,
             saleable=self.saleable, sale_price=self.sale_price, demanded=self.demanded,
-            demand=self.demand, total_demand=self.total_demand, purchased_quantity=self.purchased_quantity, 
+            demand=self.demand, is_total_demand=self.is_total_demand, purchased_quantity=self.purchased_quantity, 
             purchase_costs=self.purchase_costs, sold_quantity=self.sold_quantity, 
             selling_revenue=self.selling_revenue, emitted_quantity=self.emitted_quantity, 
             available_quantity=self.available_quantity, demanded_quantity=self.demanded_quantity, 
