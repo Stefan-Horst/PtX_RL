@@ -5,6 +5,8 @@ from typing import Any
 import numpy as np
 import gymnasium as gym
 
+from ptx.commodity import Commodity
+from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import ParameterObject
 
 
@@ -78,26 +80,42 @@ class GymEnvironment(Environment):
 # attributes which are not simple values are marked with their type in square brackets
 COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quantity", 
                          "emitted_quantity", "demanded_quantity", "charged_quantity", 
-                         "discharged_quantity", "standby_quantity", "consumed_quantity", 
-                         "produced_quantity", "generated_quantity", "selling_revenue", 
-                         "total_storage_costs", "total_production_costs", "total_generation_costs"]
+                         "discharged_quantity", "consumed_quantity", "produced_quantity", 
+                         "generated_quantity", "selling_revenue", "total_storage_costs", 
+                         "total_production_costs", "total_generation_costs"]
 CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
                          "[dict]consumed_commodity", "[dict]produced_commodity"]
 STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
                          "charged_quantity", "discharged_quantity"]
 GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
                          "generated_quantity", "total_costs", "curtailment"]
+# actual possible actions of each element depend on what the configuration allows
+# e.g. selling commodity is only possible if it's set to saleable
+COMMODITY_ACTIONS = [Commodity.purchase_commodity, Commodity.sell_commodity, Commodity.emit_commodity]
+CONVERSION_ACTIONS = [ConversionComponent.convert_commodities, ConversionComponent.ramp_up_or_down]
+STORAGE_ACTIONS = [StorageComponent.charge_quantity, StorageComponent.discharge_quantity] # maybe discharge automatically if production too low
+GENERATOR_ACTIONS = [GenerationComponent.apply_curtailment]
 
 class PtxEnvironment(Environment):
+    """Environment simulating a PtX system. The environment is flexible regarding 
+    the exact configuration of the system and allows for its attributes (i.e. observations) 
+    and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: ParameterObject, 
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
-                 storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES):
-        """Create environment with PtX sytem to use and optionally specify relevant attributes for the agent"""
+                 storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
+                 commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
+                 storage_actions=STORAGE_ACTIONS, generator_actions=GENERATOR_ACTIONS):
+        """Create environment with PtX sytem to use and optionally specify 
+        relevant attributes and actions for the agent."""
         self.commodity_attributes = commodity_attributes
         self.conversion_attributes = conversion_attributes
         self.storage_attributes = storage_attributes
         self.generator_attributes = generator_attributes
+        self.commodity_actions = commodity_actions
+        self.conversion_actions = conversion_actions
+        self.storage_actions = storage_actions
+        self.generator_actions = generator_actions
         self._original_ptx_system = ptx_system
         self.ptx_system = copy(self._original_ptx_system)
         
@@ -107,7 +125,11 @@ class PtxEnvironment(Environment):
                                   "high": math.inf, 
                                   "shape": (observation_space_size,), 
                                   "dtype": np.float64}
-        super().__init__(observation_space_size, observation_space_spec, None, None, None)
+        action_space_size = len(self._get_action_space())
+        action_space_spec = {}
+        reward_spec = {}
+        super().__init__(observation_space_size, observation_space_spec, action_space_size, 
+                         action_space_spec, reward_spec)
         
     def initialize(self, seed=None):
         self.seed = seed
@@ -130,19 +152,28 @@ class PtxEnvironment(Environment):
         """Get the current observation by iterating over all elements of the 
         ptx system and adding their attributes as specified in the constants."""
         observation_space = []
-        commodities = self.ptx_system.get_all_commodities()
+        commodities = self.ptx_system.commodities
         for commodity in commodities:
-            for attribute in self.commodity_attributes:
+            possible_attributes = commodity.get_possible_observation_attributes(
+                self.commodity_attributes
+            )
+            for attribute in possible_attributes:
                 observation_space.append(getattr(commodity, attribute))
         
         generators = self.ptx_system.get_generator_components_objects()
         for generator in generators:
-            for attribute in self.generator_attributes:
+            possible_attributes = generator.get_possible_observation_attributes(
+                self.generator_attributes
+            )
+            for attribute in possible_attributes:
                 observation_space.append(getattr(generator, attribute))
         
         conversions = self.ptx_system.get_conversion_components_objects()
         for conversion in conversions:
-            for attribute in self.conversion_attributes:
+            possible_attributes = conversion.get_possible_observation_attributes(
+                self.conversion_attributes
+            )
+            for attribute in possible_attributes:
                 # add all values of attributes that are dictionaries
                 if attribute.startswith("[dict]"):
                     for _, value in getattr(conversion, attribute[6:]):
@@ -157,7 +188,31 @@ class PtxEnvironment(Environment):
         return observation_space
     
     def _get_action_space(self):
-        return
+        action_space = []
+        commodities = self.ptx_system.commodities
+        for commodity in commodities:
+            possible_actions = commodity.get_possible_action_methods(self.commodity_actions)
+            for action in possible_actions:
+                action_space.append(action)
+        
+        generators = self.ptx_system.get_generator_components_objects()
+        for generator in generators:
+            possible_actions = generator.get_possible_action_methods(self.generator_actions)
+            for action in possible_actions:
+                action_space.append(action)
+        
+        conversions = self.ptx_system.get_conversion_components_objects()
+        for conversion in conversions:
+            possible_actions = conversion.get_possible_action_methods(self.conversion_actions)
+            for action in possible_actions:
+                action_space.append(action)
+        
+        storages = self.ptx_system.get_storage_components_objects()
+        for storage in storages:
+            possible_actions = storage.get_possible_action_methods(self.storage_actions)
+            for action in possible_actions:
+                action_space.append(action)
+        return action_space
     
     def _apply_action(self, action):
         return
