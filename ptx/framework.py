@@ -411,16 +411,18 @@ class ParameterObject:
         self.commodities.pop(name)
 
     def get_all_commodity_names(self):
-        all_commodities = []
-        for s in [*self.commodities.keys()]:
-            if s not in all_commodities:
-                all_commodities.append(s)
-        return all_commodities
+        return [*self.commodities.keys()]
+    
+    def get_all_commodities(self):
+        commodities = []
+        for c in self.get_all_commodity_names():
+            commodities.append(self.commodities[c])
+        return commodities
 
-    def get_commodity_by_component(self, component):
+    def get_commodities_by_component(self, component):
         return self.components[component].commodities
 
-    def get_component_by_commodity(self, commodity):
+    def get_components_by_commodity(self, commodity):
         components = []
         for c in self.components:
             if self.components[c].component_type == 'conversion':
