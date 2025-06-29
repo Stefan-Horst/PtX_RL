@@ -26,3 +26,6 @@ def open_yaml_file(path):
     with open(path) as file:
         yaml_object = yaml.load(file, Loader=yaml.FullLoader)
     return yaml_object
+
+def contains_only_unique_elements(list):
+    return len(list) == len(set(list))
