@@ -1,7 +1,10 @@
 import copy
 
+from ptx.core import Element
 
-class Component:
+
+class Component(Element):
+    """Abstract base class for components which cannot be instantiated directly."""
     
     def __init__(self, name, variable_om, has_fixed_capacity=False, 
                  fixed_capacity=0., total_variable_costs=0.):
@@ -140,6 +143,14 @@ class ConversionComponent(Component):
         else:
             return self.produced_commodity[commodity]
 
+    def get_possible_observation_attributes(self, relevant_attributes):
+        # all attributes are possible for every conversion component
+        return relevant_attributes
+
+    def get_possible_action_methods(self, relevant_methods):
+        # all methods are possible for every conversion component
+        return relevant_methods
+
     def __copy__(self, name=None):
         if name is None:
             name = self.name
@@ -187,6 +198,14 @@ class StorageComponent(Component):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
 
+    def get_possible_observation_attributes(self, relevant_attributes):
+        # all attributes are possible for every conversion component
+        return relevant_attributes
+
+    def get_possible_action_methods(self, relevant_methods):
+        # all methods are possible for every conversion component
+        return relevant_methods
+
     def __copy__(self):
         return StorageComponent(name=self.name, charging_efficiency=self.charging_efficiency,
                                 discharging_efficiency=self.discharging_efficiency,
@@ -223,6 +242,20 @@ class GenerationComponent(Component):
         self.potential_generation_quantity = potential_generation_quantity
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
+
+    def get_possible_observation_attributes(self, relevant_attributes):
+        possible_attributes = []
+        for attribute in relevant_attributes:
+            if attribute == "curtailment" and self.curtailment_possible:
+                possible_attributes.append(attribute)
+        return possible_attributes
+
+    def get_possible_action_methods(self, relevant_methods):
+        possible_methods = []
+        for method in relevant_methods:
+            if method == GenerationComponent.apply_curtailment and self.curtailment_possible:
+                possible_methods.append(method)
+        return possible_methods
 
     def __copy__(self):
         return GenerationComponent(name=self.name, generated_commodity=self.generated_commodity,

@@ -1,4 +1,7 @@
-class Commodity:
+from ptx.core import Element
+
+
+class Commodity(Element):
     
     def __init__(self, name, commodity_unit, energy_content=None,
                  emittable=False, available=False, purchasable=False, 
@@ -7,7 +10,7 @@ class Commodity:
                  purchased_quantity=0., purchase_costs=0., sold_quantity=0., 
                  selling_revenue=0., emitted_quantity=0., available_quantity=0., 
                  demanded_quantity=0., charged_quantity=0., discharged_quantity=0., 
-                 total_storage_costs=0., standby_quantity=0., consumed_quantity=0.,
+                 total_storage_costs=0., consumed_quantity=0.,
                  produced_quantity=0., total_production_costs=0.,
                  generated_quantity=0., total_generation_costs=0.):
         """
@@ -73,8 +76,6 @@ class Commodity:
         self.discharged_quantity = discharged_quantity
         self.total_storage_costs = total_storage_costs
 
-        self.standby_quantity = standby_quantity
-
         self.produced_quantity = produced_quantity
         self.consumed_quantity = consumed_quantity
         # Important: total production costs only derive from conversion components where commodity is main output
@@ -82,6 +83,26 @@ class Commodity:
 
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
+
+    def get_possible_observation_attributes(self, relevant_attributes):
+        possible_attributes = []
+        for attribute in relevant_attributes:
+            if attribute == "purchased_quantity" and self.purchasable or \
+               attribute == "sold_quantity" and self.saleable or \
+               attribute == "selling_revenue" and self.saleable or \
+               attribute == "demanded_quantity" and self.demanded or \
+               attribute == "emitted_quantity" and self.emittable:
+                possible_attributes.append(attribute)
+        return possible_attributes
+
+    def get_possible_action_methods(self, relevant_methods):
+        possible_methods = []
+        for method in relevant_methods:
+            if method == Commodity.purchase_commodity and self.purchasable or \
+               method == Commodity.sell_commodity and self.saleable or \
+               method == Commodity.emit_commodity and self.emittable:
+                possible_methods.append(method)
+        return possible_methods
 
     def __copy__(self):
         return Commodity(name=self.name, commodity_unit=self.commodity_unit,
@@ -93,7 +114,6 @@ class Commodity:
             selling_revenue=self.selling_revenue, emitted_quantity=self.emitted_quantity, 
             available_quantity=self.available_quantity, demanded_quantity=self.demanded_quantity, 
             charged_quantity=self.charged_quantity, discharged_quantity=self.discharged_quantity, 
-            total_storage_costs=self.total_storage_costs, standby_quantity=self.standby_quantity, 
-            consumed_quantity=self.consumed_quantity, produced_quantity=self.produced_quantity, 
-            total_production_costs=self.total_production_costs, generated_quantity=self.generated_quantity,
-            total_generation_costs=self.total_generation_costs)
+            total_storage_costs=self.total_storage_costs, consumed_quantity=self.consumed_quantity, 
+            produced_quantity=self.produced_quantity, total_production_costs=self.total_production_costs, 
+            generated_quantity=self.generated_quantity, total_generation_costs=self.total_generation_costs)
