@@ -37,7 +37,7 @@ class ConversionComponent(Component):
     def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., 
                  min_p=0., max_p=1., inputs=None, outputs=None, main_input=None, 
                  main_output=None, commodities=None, has_fixed_capacity=False, 
-                 fixed_capacity=0., consumed_commodity=None, produced_commodity=None):
+                 fixed_capacity=0., consumed_commodities=None, produced_commodities=None):
         """
         Class of conversion units
         
@@ -80,42 +80,30 @@ class ConversionComponent(Component):
         self.ramp_down = float(ramp_down)
         self.ramp_up = float(ramp_up)
 
-        self.consumed_commodity = consumed_commodity
-        self.produced_commodity = produced_commodity
+        self.consumed_commodities = consumed_commodities
+        self.produced_commodities = produced_commodities
         
-        self.initialize_result_dictionaries()
-
-    def initialize_result_dictionaries(self):
-        if self.consumed_commodity is None:
-            self.consumed_commodity = {}
-        if self.produced_commodity is None:
-            self.produced_commodity = {}
-
-        for commodity in self.commodities:
-            if commodity not in [*self.consumed_commodity.keys()]:
-                self.set_specific_consumed_commodity(commodity, 0)
-            if commodity not in [*self.produced_commodity.keys()]:
-                self.set_specific_produced_commodity(commodity, 0)
+        self._initialize_result_dictionaries()
 
     def add_input(self, input_commodity, coefficient):
         self.inputs.update({input_commodity: float(coefficient)})
         self.add_commodity(input_commodity)
-        self.initialize_result_dictionaries()
+        self._initialize_result_dictionaries()
 
     def remove_input(self, input_commodity):
         self.inputs.pop(input_commodity)
         self.remove_commodity(input_commodity)
-        self.initialize_result_dictionaries()
+        self._initialize_result_dictionaries()
 
     def add_output(self, output_commodity, coefficient):
         self.outputs.update({output_commodity: float(coefficient)})
         self.add_commodity(output_commodity)
-        self.initialize_result_dictionaries()
+        self._initialize_result_dictionaries()
 
     def remove_output(self, output_commodity):
         self.outputs.pop(output_commodity)
         self.remove_commodity(output_commodity)
-        self.initialize_result_dictionaries()
+        self._initialize_result_dictionaries()
 
     def add_commodity(self, commodity):
         if commodity not in self.commodities:
@@ -125,23 +113,23 @@ class ConversionComponent(Component):
         if commodity in self.commodities:
             self.commodities.remove(commodity)
 
-    def set_specific_consumed_commodity(self, commodity, quantity):
-        self.consumed_commodity.update({commodity: quantity})
+    def set_specific_consumed_commodities(self, commodity, quantity):
+        self.consumed_commodities.update({commodity: quantity})
 
-    def get_specific_consumed_commodity(self, commodity):
+    def get_specific_consumed_commodities(self, commodity):
         if commodity not in self.commodities:
             return 0
         else:
-            return self.consumed_commodity[commodity]
+            return self.consumed_commodities[commodity]
 
-    def set_specific_produced_commodity(self, commodity, quantity):
-        self.produced_commodity.update({commodity: quantity})
+    def set_specific_produced_commodities(self, commodity, quantity):
+        self.produced_commodities.update({commodity: quantity})
 
-    def get_specific_produced_commodity(self, commodity):
+    def get_specific_produced_commodities(self, commodity):
         if commodity not in self.commodities:
             return 0
         else:
-            return self.produced_commodity[commodity]
+            return self.produced_commodities[commodity]
 
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
@@ -150,6 +138,20 @@ class ConversionComponent(Component):
     def get_possible_action_methods(self, relevant_methods):
         # all methods are possible for every conversion component
         return relevant_methods
+
+    def _initialize_result_dictionaries(self):
+        if self.consumed_commodities is None:
+            self.consumed_commodities = {}
+        if self.produced_commodities is None:
+            self.produced_commodities = {}
+
+        for commodity in self.commodities:
+            if commodity in [*self.inputs.keys()] and \
+               commodity not in [*self.consumed_commodities.keys()]:
+                self.set_specific_consumed_commodities(commodity, 0)
+            if commodity in [*self.outputs.keys()] and \
+               commodity not in [*self.produced_commodities.keys()]:
+                self.set_specific_produced_commodities(commodity, 0)
 
     def __copy__(self, name=None):
         if name is None:
@@ -162,7 +164,7 @@ class ConversionComponent(Component):
                                    min_p=self.min_p, max_p=self.max_p, inputs=inputs, outputs=outputs,
                                    main_input=self.main_input, main_output=self.main_output, commodities=commodities,
                                    has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
-                                   consumed_commodity=self.consumed_commodity, produced_commodity=self.produced_commodity)
+                                   consumed_commodities=self.consumed_commodities, produced_commodities=self.produced_commodities)
 
 
 class StorageComponent(Component):
