@@ -6,37 +6,26 @@ import pandas as pd
 class PtxSystem:
     
     def __init__(self, project_name='', integer_steps=5, facility_lifetime=20,
-                 names_dict=None, commodities=None, components=None, profile_data=False,
-                 uses_representative_periods=False, covered_period=8760, 
-                 path_data=None, copy_object=False):
+                 commodities=None, components=None, profile_data=False,
+                 uses_representative_periods=False, covered_period=8760, path_data=None):
         """
         Object which stores all components, commodities, settings, etc.
         
         :param project_name: [string] - name of PtxSystem
         :param integer_steps: [int] - number of integer steps (used to split capacity)
-        :param names_dict: [dict] - List of abbreviations of components, commodities etc.
         :param commodities: [dict] - Dictionary with abbreviations as keys and commodity objects as values
         :param components: [dict] - Dictionary with abbreviations as keys and component objects as values
-        :param copy_object: [boolean] - Boolean if object is copy
         """
         
         self.project_name = project_name
+        self.facility_lifetime = facility_lifetime
 
-        if not copy_object:
-            # Initiate as default values
-            self.facility_lifetime = facility_lifetime
-
-            self.names_dict = {}
-
-            self.commodities = {}
-            self.components = {}
-        else:
-            # Object is copied if components have parallel units.
-            # It is copied so that the original object is not changed
-            self.names_dict = names_dict
-
-            self.commodities = commodities
-            self.components = components
+        if commodities is None:
+            commodities = {}
+        if components is None:
+            components = {}
+        self.commodities = commodities
+        self.components = components
 
         self.covered_period = covered_period
         self.uses_representative_periods = uses_representative_periods
@@ -432,12 +421,11 @@ class PtxSystem:
 
     def __copy__(self):
         # deepcopy mutable objects
-        names_dict = copy.deepcopy(self.names_dict)
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
         return PtxSystem(project_name=self.project_name, integer_steps=self.integer_steps, 
                          facility_lifetime=self.facility_lifetime,
-                         names_dict=names_dict, commodities=commodities,
-                         components=components, profile_data=self.profile_data,
+                         commodities=commodities, components=components, 
+                         profile_data=self.profile_data,
                          uses_representative_periods=self.uses_representative_periods,
-                         covered_period=self.covered_period, copy_object=True)
+                         covered_period=self.covered_period)
