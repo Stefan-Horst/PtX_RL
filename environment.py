@@ -131,6 +131,7 @@ class PtxEnvironment(Environment):
         reward_spec = {}
         super().__init__(observation_space_size, observation_space_spec, action_space_size, 
                          action_space_spec, reward_spec)
+        self._action_space = self._get_action_space()
         
     def initialize(self, seed=None):
         self.seed = seed
@@ -195,24 +196,38 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
-        action_space = {}
-        commodities = self.ptx_system.get_all_commodities()
-        generators = self.ptx_system.get_generator_components_objects()
-        conversions = self.ptx_system.get_conversion_components_objects()
-        storages = self.ptx_system.get_storage_components_objects()
-        element_categories = [(commodities, self.commodity_actions), 
-                              (generators, self.generator_actions), 
-                              (conversions, self.conversion_actions), 
-                              (storages, self.storage_actions)]
+        action_space_spec = {}
+        element_categories = self._get_element_categories_with_actions()
         for category, actions in element_categories:
             for element in category:
                 element_actions = []
                 possible_actions = element.get_possible_action_methods(actions)
                 for action in possible_actions:
                     element_actions.append(action.__name__)
-                action_space[element.name] = element_actions
+                action_space_spec[element.name] = element_actions
+        return action_space_spec
+
+    def _get_action_space(self):
+        """Create list with tuples of each element and its possible actions."""
+        action_space = []
+        element_categories = self._get_element_categories_with_actions()
+        for category, actions in element_categories:
+            for element in category:
+                possible_actions = element.get_possible_action_methods(actions)
+                for action in possible_actions:
+                    action_space.append((element, action))
         return action_space
     
+    def _get_element_categories_with_actions(self):
+        commodities = self.ptx_system.get_all_commodities()
+        generators = self.ptx_system.get_generator_components_objects()
+        conversions = self.ptx_system.get_conversion_components_objects()
+        storages = self.ptx_system.get_storage_components_objects()
+        return [(commodities, self.commodity_actions), 
+                (generators, self.generator_actions), 
+                (conversions, self.conversion_actions), 
+                (storages, self.storage_actions)]
+         
     def _apply_action(self, action):
         return
     
