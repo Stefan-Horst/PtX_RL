@@ -174,42 +174,22 @@ class PtxEnvironment(Environment):
         return observation_space_spec
     
     def _get_current_observation(self):
-        """Get the current observation by iterating over all elements of the 
-        ptx system and adding their attributes as specified in the constants."""
+        """Get the current observation by iterating over all elements 
+        of the ptx system and adding the values of their attributes."""
         observation_space = []
-        commodities = self.ptx_system.get_all_commodities()
-        for commodity in commodities:
-            possible_attributes = commodity.get_possible_observation_attributes(
-                self.commodity_attributes
-            )
-            for attribute in possible_attributes:
-                observation_space.append(getattr(commodity, attribute))
-        
-        generators = self.ptx_system.get_generator_components_objects()
-        for generator in generators:
-            possible_attributes = generator.get_possible_observation_attributes(
-                self.generator_attributes
-            )
-            for attribute in possible_attributes:
-                observation_space.append(getattr(generator, attribute))
-        
-        conversions = self.ptx_system.get_conversion_components_objects()
-        for conversion in conversions:
-            possible_attributes = conversion.get_possible_observation_attributes(
-                self.conversion_attributes
-            )
-            for attribute in possible_attributes:
-                # add all values of attributes that are dictionaries
-                if attribute.startswith("[dict]"):
-                    for value in getattr(conversion, attribute[6:]).values():
-                        observation_space.append(value)
-                else:
-                    observation_space.append(getattr(conversion, attribute))
-        
-        storages = self.ptx_system.get_storage_components_objects()
-        for storage in storages:
-            for attribute in self.storage_attributes:
-                observation_space.append(getattr(storage, attribute))
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, attributes, _ in element_categories:
+            for element in category:
+                possible_attributes = element.get_possible_observation_attributes(attributes)
+                for attribute in possible_attributes:
+                    # add all values of attributes that are dictionaries
+                    if attribute.startswith("[dict]"):
+                        attribute = attribute[6:]
+                        observation_space.extend(
+                            list(getattr(element, attribute).values())
+                        )
+                    else:
+                        observation_space.append(getattr(element, attribute))
         return observation_space
     
     def _get_action_space_spec(self):
