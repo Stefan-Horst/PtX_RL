@@ -150,6 +150,29 @@ class PtxEnvironment(Environment):
         reward = self._calculate_reward()
         return None, reward, False, False, None
     
+    def _get_observation_space_spec(self):
+        """Create dict with each element of the ptx system (commodities, components) 
+        as key and possible observations (attributes) as values. Attributes that are 
+        dicts are added with their keys as list."""
+        observation_space_spec = {}
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, attributes, _ in element_categories:
+            for element in category:
+                element_attributes = []
+                possible_attributes = element.get_possible_observation_attributes(attributes)
+                for attribute in possible_attributes:
+                    # add all keys of attributes that are dictionaries as 
+                    # new dict with name as key and keys as values
+                    if attribute.startswith("[dict]"):
+                        attribute = attribute[6:]
+                        element_attributes.append(
+                            {attribute: list(getattr(element, attribute).keys())}
+                        )
+                    else:
+                        element_attributes.append(attribute)
+                observation_space_spec[element.name] = element_attributes
+        return observation_space_spec
+    
     def _get_current_observation(self):
         """Get the current observation by iterating over all elements of the 
         ptx system and adding their attributes as specified in the constants."""
@@ -197,8 +220,8 @@ class PtxEnvironment(Environment):
         ), "All elements of the ptx system must have a unique name."
         
         action_space_spec = {}
-        element_categories = self._get_element_categories_with_actions()
-        for category, actions in element_categories:
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, _, actions in element_categories:
             for element in category:
                 element_actions = []
                 possible_actions = element.get_possible_action_methods(actions)
@@ -210,24 +233,24 @@ class PtxEnvironment(Environment):
     def _get_action_space(self):
         """Create list with tuples of each element and its possible actions."""
         action_space = []
-        element_categories = self._get_element_categories_with_actions()
-        for category, actions in element_categories:
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, _, actions in element_categories:
             for element in category:
                 possible_actions = element.get_possible_action_methods(actions)
                 for action in possible_actions:
                     action_space.append((element, action))
         return action_space
     
-    def _get_element_categories_with_actions(self):
+    def _get_element_categories_with_attributes_and_actions(self):
         commodities = self.ptx_system.get_all_commodities()
         generators = self.ptx_system.get_generator_components_objects()
         conversions = self.ptx_system.get_conversion_components_objects()
         storages = self.ptx_system.get_storage_components_objects()
-        return [(commodities, self.commodity_actions), 
-                (generators, self.generator_actions), 
-                (conversions, self.conversion_actions), 
-                (storages, self.storage_actions)]
-         
+        return [(commodities, self.commodity_attributes, self.commodity_actions), 
+                (generators, self.generator_attributes, self.generator_actions), 
+                (conversions, self.conversion_attributes, self.conversion_actions), 
+                (storages, self.storage_attributes, self.storage_actions)]
+
     def _apply_action(self, action):
         return
     
