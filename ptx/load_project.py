@@ -13,7 +13,7 @@ def load_project(path_data=DATA_DIR, config_file="not_robust_FT_all_data_no_scal
 
 def init_project(pm_object, case_data):
     """Initialize ParameterObject with data from config file. Works for version 0.1.1"""
-    assert case_data['version'] == '0.1.1'
+    assert case_data['version'] == '0.1.1', "This function only works for config files with version 0.1.1"
     
     # Set general parameters
     pm_object.project_name = case_data['project_name']
@@ -103,11 +103,9 @@ def init_project(pm_object, case_data):
         # Demand
         demand = case_data['commodity'][c]['demand']
 
-        energy_content = case_data['commodity'][c]['energy_content']
-
         commodity = Commodity(name=name, commodity_unit=commodity_unit, 
-                              energy_content=energy_content, available=available, 
-                              purchasable=purchasable, saleable=saleable, emittable=emittable,
+                              available=available, purchasable=purchasable, 
+                              saleable=saleable, emittable=emittable,
                               demanded=demanded, is_total_demand=is_total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
         pm_object.add_commodity(name, commodity)

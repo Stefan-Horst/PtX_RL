@@ -3,7 +3,7 @@ from ptx.core import Element
 
 class Commodity(Element):
     
-    def __init__(self, name, commodity_unit, energy_content=None,
+    def __init__(self, name, commodity_unit,
                  emittable=False, available=False, purchasable=False, 
                  purchase_price=0, saleable=False, sale_price=0,
                  demanded=False, demand=0, is_total_demand=False,
@@ -18,7 +18,6 @@ class Commodity(Element):
         
         :param name: [string] - Abbreviation of commodity
         :param commodity_unit: [string] - Unit of commodity
-        :param energy_content: [float] - Energy content per unit
         :param emittable: [boolean] - can be emitted?
         :param available: [boolean] - is freely available without limitation or price?
         :param purchasable: [boolean] - can be purchased?
@@ -32,22 +31,6 @@ class Commodity(Element):
 
         self.name = name
         self.commodity_unit = commodity_unit
-        if energy_content is not None:
-            self.energy_content = float(energy_content)
-        elif self.commodity_unit == 'kWh':
-            self.energy_content = 0.001
-        elif self.commodity_unit == 'MWh':
-            self.energy_content = 1
-        elif self.commodity_unit == 'GWh':
-            self.energy_content = 1000
-        elif self.commodity_unit == 'kJ':
-            self.energy_content = 2.7777e-7
-        elif self.commodity_unit == 'MJ':
-            self.energy_content = 2.7777e-4
-        elif self.commodity_unit == 'GJ':
-            self.energy_content = 2.7777e-1
-        else:
-            self.energy_content = 0
 
         self.emittable = bool(emittable)
         self.available = bool(available)
@@ -105,11 +88,10 @@ class Commodity(Element):
         return possible_methods
 
     def __copy__(self):
-        return Commodity(name=self.name, commodity_unit=self.commodity_unit,
-            energy_content=self.energy_content, emittable=self.emittable, available=self.available,
-            purchasable=self.purchasable, purchase_price=self.purchase_price,
-            saleable=self.saleable, sale_price=self.sale_price, demanded=self.demanded,
-            demand=self.demand, is_total_demand=self.is_total_demand, purchased_quantity=self.purchased_quantity, 
+        return Commodity(name=self.name, commodity_unit=self.commodity_unit, emittable=self.emittable, 
+            available=self.available, purchasable=self.purchasable, purchase_price=self.purchase_price, 
+            saleable=self.saleable, sale_price=self.sale_price, demanded=self.demanded, demand=self.demand, 
+            is_total_demand=self.is_total_demand, purchased_quantity=self.purchased_quantity, 
             purchase_costs=self.purchase_costs, sold_quantity=self.sold_quantity, 
             selling_revenue=self.selling_revenue, emitted_quantity=self.emitted_quantity, 
             available_quantity=self.available_quantity, demanded_quantity=self.demanded_quantity, 
