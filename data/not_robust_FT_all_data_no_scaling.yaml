@@ -147,7 +147,7 @@ commodity:
     total_demand: false
     unit: t
 component:
-  CO2 Kompressor:
+  CO2 Compressor:
     base_capacity: 0.0
     base_investment: 0.0
     capex: 3241.27
@@ -169,7 +169,7 @@ component:
     max_capacity_economies_of_scale: 0.0
     max_p: 1.0
     min_p: 0.0
-    name: CO2 Kompressor
+    name: CO2 Compressor
     number_parallel_units: 1
     ramp_down: 1.0
     ramp_up: 1.0
@@ -179,7 +179,7 @@ component:
     start_up_time: 0
     variable_co2_emissions: 0.0
     variable_om: 0.0
-  CO2 compressed:
+  CO2 compressed storage:
     capex: 45.14
     charging_efficiency: 1.0
     component_type: storage
@@ -194,7 +194,7 @@ component:
     lifetime: 1
     max_soc: 1.0
     min_soc: 0.0
-    name: CO2 compressed
+    name: CO2 compressed storage
     ratio_capacity_p: 1.0
     variable_co2_emissions: 0.0
     variable_om: 0.0
@@ -230,7 +230,7 @@ component:
     start_up_time: 0
     variable_co2_emissions: 0.0
     variable_om: 0.0
-  Electricity:
+  Electricity storage:
     capex: 330.0
     charging_efficiency: 0.85
     component_type: storage
@@ -245,11 +245,11 @@ component:
     lifetime: 20
     max_soc: 0.9
     min_soc: 0.1
-    name: Electricity
+    name: Electricity storage
     ratio_capacity_p: 1.0
     variable_co2_emissions: 0.0
     variable_om: 0.00164375
-  H2 Dekompressor:
+  H2 Decompressor:
     base_capacity: 0.0
     base_investment: 0.0
     capex: 0.0
@@ -271,7 +271,7 @@ component:
     max_capacity_economies_of_scale: 0.0
     max_p: 1.0
     min_p: 0.0
-    name: H2 Dekompressor
+    name: H2 Decompressor
     number_parallel_units: 1
     ramp_down: 1.0
     ramp_up: 1.0
@@ -281,7 +281,7 @@ component:
     start_up_time: 0
     variable_co2_emissions: 0.0
     variable_om: 0.0
-  H2 Kompressor:
+  H2 Compressor:
     base_capacity: 0.0
     base_investment: 0.0
     capex: 1590.01
@@ -303,7 +303,7 @@ component:
     max_capacity_economies_of_scale: 0.0
     max_p: 1.0
     min_p: 0.0
-    name: H2 Kompressor
+    name: H2 Compressor
     number_parallel_units: 1
     ramp_down: 1.0
     ramp_up: 1.0
@@ -313,7 +313,7 @@ component:
     start_up_time: 0
     variable_co2_emissions: 0.0
     variable_om: 0.0
-  Hydrogen:
+  Hydrogen storage:
     capex: 10000.0
     charging_efficiency: 1.0
     component_type: storage
@@ -328,11 +328,11 @@ component:
     lifetime: 20
     max_soc: 1.0
     min_soc: 0.0
-    name: Hydrogen
+    name: Hydrogen storage
     ratio_capacity_p: 1.0
     variable_co2_emissions: 0.0
     variable_om: 0.0
-  Hydrogen compressed:
+  Hydrogen compressed storage:
     capex: 12.0
     charging_efficiency: 1.0
     component_type: storage
@@ -347,7 +347,7 @@ component:
     lifetime: 20
     max_soc: 1.0
     min_soc: 0.1
-    name: Hydrogen compressed
+    name: Hydrogen compressed storage
     ratio_capacity_p: 1.0
     variable_co2_emissions: 0.0
     variable_om: 0.0
@@ -419,7 +419,7 @@ component:
     uses_ppa: false
     variable_co2_emissions: 0.00019
     variable_om: 0.0
-  electrolyzer:
+  Electrolyzer:
     base_capacity: 0.0
     base_investment: 0.0
     capex: 810.0
@@ -441,7 +441,7 @@ component:
     max_capacity_economies_of_scale: 0.0
     max_p: 1.0
     min_p: 0.07
-    name: electrolyzer
+    name: Electrolyzer
     number_parallel_units: 1
     ramp_down: 1.0
     ramp_up: 1.0
@@ -452,7 +452,7 @@ component:
     variable_co2_emissions: 0.00092
     variable_om: 0.0
 conversions:
-  CO2 Kompressor:
+  CO2 Compressor:
     input:
       CO2: 1.0
       Electricity: 0.06134
@@ -467,14 +467,14 @@ conversions:
     main_output: CO2
     output:
       CO2: 1.0
-  H2 Dekompressor:
+  H2 Decompressor:
     input:
       Hydrogen compressed: 1.0
     main_input: Hydrogen compressed
     main_output: Hydrogen
     output:
       Hydrogen: 1.0
-  H2 Kompressor:
+  H2 Compressor:
     input:
       Electricity: 0.0167
       Hydrogen: 1.0
@@ -491,7 +491,7 @@ conversions:
     main_output: FT
     output:
       FT: 1.0
-  electrolyzer:
+  Electrolyzer:
     input:
       Electricity: 1.52
       Water: 0.27
