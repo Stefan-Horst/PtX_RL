@@ -8,6 +8,7 @@ import gymnasium as gym
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import ParameterObject
+from util import contains_only_unique_elements
 
 
 class Environment(ABC):
@@ -84,7 +85,7 @@ COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quant
                          "generated_quantity", "selling_revenue", "total_storage_costs", 
                          "total_production_costs", "total_generation_costs"]
 CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
-                         "[dict]consumed_commodity", "[dict]produced_commodity"]
+                         "[dict]consumed_commodities", "[dict]produced_commodities"]
 STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
                          "charged_quantity", "discharged_quantity"]
 GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
@@ -152,7 +153,7 @@ class PtxEnvironment(Environment):
         """Get the current observation by iterating over all elements of the 
         ptx system and adding their attributes as specified in the constants."""
         observation_space = []
-        commodities = self.ptx_system.commodities
+        commodities = self.ptx_system.get_all_commodities()
         for commodity in commodities:
             possible_attributes = commodity.get_possible_observation_attributes(
                 self.commodity_attributes
@@ -176,7 +177,7 @@ class PtxEnvironment(Environment):
             for attribute in possible_attributes:
                 # add all values of attributes that are dictionaries
                 if attribute.startswith("[dict]"):
-                    for _, value in getattr(conversion, attribute[6:]):
+                    for value in getattr(conversion, attribute[6:]).values():
                         observation_space.append(value)
                 else:
                     observation_space.append(getattr(conversion, attribute))
@@ -188,30 +189,43 @@ class PtxEnvironment(Environment):
         return observation_space
     
     def _get_action_space(self):
-        action_space = []
-        commodities = self.ptx_system.commodities
+        # make sure each element of the ptx system has a unique name
+        assert contains_only_unique_elements(
+            self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
+        )
+        
+        action_space = {}
+        commodities = self.ptx_system.get_all_commodities()
         for commodity in commodities:
+            commodity_actions = []
             possible_actions = commodity.get_possible_action_methods(self.commodity_actions)
             for action in possible_actions:
-                action_space.append(action)
+                commodity_actions.append(action)
+            action_space[commodity.name] = commodity_actions
         
         generators = self.ptx_system.get_generator_components_objects()
         for generator in generators:
+            generator_actions = []
             possible_actions = generator.get_possible_action_methods(self.generator_actions)
             for action in possible_actions:
-                action_space.append(action)
+                generator_actions.append(action)
+            action_space[generator.name] = generator_actions
         
         conversions = self.ptx_system.get_conversion_components_objects()
         for conversion in conversions:
+            conversion_actions = []
             possible_actions = conversion.get_possible_action_methods(self.conversion_actions)
             for action in possible_actions:
-                action_space.append(action)
+                conversion_actions.append(action)
+            action_space[conversion.name] = conversion_actions
         
         storages = self.ptx_system.get_storage_components_objects()
         for storage in storages:
+            storage_actions = []
             possible_actions = storage.get_possible_action_methods(self.storage_actions)
             for action in possible_actions:
-                action_space.append(action)
+                storage_actions.append(action)
+            action_space[storage.name] = storage_actions
         return action_space
     
     def _apply_action(self, action):
