@@ -1,27 +1,27 @@
 from ptx.component import ConversionComponent, StorageComponent, GenerationComponent
 from ptx.commodity import Commodity
-from ptx.framework import ParameterObject
+from ptx.framework import PtxSystem
 from util import DATA_DIR, open_yaml_file
 
 
 def load_project(path_data=DATA_DIR, config_file="not_robust_FT_all_data_no_scaling.yaml"):
-    """Load project data into ParameterObject."""
-    empty_po = ParameterObject(path_data=path_data)
+    """Load project data into PtxSystem."""
+    empty_ps = PtxSystem(path_data=path_data)
     ptx_config = open_yaml_file(path_data + config_file)
-    initialized_po = init_project(empty_po, ptx_config)
-    return initialized_po
+    initialized_ps = init_project(empty_ps, ptx_config)
+    return initialized_ps
 
-def init_project(pm_object, case_data):
-    """Initialize ParameterObject with data from config file. Works for version 0.1.1"""
+def init_project(ptx_system, case_data):
+    """Initialize PtxSystem with data from config file. Works for version 0.1.1"""
     assert case_data['version'] == '0.1.1', "This function only works for config files with version 0.1.1"
     
     # Set general parameters
-    pm_object.project_name = case_data['project_name']
-    pm_object.uses_representative_periods = case_data['representative_periods']['uses_representative_periods']
-    pm_object.covered_period = case_data['representative_periods']['covered_period']
+    ptx_system.project_name = case_data['project_name']
+    ptx_system.uses_representative_periods = case_data['representative_periods']['uses_representative_periods']
+    ptx_system.covered_period = case_data['representative_periods']['covered_period']
 
     # Add generation data
-    pm_object.profile_data = case_data['data']['profile_data']
+    ptx_system.profile_data = case_data['data']['profile_data']
 
     # Allocate components and parameters
     for component in [*case_data['component'].keys()]:
@@ -42,7 +42,7 @@ def init_project(pm_object, case_data):
                                                        ramp_up=ramp_up, ramp_down=ramp_down, 
                                                        has_fixed_capacity=has_fixed_capacity, 
                                                        fixed_capacity=fixed_capacity)
-            pm_object.add_component(name, conversion_component)
+            ptx_system.add_component(name, conversion_component)
 
         elif case_data['component'][component]['component_type'] == 'storage':
             min_soc = case_data['component'][component]['min_soc']
@@ -57,7 +57,7 @@ def init_project(pm_object, case_data):
                                                  ratio_capacity_p=ratio_capacity_p,
                                                  has_fixed_capacity=has_fixed_capacity, 
                                                  fixed_capacity=fixed_capacity)
-            pm_object.add_component(name, storage_component)
+            ptx_system.add_component(name, storage_component)
 
         elif case_data['component'][component]['component_type'] == 'generator':
             generated_commodity = case_data['component'][component]['generated_commodity']
@@ -68,11 +68,11 @@ def init_project(pm_object, case_data):
                                             curtailment_possible=curtailment_possible,
                                             has_fixed_capacity=has_fixed_capacity,
                                             fixed_capacity=fixed_capacity)
-            pm_object.add_component(name, generator)
+            ptx_system.add_component(name, generator)
 
     # Conversions
     for c in [*case_data['conversions'].keys()]:
-        component = pm_object.components[c]
+        component = ptx_system.components[c]
         for i in [*case_data['conversions'][c]['input'].keys()]:
             component.add_input(i, case_data['conversions'][c]['input'][i])
 
@@ -108,6 +108,6 @@ def init_project(pm_object, case_data):
                               saleable=saleable, emittable=emittable,
                               demanded=demanded, is_total_demand=is_total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
-        pm_object.add_commodity(name, commodity)
+        ptx_system.add_commodity(name, commodity)
 
-    return pm_object
+    return ptx_system

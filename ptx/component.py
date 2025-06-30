@@ -3,7 +3,7 @@ import copy
 from ptx.core import Element
 
 
-class Component(Element):
+class BaseComponent(Element):
     """Abstract base class for components which cannot be instantiated directly."""
     
     def __init__(self, name, variable_om, has_fixed_capacity=False, 
@@ -26,13 +26,13 @@ class Component(Element):
         self.total_variable_costs = float(total_variable_costs)
 
     def __copy__(self):
-        return Component(name=self.name, variable_om=self.variable_om,
+        return BaseComponent(name=self.name, variable_om=self.variable_om,
                          has_fixed_capacity=self.has_fixed_capacity, 
                          fixed_capacity=self.fixed_capacity,
                          total_variable_costs=self.total_variable_costs)
 
 
-class ConversionComponent(Component):
+class ConversionComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., 
                  min_p=0., max_p=1., inputs=None, outputs=None, main_input=None, 
@@ -167,7 +167,7 @@ class ConversionComponent(Component):
                                    consumed_commodities=self.consumed_commodities, produced_commodities=self.produced_commodities)
 
 
-class StorageComponent(Component):
+class StorageComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., charging_efficiency=1., discharging_efficiency=1., 
                  min_soc=0., max_soc=1., ratio_capacity_p=1., has_fixed_capacity=False, 
@@ -217,7 +217,7 @@ class StorageComponent(Component):
                                 charged_quantity=self.charged_quantity, discharged_quantity=self.discharged_quantity)
 
 
-class GenerationComponent(Component):
+class GenerationComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., generated_commodity='Electricity', 
                  curtailment_possible=True, has_fixed_capacity=False, fixed_capacity=0.,

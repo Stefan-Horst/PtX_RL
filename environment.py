@@ -7,7 +7,7 @@ import gymnasium as gym
 
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
-from ptx.framework import ParameterObject
+from ptx.framework import PtxSystem
 from util import contains_only_unique_elements
 
 
@@ -102,7 +102,7 @@ class PtxEnvironment(Environment):
     the exact configuration of the system and allows for its attributes (i.e. observations) 
     and actions to be specified via the constructor."""
     
-    def __init__(self, ptx_system: ParameterObject, 
+    def __init__(self, ptx_system: PtxSystem, 
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
