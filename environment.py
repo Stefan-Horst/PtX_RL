@@ -8,7 +8,7 @@ import gymnasium as gym
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import PtxSystem
-from util import contains_only_unique_elements
+from util import contains_only_unique_elements, flatten_list_or_dict
 
 
 class Environment(ABC):
@@ -126,8 +126,8 @@ class PtxEnvironment(Environment):
                                   "high": math.inf, 
                                   "shape": (observation_space_size,), 
                                   "dtype": np.float64}
-        action_space_size = len(self._get_action_space())
-        action_space_spec = {}
+        action_space_spec = self._get_action_space_spec()
+        action_space_size = len(flatten_list_or_dict(action_space_spec))
         reward_spec = {}
         super().__init__(observation_space_size, observation_space_spec, action_space_size, 
                          action_space_spec, reward_spec)
@@ -188,44 +188,29 @@ class PtxEnvironment(Environment):
                 observation_space.append(getattr(storage, attribute))
         return observation_space
     
-    def _get_action_space(self):
-        # make sure each element of the ptx system has a unique name
+    def _get_action_space_spec(self):
+        """Create dict with each element of the ptx system (commodities, components) 
+        as key and possible actions (methods) as values."""
         assert contains_only_unique_elements(
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
-        )
+        ), "All elements of the ptx system must have a unique name."
         
         action_space = {}
         commodities = self.ptx_system.get_all_commodities()
-        for commodity in commodities:
-            commodity_actions = []
-            possible_actions = commodity.get_possible_action_methods(self.commodity_actions)
-            for action in possible_actions:
-                commodity_actions.append(action)
-            action_space[commodity.name] = commodity_actions
-        
         generators = self.ptx_system.get_generator_components_objects()
-        for generator in generators:
-            generator_actions = []
-            possible_actions = generator.get_possible_action_methods(self.generator_actions)
-            for action in possible_actions:
-                generator_actions.append(action)
-            action_space[generator.name] = generator_actions
-        
         conversions = self.ptx_system.get_conversion_components_objects()
-        for conversion in conversions:
-            conversion_actions = []
-            possible_actions = conversion.get_possible_action_methods(self.conversion_actions)
-            for action in possible_actions:
-                conversion_actions.append(action)
-            action_space[conversion.name] = conversion_actions
-        
         storages = self.ptx_system.get_storage_components_objects()
-        for storage in storages:
-            storage_actions = []
-            possible_actions = storage.get_possible_action_methods(self.storage_actions)
-            for action in possible_actions:
-                storage_actions.append(action)
-            action_space[storage.name] = storage_actions
+        element_categories = [(commodities, self.commodity_actions), 
+                              (generators, self.generator_actions), 
+                              (conversions, self.conversion_actions), 
+                              (storages, self.storage_actions)]
+        for category, actions in element_categories:
+            for element in category:
+                element_actions = []
+                possible_actions = element.get_possible_action_methods(actions)
+                for action in possible_actions:
+                    element_actions.append(action.__name__)
+                action_space[element.name] = element_actions
         return action_space
     
     def _apply_action(self, action):
