@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from copy import copy
-import math
 from typing import Any
 import numpy as np
 import gymnasium as gym
@@ -8,7 +7,7 @@ import gymnasium as gym
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import PtxSystem
-from util import contains_only_unique_elements, flatten_list_or_dict
+from util import contains_only_unique_elements
 
 
 class Environment(ABC):
@@ -120,14 +119,14 @@ class PtxEnvironment(Environment):
         self._original_ptx_system = ptx_system
         self.ptx_system = copy(self._original_ptx_system)
         
+        assert contains_only_unique_elements(
+            self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
+        ), "All elements of the ptx system must have a unique name."
+        
+        observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
-        # high, low, and dtype might change in the future and with different configurations
-        observation_space_spec = {"low": 0, 
-                                  "high": math.inf, 
-                                  "shape": (observation_space_size,), 
-                                  "dtype": np.float64}
         action_space_spec = self._get_action_space_spec()
-        action_space_size = len(flatten_list_or_dict(action_space_spec))
+        action_space_size = len(self._get_action_space())
         reward_spec = {}
         super().__init__(observation_space_size, observation_space_spec, action_space_size, 
                          action_space_spec, reward_spec)
@@ -195,10 +194,6 @@ class PtxEnvironment(Environment):
     def _get_action_space_spec(self):
         """Create dict with each element of the ptx system (commodities, components) 
         as key and possible actions (methods) as values."""
-        assert contains_only_unique_elements(
-            self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
-        ), "All elements of the ptx system must have a unique name."
-        
         action_space_spec = {}
         element_categories = self._get_element_categories_with_attributes_and_actions()
         for category, _, actions in element_categories:
