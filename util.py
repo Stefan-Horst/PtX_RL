@@ -1,5 +1,4 @@
 import os
-import itertools
 from pathlib import Path
 import yaml
 
@@ -30,8 +29,3 @@ def open_yaml_file(path):
 
 def contains_only_unique_elements(list):
     return len(list) == len(set(list))
-
-def flatten_list_or_dict(iterable):
-    if isinstance(iterable, dict):
-        return list(itertools.chain.from_iterable(iterable.values()))
-    return list(itertools.chain.from_iterable(iterable))
