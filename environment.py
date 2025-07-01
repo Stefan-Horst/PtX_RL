@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import copy
 from typing import Any
-import numpy as np
 import gymnasium as gym
 
 from ptx.commodity import Commodity
@@ -144,10 +143,12 @@ class PtxEnvironment(Environment):
         return observation, info
     
     def act(self, action):
-        self._apply_action(action)
-        
-        reward = self._calculate_reward()
-        return None, reward, False, False, None
+        state_change_info = self._apply_actions(action)
+        reward = self._calculate_reward(state_change_info)
+        observation = self._get_current_observation()
+        info = {} # useful info might be implemented later
+        truncated = False # truncation currently not needed
+        return observation, reward, self.terminated, truncated, info
     
     def _get_observation_space_spec(self):
         """Create dict with each element of the ptx system (commodities, components) 
@@ -226,8 +227,18 @@ class PtxEnvironment(Environment):
                 (conversions, self.conversion_attributes, self.conversion_actions), 
                 (storages, self.storage_attributes, self.storage_actions)]
 
-    def _apply_action(self, action):
-        return
+    def _apply_actions(self, actions):
+        assert all(isinstance(x, (int, float)) for x in actions) and \
+               len(actions) == self.action_space_size, \
+               "Action must have correct shape and values correct types."
+        
+        # execute methods of elements with values as parameters
+        return_values = []
+        for element, action_method, value in zip(self._action_space, actions):
+            # return value is None if the method has no return value
+            return_value = action_method(element, value)
+            return_values.append(return_value)
+        return return_values
     
-    def _calculate_reward(self):
+    def _calculate_reward(self, state_change_info):
         return
