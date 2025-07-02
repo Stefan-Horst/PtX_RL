@@ -91,9 +91,9 @@ GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs",
 # actual possible actions of each element depend on what the configuration allows
 # e.g. selling commodity is only possible if it's set to saleable
 COMMODITY_ACTIONS = [Commodity.purchase_commodity, Commodity.sell_commodity, Commodity.emit_commodity]
-CONVERSION_ACTIONS = [ConversionComponent.convert_commodities, ConversionComponent.ramp_up_or_down]
-STORAGE_ACTIONS = [StorageComponent.charge_quantity, StorageComponent.discharge_quantity] # maybe discharge automatically if production too low
-GENERATOR_ACTIONS = [GenerationComponent.apply_curtailment]
+CONVERSION_ACTIONS = [ConversionComponent.ramp_up_or_down] # conversion automatic and only control ramp
+STORAGE_ACTIONS = [StorageComponent.charge_or_discharge_quantity] # maybe discharge automatically if production too low
+GENERATOR_ACTIONS = [GenerationComponent.apply_or_strip_curtailment]
 
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
