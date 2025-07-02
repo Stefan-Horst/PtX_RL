@@ -6,7 +6,7 @@ import pandas as pd
 class PtxSystem:
     
     def __init__(self, project_name='', integer_steps=5, facility_lifetime=20,
-                 commodities=None, components=None, profile_data=False,
+                 starting_budget=0, commodities=None, components=None, profile_data=False,
                  uses_representative_periods=False, covered_period=8760, path_data=None):
         """
         Object which stores all components, commodities, settings, etc.
@@ -19,6 +19,10 @@ class PtxSystem:
         
         self.project_name = project_name
         self.facility_lifetime = facility_lifetime
+        
+        self.starting_budget = starting_budget
+        # keep track of all costs and revenues here
+        self.balance = starting_budget
 
         if commodities is None:
             commodities = {}
@@ -33,6 +37,8 @@ class PtxSystem:
 
         self.profile_data = profile_data
         self.path_data = path_data
+        
+        self.generation_time_series = None
 
     def get_number_clusters(self):
         if self.uses_representative_periods:

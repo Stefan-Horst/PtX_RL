@@ -109,5 +109,8 @@ def init_project(ptx_system, case_data):
                               demanded=demanded, is_total_demand=is_total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
         ptx_system.add_commodity(name, commodity)
+    
+    # add generated dict directly as attribute for easy repeated access
+    ptx_system.generation_time_series = ptx_system.get_generation_time_series()
 
     return ptx_system
