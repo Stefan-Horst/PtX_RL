@@ -245,6 +245,57 @@ class GenerationComponent(BaseComponent):
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
 
+    def apply_or_strip_curtailment(self, quantity, ptx_system):
+        """Change curtailment quantity and then generate as much as possible 
+        of the commodity based on curtailment and the current weather."""
+        if quantity == 0:
+            return f"Cannot curtail quantity 0 in {self.name}."
+        
+        status = None
+        # how much the generator is allowed to generate at most
+        potential_max_generation = self.fixed_capacity - self.curtailment
+        # how much the generator can actually generate at most
+        possible_current_generation = (ptx_system.get_current_weather_coefficient(self.name)
+                                       * self.fixed_capacity)
+        # decrease production
+        if quantity > 0:
+            # Try to curtail as much as possible, limit at stopping generation
+            if quantity > potential_max_generation:
+                generated = 0
+                status = (f"Cannot curtail {quantity} from current capacity {potential_max_generation} "
+                          f"in {self.name}. Instead, curtail completely, generating 0 MWh.")
+                quantity = potential_max_generation
+            else:
+                new_potential_max_generation = potential_max_generation - quantity
+                generated = min(possible_current_generation, new_potential_max_generation)
+                status = (f"Curtail {quantity} from {potential_max_generation} current potential "
+                          f"production, generating {generated} MWh in {self.name}.")
+        # increase production
+        else: # quantity < 0
+            curtail_strip_quantity = -quantity
+            # Try to remove curtailment as much as possible, limit at max possible generation
+            if curtail_strip_quantity > self.curtailment:
+                generated = possible_current_generation
+                status = (f"Cannot remove curtailment {curtail_strip_quantity} from current "
+                          f"curtailment {self.curtailment} in {self.name}. Instead, remove "
+                          f"curtailment completely, generating {generated} MWh.")
+                quantity = -self.curtailment
+            else:
+                generated = possible_current_generation - self.curtailment + curtail_strip_quantity
+                status = (f"Remove curtailment {curtail_strip_quantity} from {self.curtailment} "
+                          f"curtailment, generating {generated} MWh in {self.name}.")
+        
+        self.generated_quantity += generated
+        self.potential_generation_quantity += possible_current_generation
+        self.curtailment += quantity
+        cost = generated * self.variable_om
+        self.total_variable_costs += cost
+        commodity = ptx_system.get_commodity(self.generated_commodity)
+        commodity.generated_quantity += generated
+        commodity.total_generation_costs += cost
+        ptx_system.balance -= cost
+        return status
+
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
         for attribute in relevant_attributes:
