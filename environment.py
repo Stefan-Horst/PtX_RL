@@ -122,6 +122,8 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
+        self.iteration = 1
+        self.steps = 0
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
@@ -138,11 +140,15 @@ class PtxEnvironment(Environment):
     
     def reset(self):
         self.terminated = False
+        self.iteration += 1
+        self.steps = 0
+        self.ptx_system = copy(self._original_ptx_system)
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
         return observation, info
     
     def act(self, action):
+        self.steps += 1
         state_change_info = self._apply_actions(action)
         reward = self._calculate_reward(state_change_info)
         observation = self._get_current_observation()
@@ -232,11 +238,11 @@ class PtxEnvironment(Environment):
                len(actions) == self.action_space_size, \
                "Action must have correct shape and values correct types."
         
-        # execute methods of elements with values as parameters
+        # execute methods of elements with values  and current state as parameters
         return_values = []
         for element, action_method, value in zip(self._action_space, actions):
             # return value is None if the method has no return value
-            return_value = action_method(element, value)
+            return_value = action_method(element, value, self.ptx_system)
             return_values.append(return_value)
         return return_values
     
