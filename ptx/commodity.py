@@ -67,6 +67,70 @@ class Commodity(Element):
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
 
+    def purchase_commodity(self, quantity, ptx_system):
+        if quantity <= 0:
+            return f"Cannot purchase quantity {quantity} of {self.name}."
+        
+        status = None
+        cost = quantity * self.purchase_costs
+        if cost > ptx_system.balance:
+            # Try to purchase as much as possible
+            # divide with remainder, as only whole units can be purchased
+            new_quantity = ptx_system.balance // self.purchase_costs
+            new_cost = new_quantity * self.purchase_costs
+            status = (f"Tried to purchase {quantity} {self.name} for {cost}€, "
+                      f"but only {ptx_system.balance}€ available. "
+                      f"Instead, purchase {new_quantity} for {new_cost}€.")
+            quantity = new_quantity
+            cost = new_cost
+        else:
+            status = f"Purchased {quantity} {self.name} for {cost}€."
+        
+        self.purchased_quantity += quantity
+        self.available_quantity += quantity
+        self.purchase_costs += cost
+        ptx_system.balance -= cost
+        return status
+    
+    def sell_commodity(self, quantity, ptx_system):
+        if quantity <= 0:
+            return f"Cannot sell quantity {quantity} of {self.name}."
+        
+        status = None
+        if quantity > self.available_quantity:
+            # Try to sell as much as possible
+            revenue = self.available_quantity * self.sale_price
+            status = (f"Tried to sell {quantity} {self.name}, "
+                      f"but only {self.available_quantity} available. "
+                      f"Instead, sell {self.available_quantity} for {revenue}€.")
+            quantity = self.available_quantity
+        else:
+            revenue = quantity * self.sale_price
+            status = f"Sold {quantity} {self.name} for {revenue}€."
+        
+        self.available_quantity -= quantity
+        self.sold_quantity += quantity
+        self.selling_revenue += revenue
+        ptx_system.balance += revenue
+        return status
+    
+    def emit_commodity(self, quantity, ptx_system):
+        if quantity <= 0:
+            return f"Cannot emit quantity {quantity} of {self.name}."
+        
+        status = None
+        if quantity > self.available_quantity:
+            # Try to emit as much as possible
+            status = (f"Tried to emit {quantity} {self.name}, but only "
+                      f"{self.available_quantity} available. Instead, emit that much.")
+            quantity = self.available_quantity
+        else:
+            status = f"Emit {quantity} {self.name}."
+        
+        self.available_quantity -= quantity
+        self.emitted_quantity += quantity
+        return status
+
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
         for attribute in relevant_attributes:
