@@ -288,7 +288,7 @@ class GenerationComponent(BaseComponent):
         self.generated_quantity += generated
         self.potential_generation_quantity += possible_current_generation
         self.curtailment += quantity
-        cost = generated * self.variable_om
+        cost = round(generated * self.variable_om, 4)
         self.total_variable_costs += cost
         commodity = ptx_system.get_commodity(self.generated_commodity)
         commodity.generated_quantity += generated

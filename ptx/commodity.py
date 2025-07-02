@@ -72,12 +72,12 @@ class Commodity(Element):
             return f"Cannot purchase quantity {quantity} of {self.name}."
         
         status = None
-        cost = quantity * self.purchase_costs
+        cost = round(quantity * self.purchase_costs, 4)
         if cost > ptx_system.balance:
             # Try to purchase as much as possible
             # divide with remainder, as only whole units can be purchased
             new_quantity = ptx_system.balance // self.purchase_costs
-            new_cost = new_quantity * self.purchase_costs
+            new_cost = round(new_quantity * self.purchase_costs, 4)
             status = (f"Tried to purchase {quantity} {self.name} for {cost}€, "
                       f"but only {ptx_system.balance}€ available. "
                       f"Instead, purchase {new_quantity} for {new_cost}€.")
@@ -99,13 +99,13 @@ class Commodity(Element):
         status = None
         if quantity > self.available_quantity:
             # Try to sell as much as possible
-            revenue = self.available_quantity * self.sale_price
+            revenue = round(self.available_quantity * self.sale_price, 4)
             status = (f"Tried to sell {quantity} {self.name}, "
                       f"but only {self.available_quantity} available. "
                       f"Instead, sell {self.available_quantity} for {revenue}€.")
             quantity = self.available_quantity
         else:
-            revenue = quantity * self.sale_price
+            revenue = round(quantity * self.sale_price, 4)
             status = f"Sold {quantity} {self.name} for {revenue}€."
         
         self.available_quantity -= quantity
