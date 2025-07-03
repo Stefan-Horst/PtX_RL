@@ -171,7 +171,7 @@ class StorageComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., charging_efficiency=1., discharging_efficiency=1., 
                  min_soc=0., max_soc=1., ratio_capacity_p=1., stored_commodity=None, 
-                 fixed_capacity=0., charged_quantity=0., discharged_quantity=0.):
+                 charge_state=0., fixed_capacity=0., charged_quantity=0., discharged_quantity=0.):
         """
         Class of Storage component
 
@@ -196,9 +196,117 @@ class StorageComponent(BaseComponent):
         self.max_soc = float(max_soc)
         
         self.stored_commodity = stored_commodity
+        self.charge_state = charge_state
 
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
+    
+    def charge_or_discharge_quantity(self, quantity, ptx_system):
+        """Positive values mean charge, negative values mean discharge. Quantity is raw 
+        storage input, not what is actually stored after applying efficiency coefficient."""
+        if quantity == 0:
+            return f"Cannot charge/discharge quantity 0 in {self.name}."
+        
+        commodity = ptx_system.commodities[self.stored_commodity]
+        max_charge = self.fixed_capacity * self.max_soc
+        min_charge = self.fixed_capacity * self.min_soc
+        free_storage = max_charge - self.charge_state
+        dischargeable_quantity = max(0, self.charge_state - min_charge)
+        
+        # for charging, it must be checked if there is enough available commodity to charge, 
+        # if the storage has enough free capacity, and if the cost of charging isn't higher 
+        # than the balance. If one of these three conditions is not fulfilled, the values 
+        # have to be changed which in turn affects the other conditions which have to be 
+        # evaluated again. An if-else structure would be too large to check for all three 
+        # conditions in every branch. Therefore, three helper functions are used which call 
+        # each other in a recursive way, until all conditions are met and the new values 
+        # satisfying all conditions are returned. _handle_cost is always called last and 
+        # returns the input quantity, charging quantity, as well as the charging cost.
+        
+        def _handle_available(_quantity, _actual_quantity, _status):
+            if _quantity > commodity.available_quantity:
+                new_quantity = commodity.available_quantity
+                new_actual_quantity = new_quantity * self.charging_efficiency
+                _status += (f"Quantity {_quantity} is greater than available quantity "
+                            f"{commodity.available_quantity}, charge that much instead. ")
+                if new_quantity > free_storage:
+                    return _handle_capacity(new_quantity, new_actual_quantity, _status)
+                return _handle_cost(new_quantity, new_actual_quantity, _status)
+            return _handle_cost(_quantity, _actual_quantity, _status)
+        
+        def _handle_capacity(_quantity, _actual_quantity, _status):
+            if _quantity > free_storage:
+                new_actual_quantity = free_storage
+                new_quantity = new_actual_quantity / self.charging_efficiency
+                _status += (f"Quantity {_quantity} is greater than free storage "
+                            f"capacity {free_storage}, charge that much instead. ")
+                if new_quantity > commodity.available_quantity:
+                    return _handle_available(new_quantity, new_actual_quantity, _status)
+                return _handle_cost(new_quantity, new_actual_quantity, _status)
+            return _handle_cost(_quantity, _actual_quantity, _status)
+        
+        def _handle_cost(_quantity, _actual_quantity, _status):
+            cost = round(_quantity * self.variable_om, 4)
+            if cost > ptx_system.balance:
+                new_cost = ptx_system.balance
+                new_quantity = new_cost / self.variable_om
+                new_actual_quantity = new_quantity * self.charging_efficiency
+                _status += (f"Charging cost {cost} is greater than balance {ptx_system.balance}, "
+                            f"charge quantity {new_quantity} for that much instead. ")
+                if new_quantity > free_storage:
+                    return _handle_capacity(new_quantity, new_actual_quantity, _status)
+                if new_quantity > commodity.available_quantity:
+                    return _handle_available(new_quantity, new_actual_quantity, _status)
+                return new_quantity, new_actual_quantity, new_cost
+            return _quantity, _actual_quantity, cost, _status
+        
+        status = ""
+        cost = 0
+        # charge
+        if quantity > 0:
+            if self.charge_state >= max_charge:
+                return f"Cannot charge quantity {quantity} in {self.name} as it is full."
+            if commodity.available_quantity <= 0:
+                return f"Cannot charge quantity {quantity} in {self.name} as none is available."
+            
+            actual_quantity = quantity * self.charging_efficiency
+            # go through chained functions until all conditions are met and values are within bounds
+            quantity, actual_quantity, cost, status = _handle_available(quantity, actual_quantity, status)
+            if status == "":
+                status = f"Charge {quantity} {commodity.name} for {cost} in {self.name}."
+            else:
+                status += f"Finally charge {quantity} {commodity.name} for {cost} in {self.name}."
+            
+            self.charged_quantity += actual_quantity
+            commodity.charged_quantity += actual_quantity
+        # discharge
+        else: # quantity < 0
+            discharge_quantity = -quantity
+            if self.charge_state <= min_charge:
+                return f"Cannot discharge quantity {discharge_quantity} in {self.name} as it is empty."
+            
+            # actual output should be specified quantity
+            actual_quantity = discharge_quantity
+            discharge_quantity = discharge_quantity / self.discharging_efficiency
+            # try to discharge as much as possible
+            if self.charge_state - discharge_quantity < min_charge:
+                actual_quantity = dischargeable_quantity * self.discharging_efficiency
+                status = (f"Cannot discharge quantity {discharge_quantity} in {self.name} "
+                          f"from {dischargeable_quantity} {commodity.name} in storage. "
+                          f"Instead, discharge that much.")
+                discharge_quantity = dischargeable_quantity
+            
+            quantity = -discharge_quantity
+            actual_quantity = -actual_quantity
+            self.discharged_quantity += actual_quantity
+            commodity.discharged_quantity += actual_quantity
+        
+        self.charge_state += actual_quantity
+        self.total_variable_costs += cost
+        commodity.available_quantity -= quantity
+        commodity.total_storage_costs += cost
+        ptx_system.balance -= cost
+        return status
 
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
