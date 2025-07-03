@@ -258,7 +258,7 @@ class GenerationComponent(BaseComponent):
                                        * self.fixed_capacity)
         # decrease production
         if quantity > 0:
-            # Try to curtail as much as possible, limit at stopping generation
+            # try to curtail as much as possible, limit at stopping generation
             if quantity > potential_max_generation:
                 generated = 0
                 status = (f"Cannot curtail {quantity} from current capacity {potential_max_generation} "
@@ -272,7 +272,7 @@ class GenerationComponent(BaseComponent):
         # increase production
         else: # quantity < 0
             curtail_strip_quantity = -quantity
-            # Try to remove curtailment as much as possible, limit at max possible generation
+            # try to remove curtailment as much as possible, limit at max possible generation
             if curtail_strip_quantity > self.curtailment:
                 generated = possible_current_generation
                 status = (f"Cannot remove curtailment {curtail_strip_quantity} from current "
@@ -289,7 +289,7 @@ class GenerationComponent(BaseComponent):
         self.curtailment += quantity
         cost = round(generated * self.variable_om, 4)
         self.total_variable_costs += cost
-        commodity = ptx_system.get_commodity(self.generated_commodity)
+        commodity = ptx_system.commodities[self.generated_commodity]
         commodity.generated_quantity += generated
         commodity.total_generation_costs += cost
         ptx_system.balance -= cost
@@ -305,7 +305,7 @@ class GenerationComponent(BaseComponent):
     def get_possible_action_methods(self, relevant_methods):
         possible_methods = []
         for method in relevant_methods:
-            if method == GenerationComponent.apply_curtailment and self.curtailment_possible:
+            if method == GenerationComponent.apply_or_strip_curtailment and self.curtailment_possible:
                 possible_methods.append(method)
         return possible_methods
 

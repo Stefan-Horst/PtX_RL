@@ -50,7 +50,8 @@ def init_project(ptx_system, case_data):
             ratio_capacity_p = case_data['component'][component]['ratio_capacity_p']
             stored_commodity = case_data['component'][component]['stored_commodity']
 
-            storage_component = StorageComponent(name=name, charging_efficiency=charging_efficiency,
+            storage_component = StorageComponent(name=name, variable_om=variable_om, 
+                                                 charging_efficiency=charging_efficiency,
                                                  discharging_efficiency=discharging_efficiency,
                                                  min_soc=min_soc, max_soc=max_soc, 
                                                  ratio_capacity_p=ratio_capacity_p,
