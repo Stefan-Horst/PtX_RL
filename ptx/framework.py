@@ -145,9 +145,9 @@ class PtxSystem:
         ratio_capacity_power_dict = self.get_storage_component_ratio_capacity_power()
         fixed_capacity_dict = self.get_fixed_capacities()
 
-        return variable_om_dict, minimal_power_dict, maximal_power_dict, ramp_up_dict, \
-               ramp_down_dict, charging_efficiency_dict, discharging_efficiency_dict, \
-               minimal_soc_dict, maximal_soc_dict, ratio_capacity_power_dict, fixed_capacity_dict
+        return (variable_om_dict, minimal_power_dict, maximal_power_dict, ramp_up_dict, 
+                ramp_down_dict, charging_efficiency_dict, discharging_efficiency_dict, 
+                minimal_soc_dict, maximal_soc_dict, ratio_capacity_power_dict, fixed_capacity_dict)
 
     def get_commodity_sets(self):
         commodities = []
@@ -191,9 +191,9 @@ class PtxSystem:
                 if o not in all_outputs:
                     all_outputs.append(o)
 
-        return commodities, available_commodities, emittable_commodities, purchasable_commodities, \
-               saleable_commodities, demanded_commodities, total_demand_commodities, \
-               generated_commodities, all_inputs, all_outputs
+        return (commodities, available_commodities, emittable_commodities, purchasable_commodities, 
+                saleable_commodities, demanded_commodities, total_demand_commodities, 
+                generated_commodities, all_inputs, all_outputs)
 
     def get_main_input_to_input_conversions(self):
         # main input to other inputs
@@ -214,8 +214,8 @@ class PtxSystem:
                         {(component_name, main_input, current_input): 
                             float(inputs[current_input]) / float(inputs[main_input])}
                     )
-        return input_tuples, main_input_to_input_conversion_tuples, \
-               main_input_to_input_conversion_tuples_dict
+        return (input_tuples, main_input_to_input_conversion_tuples, 
+                main_input_to_input_conversion_tuples_dict)
 
     def get_main_input_to_output_conversions(self):
         output_tuples = []
@@ -235,17 +235,17 @@ class PtxSystem:
                         float(outputs[current_output]) / float(inputs[main_input])}
                 )
                 output_tuples.append((component_name, current_output))
-        return output_tuples, main_input_to_output_conversion_tuples, \
-               main_input_to_output_conversion_tuples_dict
+        return (output_tuples, main_input_to_output_conversion_tuples, 
+                main_input_to_output_conversion_tuples_dict)
 
     def get_all_conversions(self):
         input_tuples, main_input_to_input_conversion_tuples, main_input_to_input_conversion_tuples_dict \
             = self.get_main_input_to_input_conversions()
         output_tuples, input_to_output_conversion_tuples, input_to_output_conversion_tuples_dict \
             = self.get_main_input_to_output_conversions()
-        return input_tuples, main_input_to_input_conversion_tuples, \
-               main_input_to_input_conversion_tuples_dict, output_tuples, \
-               input_to_output_conversion_tuples, input_to_output_conversion_tuples_dict
+        return (input_tuples, main_input_to_input_conversion_tuples, 
+                main_input_to_input_conversion_tuples_dict, output_tuples, 
+                input_to_output_conversion_tuples, input_to_output_conversion_tuples_dict)
 
     def get_generation_time_series(self):
         generation_profiles_dict = {}
@@ -263,7 +263,7 @@ class PtxSystem:
                     for t in range(self.covered_period):
                         generation_profiles_dict.update(
                             {(generator_name, cl, t): 
-                                float(profile.loc[profile.index[ind], generator.name])}
+                                float(profile.loc[profile.index[ind], generator_name])}
                         )
                         ind += 1
         return generation_profiles_dict

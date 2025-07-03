@@ -134,20 +134,24 @@ class Commodity(Element):
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
         for attribute in relevant_attributes:
-            if attribute == "purchased_quantity" and self.purchasable or \
-               attribute == "sold_quantity" and self.saleable or \
-               attribute == "selling_revenue" and self.saleable or \
-               attribute == "demanded_quantity" and self.demanded or \
-               attribute == "emitted_quantity" and self.emittable:
+            if (
+                attribute == "purchased_quantity" and self.purchasable or 
+                attribute == "sold_quantity" and self.saleable or 
+                attribute == "selling_revenue" and self.saleable or 
+                attribute == "demanded_quantity" and self.demanded or 
+                attribute == "emitted_quantity" and self.emittable
+            ):
                 possible_attributes.append(attribute)
         return possible_attributes
 
     def get_possible_action_methods(self, relevant_methods):
         possible_methods = []
         for method in relevant_methods:
-            if method == Commodity.purchase_commodity and self.purchasable or \
-               method == Commodity.sell_commodity and self.saleable or \
-               method == Commodity.emit_commodity and self.emittable:
+            if (
+                method == Commodity.purchase_commodity and self.purchasable or 
+                method == Commodity.sell_commodity and self.saleable or 
+                method == Commodity.emit_commodity and self.emittable
+            ):
                 possible_methods.append(method)
         return possible_methods
 

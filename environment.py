@@ -234,8 +234,8 @@ class PtxEnvironment(Environment):
                 (storages, self.storage_attributes, self.storage_actions)]
 
     def _apply_actions(self, actions):
-        assert all(isinstance(x, (int, float)) for x in actions) and \
-               len(actions) == self.action_space_size, \
+        assert (all(isinstance(x, (int, float)) for x in actions) and 
+                len(actions) == self.action_space_size), \
                "Action must have correct shape and values correct types."
         
         # execute methods of elements with values  and current state as parameters

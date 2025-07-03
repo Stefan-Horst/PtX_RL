@@ -142,11 +142,15 @@ class ConversionComponent(BaseComponent):
             self.produced_commodities = {}
 
         for commodity in self.commodities:
-            if commodity in [*self.inputs.keys()] and \
-               commodity not in [*self.consumed_commodities.keys()]:
+            if (
+                commodity in [*self.inputs.keys()] and 
+                commodity not in [*self.consumed_commodities.keys()]
+            ):
                 self.set_specific_consumed_commodities(commodity, 0)
-            if commodity in [*self.outputs.keys()] and \
-               commodity not in [*self.produced_commodities.keys()]:
+            if (
+                commodity in [*self.outputs.keys()] and 
+                commodity not in [*self.produced_commodities.keys()]
+            ):
                 self.set_specific_produced_commodities(commodity, 0)
 
     def __copy__(self, name=None):
