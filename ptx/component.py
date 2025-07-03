@@ -6,8 +6,7 @@ from ptx.core import Element
 class BaseComponent(Element):
     """Abstract base class for components which cannot be instantiated directly."""
     
-    def __init__(self, name, variable_om, has_fixed_capacity=False, 
-                 fixed_capacity=0., total_variable_costs=0.):
+    def __init__(self, name, variable_om, fixed_capacity=0., total_variable_costs=0.):
         """
         Defines basic component class
 
@@ -20,24 +19,22 @@ class BaseComponent(Element):
 
         self.variable_om = float(variable_om)
 
-        self.has_fixed_capacity = bool(has_fixed_capacity)
         self.fixed_capacity = float(fixed_capacity)
 
         self.total_variable_costs = float(total_variable_costs)
 
     def __copy__(self):
         return BaseComponent(name=self.name, variable_om=self.variable_om,
-                         has_fixed_capacity=self.has_fixed_capacity, 
-                         fixed_capacity=self.fixed_capacity,
-                         total_variable_costs=self.total_variable_costs)
+                             fixed_capacity=self.fixed_capacity,
+                             total_variable_costs=self.total_variable_costs)
 
 
 class ConversionComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., 
                  min_p=0., max_p=1., inputs=None, outputs=None, main_input=None, 
-                 main_output=None, commodities=None, has_fixed_capacity=False, 
-                 fixed_capacity=0., consumed_commodities=None, produced_commodities=None):
+                 main_output=None, commodities=None, fixed_capacity=0., 
+                 consumed_commodities=None, produced_commodities=None):
         """
         Class of conversion units
         
@@ -54,8 +51,7 @@ class ConversionComponent(BaseComponent):
         :param commodities: [list] - Commodities of the unit
         """
 
-        super().__init__(name=name, variable_om=variable_om,
-                         has_fixed_capacity=has_fixed_capacity, fixed_capacity=fixed_capacity)
+        super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
 
         self.component_type = 'conversion'
 
@@ -163,14 +159,14 @@ class ConversionComponent(BaseComponent):
         return ConversionComponent(name=name, ramp_down=self.ramp_down, ramp_up=self.ramp_up,
                                    min_p=self.min_p, max_p=self.max_p, inputs=inputs, outputs=outputs,
                                    main_input=self.main_input, main_output=self.main_output, commodities=commodities,
-                                   has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
-                                   consumed_commodities=self.consumed_commodities, produced_commodities=self.produced_commodities)
+                                   ixed_capacity=self.fixed_capacity, consumed_commodities=self.consumed_commodities, 
+                                   produced_commodities=self.produced_commodities)
 
 
 class StorageComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., charging_efficiency=1., discharging_efficiency=1., 
-                 min_soc=0., max_soc=1., ratio_capacity_p=1., has_fixed_capacity=False, 
+                 min_soc=0., max_soc=1., ratio_capacity_p=1., stored_commodity=None, 
                  fixed_capacity=0., charged_quantity=0., discharged_quantity=0.):
         """
         Class of Storage component
@@ -184,9 +180,7 @@ class StorageComponent(BaseComponent):
         :param ratio_capacity_p: [float] - Ratio between capacity of storage and charging or discharging power
         """
 
-        super().__init__(name=name, variable_om=variable_om,
-                         has_fixed_capacity=has_fixed_capacity, 
-                         fixed_capacity=fixed_capacity)
+        super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
 
         self.component_type = 'storage'
 
@@ -196,6 +190,8 @@ class StorageComponent(BaseComponent):
 
         self.min_soc = float(min_soc)
         self.max_soc = float(max_soc)
+        
+        self.stored_commodity = stored_commodity
 
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
@@ -213,14 +209,16 @@ class StorageComponent(BaseComponent):
                                 discharging_efficiency=self.discharging_efficiency,
                                 min_soc=self.min_soc, max_soc=self.max_soc,
                                 ratio_capacity_p=self.ratio_capacity_p,
-                                has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
-                                charged_quantity=self.charged_quantity, discharged_quantity=self.discharged_quantity)
+                                stored_commodity=self.stored_commodity,
+                                fixed_capacity=self.fixed_capacity, 
+                                charged_quantity=self.charged_quantity, 
+                                discharged_quantity=self.discharged_quantity)
 
 
 class GenerationComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., generated_commodity='Electricity', 
-                 curtailment_possible=True, has_fixed_capacity=False, fixed_capacity=0.,
+                 curtailment_possible=True, fixed_capacity=0.,
                  potential_generation_quantity=0., generated_quantity=0., curtailment=0.):
         """
         Class of Generator component
@@ -230,15 +228,12 @@ class GenerationComponent(BaseComponent):
         :param generated_commodity: [string] - Stream, which is generated by generator
         """
         
-        super().__init__(name=name, variable_om=variable_om,
-                         has_fixed_capacity=has_fixed_capacity, 
-                         fixed_capacity=fixed_capacity)
+        super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
 
         self.component_type = 'generator'
 
         self.generated_commodity = generated_commodity
         self.curtailment_possible = bool(curtailment_possible)
-        self.has_fixed_capacity = bool(has_fixed_capacity)
         self.fixed_capacity = float(fixed_capacity)
 
         self.potential_generation_quantity = potential_generation_quantity
@@ -313,6 +308,6 @@ class GenerationComponent(BaseComponent):
     def __copy__(self):
         return GenerationComponent(name=self.name, generated_commodity=self.generated_commodity,
                                    curtailment_possible=self.curtailment_possible,
-                                   has_fixed_capacity=self.has_fixed_capacity, fixed_capacity=self.fixed_capacity,
+                                   fixed_capacity=self.fixed_capacity,
                                    potential_generation_quantity=self.potential_generation_quantity,
                                    generated_quantity=self.generated_quantity, curtailment=self.curtailment)

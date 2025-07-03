@@ -27,7 +27,6 @@ def init_project(ptx_system, case_data):
     for component in [*case_data['component'].keys()]:
         name = case_data['component'][component]['name']
         variable_om = case_data['component'][component]['variable_om']
-        has_fixed_capacity = case_data['component'][component]['has_fixed_capacity']
         fixed_capacity = case_data['component'][component]['fixed_capacity']
 
         if case_data['component'][component]['component_type'] == 'conversion':
@@ -40,7 +39,6 @@ def init_project(ptx_system, case_data):
             conversion_component = ConversionComponent(name=name, variable_om=variable_om,
                                                        min_p=min_p, max_p=max_p, 
                                                        ramp_up=ramp_up, ramp_down=ramp_down, 
-                                                       has_fixed_capacity=has_fixed_capacity, 
                                                        fixed_capacity=fixed_capacity)
             ptx_system.add_component(name, conversion_component)
 
@@ -50,12 +48,13 @@ def init_project(ptx_system, case_data):
             charging_efficiency = case_data['component'][component]['charging_efficiency']
             discharging_efficiency = case_data['component'][component]['discharging_efficiency']
             ratio_capacity_p = case_data['component'][component]['ratio_capacity_p']
+            stored_commodity = case_data['component'][component]['stored_commodity']
 
             storage_component = StorageComponent(name=name, charging_efficiency=charging_efficiency,
                                                  discharging_efficiency=discharging_efficiency,
                                                  min_soc=min_soc, max_soc=max_soc, 
                                                  ratio_capacity_p=ratio_capacity_p,
-                                                 has_fixed_capacity=has_fixed_capacity, 
+                                                 stored_commodity=stored_commodity,
                                                  fixed_capacity=fixed_capacity)
             ptx_system.add_component(name, storage_component)
 
@@ -66,7 +65,6 @@ def init_project(ptx_system, case_data):
             generator = GenerationComponent(name=name, variable_om=variable_om,
                                             generated_commodity=generated_commodity,
                                             curtailment_possible=curtailment_possible,
-                                            has_fixed_capacity=has_fixed_capacity,
                                             fixed_capacity=fixed_capacity)
             ptx_system.add_component(name, generator)
 
