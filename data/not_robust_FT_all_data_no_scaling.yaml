@@ -142,17 +142,17 @@ component:
     ramp_down: 1.0
     ramp_up: 1.0
     variable_om: 0.0
-  Hydrogen storage:
-    charging_efficiency: 1.0
-    component_type: storage
-    discharging_efficiency: 1.0
-    fixed_capacity: 0.0
-    stored_commodity: Hydrogen
-    max_soc: 1.0
-    min_soc: 0.0
-    name: Hydrogen storage
-    ratio_capacity_p: 1.0
-    variable_om: 0.0
+  #Hydrogen storage:  not in use due to capacity of 0
+  #  charging_efficiency: 1.0
+  #  component_type: storage
+  #  discharging_efficiency: 1.0
+  #  fixed_capacity: 0.0
+  #  stored_commodity: Hydrogen
+  #  max_soc: 1.0
+  #  min_soc: 0.0
+  #  name: Hydrogen storage
+  #  ratio_capacity_p: 1.0
+  #  variable_om: 0.0
   Hydrogen compressed storage:
     charging_efficiency: 1.0
     component_type: storage
