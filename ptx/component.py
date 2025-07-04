@@ -82,7 +82,137 @@ class ConversionComponent(BaseComponent):
         
         self._initialize_result_dictionaries()
     
-    def get_current_power_level(self):
+    def ramp_up_or_down(self, quantity, ptx_system):
+        """Positive quantity means ramp up, negative quantity means ramp down."""
+        if quantity == 0:
+            return f"Cannot ramp up/down 0 in {self.name}."
+        
+        main_input_conversion_coefficient = self.inputs[self.main_input]
+        current_capacity = self.get_current_capacity_level()
+        
+        input_commodities = list(map(ptx_system.commodities.get, [list(self.inputs.keys())]))
+        input_ratios = list(self.inputs.values())
+        other_output_commodities = list(map(ptx_system.commodities.get, [list(self.outputs.keys())]))
+        output_ratios = list(self.outputs.values())
+        
+        status = f"In {self.name}:"
+        
+        # set quantity so conversion cannot cost more than balance
+        potential_max_cost = round(
+            current_capacity * main_input_conversion_coefficient * self.variable_om, 4
+        )
+        if potential_max_cost > ptx_system.balance:
+            new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
+            new_load = new_capacity / self.fixed_capacity
+            new_quantity = new_load - self.load
+            status += (f" Potential cost is higher than balance, set "
+                        f"quantity from {quantity} to {new_quantity}.")
+            quantity = new_quantity
+        
+        # ramp up
+        if quantity > 0:
+            if quantity > self.ramp_up:
+                status += (f" Quantity {quantity} is higher than max ramp up "
+                           f"{self.ramp_up}, set quantity to that value.")
+                quantity = self.ramp_up
+                
+            new_load = self.load + quantity    
+            if new_load > self.max_p:
+                new_quantity = self.max_p - self.load
+                status += (f" New load {new_load} of quantity {quantity} is higher than max "
+                           f"power, set load to that value with quantity {new_quantity}.")
+                new_load = self.load + new_quantity
+                quantity = new_quantity
+            
+            new_capacity = self.fixed_capacity * new_load
+            # don't set production higher than available input quantities if possible
+            for input, input_ratio in zip(input_commodities, input_ratios):
+                if new_capacity * input_ratio > input.available_quantity:
+                    adapted_capacity = min(input.available_quantity / input_ratio, current_capacity)
+                    adapted_load = adapted_capacity / self.fixed_capacity
+                    adapted_quantity = adapted_load - self.load
+                    status += (f" Ramp up to {new_load} in {self.name} would use "
+                               f"more {input.name} than available. Instead, ramp up "
+                               f"quantity {adapted_quantity} to {adapted_load} load.")
+                    new_capacity = adapted_capacity
+                    new_load = adapted_load
+                    quantity = adapted_quantity
+            
+            if status == "":
+                status = f"Ramp up {quantity} quantity to {new_load} load."
+        # ramp down
+        else: # quantity < 0
+            reduction_quantity = -quantity
+            if reduction_quantity > self.ramp_down:
+                status += (f" Quantity {reduction_quantity} is higher than max ramp "
+                           f"down {self.ramp_down}, set quantity to that value.")
+                reduction_quantity = self.ramp_down
+            
+            new_load = self.load - reduction_quantity
+            if new_load < self.min_p:
+                new_reduction_quantity = self.load - self.min_p
+                status += (f" New load {new_load} of quantity {reduction_quantity} is lower than min "
+                           f"power, set load to that value with quantity {new_reduction_quantity}.")
+                new_load = self.load - reduction_quantity
+                reduction_quantity = new_reduction_quantity
+            
+            new_capacity = self.fixed_capacity * new_load
+            potential_min_capacity = min(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
+            # try to set production even lower if available input quantities are too low
+            for input, input_ratio in zip(input_commodities, input_ratios):
+                if new_capacity * input_ratio > input.available_quantity:
+                    adapted_capacity = min(input.available_quantity / input_ratio, potential_min_capacity)
+                    adapted_load = adapted_capacity / self.fixed_capacity
+                    adapted_quantity = adapted_load - self.load
+                    status += (f" Ramp down to {new_load} in {self.name} would use "
+                               f"more {input.name} than available. Instead, ramp down "
+                               f"quantity {adapted_quantity} to {adapted_load} load.")
+                    new_capacity = adapted_capacity
+                    new_load = adapted_load
+                    reduction_quantity = adapted_quantity
+            
+            if status == "":
+                status = f"Ramp down {reduction_quantity} quantity to {new_load} load."
+            quantity = -reduction_quantity
+        
+        current_capacity = new_load * self.fixed_capacity
+        # calculate and check cost
+        cost = round(current_capacity * main_input_conversion_coefficient * self.variable_om, 4)
+        if cost > ptx_system.balance:
+            status += (f" Conversion failed. Cost {cost} is higher than "
+                       f"available balance {ptx_system.balance}.")
+            return status, False # false as failure flag
+        
+        # convert commodities
+        convert_status = ""
+        for input, input_ratio in zip(input_commodities, input_ratios):
+            amount = input_ratio * current_capacity
+            # failure if not enough commodity for conversion available
+            if amount > input.available_quantity:
+                status += (f" Conversion failed for {self.name}. {amount} {input.name} "
+                           f"required, but only {input.available_quantity} available.")
+                return status, False # false as failure flag
+            
+            input.available_quantity -= amount
+            input.consumed_quantity += amount
+            if input.name == self.main_input:
+                input.total_prodution_costs += cost
+            self.consumed_commodities[input.name] += amount
+            convert_status += f" {amount} {input.name} consumed in conversion."
+        for output, output_ratio in zip(other_output_commodities, output_ratios):
+            amount = output_ratio * current_capacity
+            output.available_quantity += amount
+            output.produced_quantity += amount
+            self.produced_commodities[output.name] += amount
+            convert_status += f" {amount} {output.name} produced in conversion."
+        status += convert_status
+        
+        self.load += quantity
+        self.total_variable_costs += cost
+        ptx_system.balance -= cost
+        return status, True # true as conversion success flag
+
+    def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
 
     def add_input(self, input_commodity, coefficient):
