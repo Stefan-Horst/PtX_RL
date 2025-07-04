@@ -369,11 +369,11 @@ class StorageComponent(BaseComponent):
             return _handle_cost(_quantity, _actual_quantity, _status)
         
         def _handle_capacity(_quantity, _actual_quantity, _status):
-            if _quantity > free_storage:
+            if _actual_quantity > free_storage:
                 new_actual_quantity = free_storage
                 new_quantity = new_actual_quantity / self.charging_efficiency
-                _status += (f"Quantity {_quantity} is greater than free storage "
-                            f"capacity {free_storage}, charge that much instead. ")
+                _status += (f"Quantity to be stored {_actual_quantity} is greater than free "
+                            f"storage capacity {free_storage}, charge {new_quantity} instead. ")
                 if new_quantity > commodity.available_quantity:
                     return _handle_available(new_quantity, new_actual_quantity, _status)
                 return _handle_cost(new_quantity, new_actual_quantity, _status)
