@@ -32,8 +32,8 @@ class BaseComponent(Element):
 class ConversionComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., ramp_down=1., ramp_up=1., 
-                 min_p=0., max_p=1., inputs=None, outputs=None, main_input=None, 
-                 main_output=None, commodities=None, fixed_capacity=0., 
+                 min_p=0., max_p=1., load=0., inputs=None, outputs=None, 
+                 main_input=None, main_output=None, commodities=None, fixed_capacity=0., 
                  consumed_commodities=None, produced_commodities=None):
         """
         Class of conversion units
@@ -75,11 +75,15 @@ class ConversionComponent(BaseComponent):
         self.max_p = float(max_p)
         self.ramp_down = float(ramp_down)
         self.ramp_up = float(ramp_up)
+        self.load = load
 
         self.consumed_commodities = consumed_commodities
         self.produced_commodities = produced_commodities
         
         self._initialize_result_dictionaries()
+    
+    def get_current_power_level(self):
+        return self.load * self.fixed_capacity
 
     def add_input(self, input_commodity, coefficient):
         self.inputs.update({input_commodity: float(coefficient)})
