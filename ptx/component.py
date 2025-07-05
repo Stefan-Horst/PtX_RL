@@ -115,66 +115,17 @@ class ConversionComponent(BaseComponent):
         
         # ramp up
         if quantity > 0:
-            if quantity > self.ramp_up:
-                status += (f" Quantity {quantity} is higher than max ramp up "
-                           f"{self.ramp_up}, set quantity to that value.")
-                quantity = self.ramp_up
-                
-            new_load = self.load + quantity    
-            if new_load > self.max_p:
-                new_quantity = self.max_p - self.load
-                status += (f" New load {new_load} of quantity {quantity} is higher than max "
-                           f"power, set load to that value with quantity {new_quantity}.")
-                new_load = self.load + new_quantity
-                quantity = new_quantity
-            
-            new_capacity = self.fixed_capacity * new_load
-            # don't set production higher than available input quantities if possible
-            for input, input_ratio in zip(input_commodities, input_ratios):
-                if new_capacity * input_ratio > input.available_quantity:
-                    adapted_capacity = min(input.available_quantity / input_ratio, current_capacity)
-                    adapted_load = adapted_capacity / self.fixed_capacity
-                    adapted_quantity = adapted_load - self.load
-                    status += (f" Ramp up to {new_load} in {self.name} would use "
-                               f"more {input.name} than available. Instead, ramp up "
-                               f"quantity {adapted_quantity} to {adapted_load} load.")
-                    new_capacity = adapted_capacity
-                    new_load = adapted_load
-                    quantity = adapted_quantity
-            
+            quantity, status, new_load = self._handle_ramp_up(
+                quantity, current_capacity, input_commodities, input_ratios
+            )
             if status == "":
                 status = f"Ramp up {quantity} quantity to {new_load} load."
         # ramp down
         else: # quantity < 0
             reduction_quantity = -quantity
-            if reduction_quantity > self.ramp_down:
-                status += (f" Quantity {reduction_quantity} is higher than max ramp "
-                           f"down {self.ramp_down}, set quantity to that value.")
-                reduction_quantity = self.ramp_down
-            
-            new_load = self.load - reduction_quantity
-            if new_load < self.min_p:
-                new_reduction_quantity = self.load - self.min_p
-                status += (f" New load {new_load} of quantity {reduction_quantity} is lower than min "
-                           f"power, set load to that value with quantity {new_reduction_quantity}.")
-                new_load = self.load - reduction_quantity
-                reduction_quantity = new_reduction_quantity
-            
-            new_capacity = self.fixed_capacity * new_load
-            potential_min_capacity = min(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
-            # try to set production even lower if available input quantities are too low
-            for input, input_ratio in zip(input_commodities, input_ratios):
-                if new_capacity * input_ratio > input.available_quantity:
-                    adapted_capacity = min(input.available_quantity / input_ratio, potential_min_capacity)
-                    adapted_load = adapted_capacity / self.fixed_capacity
-                    adapted_quantity = adapted_load - self.load
-                    status += (f" Ramp down to {new_load} in {self.name} would use "
-                               f"more {input.name} than available. Instead, ramp down "
-                               f"quantity {adapted_quantity} to {adapted_load} load.")
-                    new_capacity = adapted_capacity
-                    new_load = adapted_load
-                    reduction_quantity = adapted_quantity
-            
+            status, new_load, reduction_quantity = self._handle_ramp_down(
+                input_commodities, input_ratios, reduction_quantity
+            )
             if status == "":
                 status = f"Ramp down {reduction_quantity} quantity to {new_load} load."
             quantity = -reduction_quantity
@@ -216,6 +167,69 @@ class ConversionComponent(BaseComponent):
         ptx_system.balance -= cost
         return status, True # true as conversion success flag
 
+    def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios):
+        """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
+        Then, try to limit increase if not enough input commodities are available for the conversion."""
+        if quantity > self.ramp_up:
+            status += (f" Quantity {quantity} is higher than max ramp up "
+                       f"{self.ramp_up}, set quantity to that value.")
+            quantity = self.ramp_up
+                
+        new_load = self.load + quantity    
+        if new_load > self.max_p:
+            new_quantity = self.max_p - self.load
+            status += (f" New load {new_load} of quantity {quantity} is higher than max "
+                       f"power, set load to that value with quantity {new_quantity}.")
+            new_load = self.load + new_quantity
+            quantity = new_quantity
+            
+        new_capacity = self.fixed_capacity * new_load
+        # don't set production higher than available input quantities if possible
+        for input, input_ratio in zip(input_commodities, input_ratios):
+            if new_capacity * input_ratio > input.available_quantity:
+                adapted_capacity = min(input.available_quantity / input_ratio, current_capacity)
+                adapted_load = adapted_capacity / self.fixed_capacity
+                adapted_quantity = adapted_load - self.load
+                status += (f" Ramp up to {new_load} in {self.name} would use "
+                           f"more {input.name} than available. Instead, ramp up "
+                           f"quantity {adapted_quantity} to {adapted_load} load.")
+                new_capacity = adapted_capacity
+                new_load = adapted_load
+                quantity = adapted_quantity
+        return quantity, status, new_load
+
+    def _handle_ramp_down(self, input_commodities, input_ratios, reduction_quantity):
+        """Make sure load is not decreased more than is allowed or to a value lower than the minimum. 
+        Then, try to decrease more if not enough input commodities are available for the conversion."""
+        if reduction_quantity > self.ramp_down:
+            status += (f" Quantity {reduction_quantity} is higher than max ramp "
+                        f"down {self.ramp_down}, set quantity to that value.")
+            reduction_quantity = self.ramp_down
+            
+        new_load = self.load - reduction_quantity
+        if new_load < self.min_p:
+            new_reduction_quantity = self.load - self.min_p
+            status += (f" New load {new_load} of quantity {reduction_quantity} is lower than min "
+                        f"power, set load to that value with quantity {new_reduction_quantity}.")
+            new_load = self.load - reduction_quantity
+            reduction_quantity = new_reduction_quantity
+            
+        new_capacity = self.fixed_capacity * new_load
+        potential_min_capacity = min(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
+        # try to set production even lower if available input quantities are too low
+        for input, input_ratio in zip(input_commodities, input_ratios):
+            if new_capacity * input_ratio > input.available_quantity:
+                adapted_capacity = min(input.available_quantity / input_ratio, potential_min_capacity)
+                adapted_load = adapted_capacity / self.fixed_capacity
+                adapted_quantity = adapted_load - self.load
+                status += (f" Ramp down to {new_load} in {self.name} would use "
+                           f"more {input.name} than available. Instead, ramp down "
+                           f"quantity {adapted_quantity} to {adapted_load} load.")
+                new_capacity = adapted_capacity
+                new_load = adapted_load
+                reduction_quantity = adapted_quantity
+        return status, new_load, reduction_quantity
+    
     def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
 
@@ -361,31 +375,9 @@ class StorageComponent(BaseComponent):
             if commodity.available_quantity <= 0:
                 return f"Cannot charge quantity {quantity} in {self.name} as none is available."
             
-            # while quantity is raw input used, actual_quantity is what is actually stored
-            actual_quantity = quantity * self.charging_efficiency
-            if actual_quantity > free_storage:
-                new_actual_quantity = free_storage
-                quantity = new_actual_quantity / self.charging_efficiency
-                status += (f"Quantity to be stored {actual_quantity} is greater than free "
-                           f"storage capacity {free_storage}, charge {quantity} instead. ")
-                actual_quantity = new_actual_quantity
-            
-            if quantity > commodity.available_quantity:
-                new_quantity = commodity.available_quantity
-                actual_quantity = new_quantity * self.charging_efficiency
-                status += (f"Quantity {quantity} is greater than available quantity "
-                           f"{commodity.available_quantity}, charge that much instead. ")
-                quantity = new_quantity
-            
-            cost = quantity * self.variable_om
-            if cost > ptx_system.balance:
-                new_cost = ptx_system.balance
-                quantity = new_cost / self.variable_om
-                actual_quantity = quantity * self.charging_efficiency
-                status += (f"Charging {cost:.4f}€ is greater than balance {ptx_system.balance:.4f}€, "
-                           f"charge quantity {quantity} for that much instead. ")
-                cost = new_cost
-            
+            quantity, actual_quantity, cost, status = self._handle_charge(
+                quantity, free_storage, status, ptx_system.balance, commodity.available_quantity
+            )
             if status == "":
                 status = f"Charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
             else:
@@ -423,6 +415,35 @@ class StorageComponent(BaseComponent):
         ptx_system.balance -= cost
         return status
 
+    def _handle_charge(self, quantity, free_storage, status, balance, available_quantity):
+        """Make sure amount charged is not more than free storage, available commodity, 
+        or the charging cost is more than the available balance."""
+        # while quantity is raw input used, actual_quantity is what is actually stored
+        actual_quantity = quantity * self.charging_efficiency
+        if actual_quantity > free_storage:
+            new_actual_quantity = free_storage
+            quantity = new_actual_quantity / self.charging_efficiency
+            status += (f"Quantity to be stored {actual_quantity} is greater than free "
+                        f"storage capacity {free_storage}, charge {quantity} instead. ")
+            actual_quantity = new_actual_quantity
+        
+        if quantity > available_quantity:
+            new_quantity = available_quantity
+            actual_quantity = new_quantity * self.charging_efficiency
+            status += (f"Quantity {quantity} is greater than available quantity "
+                        f"{available_quantity}, charge that much instead. ")
+            quantity = new_quantity
+        
+        cost = quantity * self.variable_om
+        if cost > balance:
+            new_cost = balance
+            quantity = new_cost / self.variable_om
+            actual_quantity = quantity * self.charging_efficiency
+            status += (f"Charging {cost:.4f}€ is greater than balance {balance:.4f}€, "
+                        f"charge quantity {quantity} for that much instead. ")
+            cost = new_cost
+        return quantity, actual_quantity, cost, status
+    
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
         return relevant_attributes
