@@ -104,15 +104,13 @@ class ConversionComponent(BaseComponent):
         status = f"In {self.name}:"
         
         # set quantity so conversion cannot cost more than balance
-        potential_max_cost = round(
-            current_capacity * main_input_conversion_coefficient * self.variable_om, 4
-        )
+        potential_max_cost = current_capacity * main_input_conversion_coefficient * self.variable_om
         if potential_max_cost > ptx_system.balance:
             new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
-            status += (f" Potential cost {potential_max_cost}€ is higher than available balance "
-                        f"{ptx_system.balance}€, set quantity from {quantity} to {new_quantity}.")
+            status += (f" Potential cost {potential_max_cost:.4f}€ is higher than available balance "
+                        f"{ptx_system.balance:.4f}€, set quantity from {quantity} to {new_quantity}.")
             quantity = new_quantity
         
         # ramp up
@@ -183,10 +181,10 @@ class ConversionComponent(BaseComponent):
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost
-        cost = round(current_capacity * main_input_conversion_coefficient * self.variable_om, 4)
+        cost = current_capacity * main_input_conversion_coefficient * self.variable_om
         if cost > ptx_system.balance:
-            status += (f" Conversion failed. Cost {cost}€ is higher than "
-                       f"available balance {ptx_system.balance}€.")
+            status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
+                       f"available balance {ptx_system.balance:.4f}€.")
             return status, False # false as failure flag
         
         # convert commodities
@@ -379,19 +377,19 @@ class StorageComponent(BaseComponent):
                            f"{commodity.available_quantity}, charge that much instead. ")
                 quantity = new_quantity
             
-            cost = round(quantity * self.variable_om, 4)
+            cost = quantity * self.variable_om
             if cost > ptx_system.balance:
                 new_cost = ptx_system.balance
                 quantity = new_cost / self.variable_om
                 actual_quantity = quantity * self.charging_efficiency
-                status += (f"Charging {cost}€ is greater than balance {ptx_system.balance}€, "
+                status += (f"Charging {cost:.4f}€ is greater than balance {ptx_system.balance:.4f}€, "
                            f"charge quantity {quantity} for that much instead. ")
                 cost = new_cost
             
             if status == "":
-                status = f"Charge {quantity} {commodity.name} for {cost}€ in {self.name}."
+                status = f"Charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
             else:
-                status += f"Finally charge {quantity} {commodity.name} for {cost}€ in {self.name}."
+                status += f"Finally charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
             
             self.charged_quantity += actual_quantity
             commodity.charged_quantity += actual_quantity
@@ -513,18 +511,18 @@ class GenerationComponent(BaseComponent):
                           f"curtailment, generating {generated} MWh in {self.name}")
         
         # calculate cost and make sure it is not higher than available balance
-        cost = round(generated * self.variable_om, 4)
+        cost = generated * self.variable_om
         if cost > ptx_system.balance:
             new_cost = ptx_system.balance
             new_generated = ptx_system.balance / self.variable_om
             quantity = max(0, possible_current_generation - self.curtailment - new_generated)
-            status += (f". Tried to generate {generated} MWh for {cost}€, but only "
-                       f"{ptx_system.balance}€ available. Instead, generate {new_generated} "
-                       f"MWh for {new_cost}€ by increasing curtailment by {quantity}.")
+            status += (f". Tried to generate {generated} MWh for {cost:.4f}€, but only "
+                       f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated} "
+                       f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity}.")
             cost = new_cost
             generated = new_generated
         else:
-            status += (f" for {cost}€.")
+            status += (f" for {cost:.4f}€.")
         
         self.generated_quantity += generated
         self.potential_generation_quantity += possible_current_generation
