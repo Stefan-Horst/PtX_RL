@@ -499,8 +499,8 @@ class GenerationComponent(BaseComponent):
         # how much the generator is allowed to generate at most
         potential_max_generation = self.fixed_capacity - self.curtailment
         # how much the generator can actually generate at most
-        possible_current_generation = (#ptx_system.get_current_weather_coefficient(self.name)
-                                       1* self.fixed_capacity)
+        possible_current_generation = (ptx_system.get_current_weather_coefficient(self.name)
+                                       * self.fixed_capacity)
         
         status = None
         # decrease production

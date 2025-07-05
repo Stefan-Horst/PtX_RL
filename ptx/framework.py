@@ -5,9 +5,10 @@ import pandas as pd
 
 class PtxSystem:
     
-    def __init__(self, project_name='', integer_steps=5, facility_lifetime=20,
-                 starting_budget=0, commodities=None, components=None, profile_data=False,
-                 uses_representative_periods=False, covered_period=8760, path_data=None):
+    def __init__(self, project_name='', integer_steps=5, facility_lifetime=20, 
+                 starting_budget=0, weather_provider=None, current_tick=0, commodities=None, 
+                 components=None, profile_data=None, uses_representative_periods=False, 
+                 covered_period=8760, path_data=None):
         """
         Object which stores all components, commodities, settings, etc.
         
@@ -23,6 +24,10 @@ class PtxSystem:
         self.starting_budget = starting_budget
         # keep track of all costs and revenues here
         self.balance = starting_budget
+
+        self.current_tick = current_tick
+        
+        self.weather_provider = weather_provider
 
         if commodities is None:
             commodities = {}
@@ -246,6 +251,11 @@ class PtxSystem:
         return (input_tuples, main_input_to_input_conversion_tuples, 
                 main_input_to_input_conversion_tuples_dict, output_tuples, 
                 input_to_output_conversion_tuples, input_to_output_conversion_tuples_dict)
+
+    def get_current_weather_coefficient(self, source_name):
+        weather_data = self.weather_provider.get_weather_of_tick(self.current_tick)
+        weather_of_source = weather_data[source_name]
+        return weather_of_source
 
     def get_generation_time_series(self):
         generation_profiles_dict = {}
