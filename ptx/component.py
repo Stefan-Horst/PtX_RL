@@ -90,9 +90,6 @@ class ConversionComponent(BaseComponent):
         as possible. If the conversion then still attempts to consume more inputs than available or 
         costs too much, the conversion fails completely.
         Positive quantity means ramp up, negative quantity means ramp down."""
-        if quantity == 0:
-            return f"Cannot ramp up/down 0 in {self.name}."
-        
         main_input_conversion_coefficient = self.inputs[self.main_input]
         current_capacity = self.get_current_capacity_level()
         
@@ -121,7 +118,7 @@ class ConversionComponent(BaseComponent):
             if status == "":
                 status = f"Ramp up {quantity} quantity to {new_load} load."
         # ramp down
-        else: # quantity < 0
+        elif quantity < 0:
             reduction_quantity = -quantity
             status, new_load, reduction_quantity = self._handle_ramp_down(
                 input_commodities, input_ratios, reduction_quantity
@@ -129,6 +126,10 @@ class ConversionComponent(BaseComponent):
             if status == "":
                 status = f"Ramp down {reduction_quantity} quantity to {new_load} load."
             quantity = -reduction_quantity
+        # no change in load
+        else: # quantity == 0
+            new_load = self.load
+            status = f"No ramp up or down of load {new_load} in {self.name}."
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost
@@ -359,7 +360,7 @@ class StorageComponent(BaseComponent):
         Positive values mean charge, negative values mean discharge. Quantity is raw storage 
         input, not what is actually stored after applying efficiency coefficient."""
         if quantity == 0:
-            return f"Cannot charge/discharge quantity 0 in {self.name}."
+            return f"No quantity charged or discharged in {self.name}."
         
         commodity = ptx_system.commodities[self.stored_commodity]
         max_charge = self.fixed_capacity * self.max_soc
@@ -406,7 +407,7 @@ class StorageComponent(BaseComponent):
             actual_quantity = -actual_quantity
             self.discharged_quantity += actual_quantity
             commodity.discharged_quantity += actual_quantity
-            cost = .0 # discharging has no cost
+            cost = 0. # discharging has no cost
         
         self.charge_state += actual_quantity
         self.total_variable_costs += cost
@@ -493,9 +494,6 @@ class GenerationComponent(BaseComponent):
         on curtailment and the current weather. If the generation cost would be higher than the 
         available balance, the curtailment is set to a high enough value to prevent this.
         Positive values mean increase curtailment, negative values mean decrease curtailment."""
-        if quantity == 0:
-            return f"Cannot curtail quantity 0 in {self.name}."
-        
         # how much the generator is allowed to generate at most
         potential_max_generation = self.fixed_capacity - self.curtailment
         # how much the generator can actually generate at most
@@ -517,7 +515,7 @@ class GenerationComponent(BaseComponent):
                 status = (f"Curtail {quantity} from {potential_max_generation} current potential "
                           f"production, generating {generated} MWh in {self.name}")
         # increase production
-        else: # quantity < 0
+        elif quantity < 0:
             curtail_strip_quantity = -quantity
             # try to remove curtailment as much as possible, limit at max possible generation
             if curtail_strip_quantity > self.curtailment:
@@ -530,13 +528,17 @@ class GenerationComponent(BaseComponent):
                 generated = possible_current_generation - self.curtailment + curtail_strip_quantity
                 status = (f"Remove curtailment {curtail_strip_quantity} from {self.curtailment} "
                           f"curtailment, generating {generated} MWh in {self.name}")
+        # no change in production
+        else: # quantity == 0
+            generated = possible_current_generation - self.curtailment
+            status = f"No curtailment applied or stripped in {self.name}, generating {generated} MWh"
         
         # calculate cost and make sure it is not higher than available balance
         cost = generated * self.variable_om
         if cost > ptx_system.balance:
             new_cost = ptx_system.balance
             new_generated = ptx_system.balance / self.variable_om
-            quantity = max(0, possible_current_generation - self.curtailment - new_generated)
+            quantity = max(quantity, possible_current_generation - self.curtailment - new_generated)
             status += (f". Tried to generate {generated} MWh for {cost:.4f}€, but only "
                        f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated} "
                        f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity}.")
