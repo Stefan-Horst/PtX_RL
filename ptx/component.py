@@ -83,7 +83,13 @@ class ConversionComponent(BaseComponent):
         self._initialize_result_dictionaries()
     
     def ramp_up_or_down(self, quantity, ptx_system):
-        """Positive quantity means ramp up, negative quantity means ramp down."""
+        """Increase/decrease the current load and then convert that much of the main input plus 
+        other inputs to the outputs of the conversion. If the load would be increased too much or 
+        decreased too little so that the conversion would consume more inputs than available or the 
+        cost would be higher than the available balance, it is attempted to reduce the load as much 
+        as possible. If the conversion then still attempts to consume more inputs than available or 
+        costs too much, the conversion fails completely.
+        Positive quantity means ramp up, negative quantity means ramp down."""
         if quantity == 0:
             return f"Cannot ramp up/down 0 in {self.name}."
         
@@ -336,8 +342,10 @@ class StorageComponent(BaseComponent):
         self.discharged_quantity = discharged_quantity
     
     def charge_or_discharge_quantity(self, quantity, ptx_system):
-        """Positive values mean charge, negative values mean discharge. Quantity is raw 
-        storage input, not what is actually stored after applying efficiency coefficient."""
+        """Charge/discharge quantity or as much as possible based on available commodity 
+        and current state of charge as well as the available balance. 
+        Positive values mean charge, negative values mean discharge. Quantity is raw storage 
+        input, not what is actually stored after applying efficiency coefficient."""
         if quantity == 0:
             return f"Cannot charge/discharge quantity 0 in {self.name}."
         
@@ -347,55 +355,7 @@ class StorageComponent(BaseComponent):
         free_storage = max_charge - self.charge_state
         dischargeable_quantity = max(0, self.charge_state - min_charge)
         
-        # for charging, it must be checked if there is enough available commodity to charge, 
-        # if the storage has enough free capacity, and if the cost of charging isn't higher 
-        # than the balance. If one of these three conditions is not fulfilled, the values 
-        # have to be changed which in turn affects the other conditions which have to be 
-        # evaluated again. An if-else structure would be too large to check for all three 
-        # conditions in every branch. Therefore, three helper functions are used which call 
-        # each other in a recursive way, until all conditions are met and the new values 
-        # satisfying all conditions are returned. _handle_cost is always called last and 
-        # returns the input quantity, charging quantity, as well as the charging cost.
-        
-        def _handle_available(_quantity, _actual_quantity, _status):
-            if _quantity > commodity.available_quantity:
-                new_quantity = commodity.available_quantity
-                new_actual_quantity = new_quantity * self.charging_efficiency
-                _status += (f"Quantity {_quantity} is greater than available quantity "
-                            f"{commodity.available_quantity}, charge that much instead. ")
-                if new_quantity > free_storage:
-                    return _handle_capacity(new_quantity, new_actual_quantity, _status)
-                return _handle_cost(new_quantity, new_actual_quantity, _status)
-            return _handle_cost(_quantity, _actual_quantity, _status)
-        
-        def _handle_capacity(_quantity, _actual_quantity, _status):
-            if _actual_quantity > free_storage:
-                new_actual_quantity = free_storage
-                new_quantity = new_actual_quantity / self.charging_efficiency
-                _status += (f"Quantity to be stored {_actual_quantity} is greater than free "
-                            f"storage capacity {free_storage}, charge {new_quantity} instead. ")
-                if new_quantity > commodity.available_quantity:
-                    return _handle_available(new_quantity, new_actual_quantity, _status)
-                return _handle_cost(new_quantity, new_actual_quantity, _status)
-            return _handle_cost(_quantity, _actual_quantity, _status)
-        
-        def _handle_cost(_quantity, _actual_quantity, _status):
-            cost = round(_quantity * self.variable_om, 4)
-            if cost > ptx_system.balance:
-                new_cost = ptx_system.balance
-                new_quantity = new_cost / self.variable_om
-                new_actual_quantity = new_quantity * self.charging_efficiency
-                _status += (f"Charging cost {cost} is greater than balance {ptx_system.balance}, "
-                            f"charge quantity {new_quantity} for that much instead. ")
-                if new_quantity > free_storage:
-                    return _handle_capacity(new_quantity, new_actual_quantity, _status)
-                if new_quantity > commodity.available_quantity:
-                    return _handle_available(new_quantity, new_actual_quantity, _status)
-                return new_quantity, new_actual_quantity, new_cost
-            return _quantity, _actual_quantity, cost, _status
-        
         status = ""
-        cost = 0
         # charge
         if quantity > 0:
             if self.charge_state >= max_charge:
@@ -403,9 +363,31 @@ class StorageComponent(BaseComponent):
             if commodity.available_quantity <= 0:
                 return f"Cannot charge quantity {quantity} in {self.name} as none is available."
             
+            # while quantity is raw input used, actual_quantity is what is actually stored
             actual_quantity = quantity * self.charging_efficiency
-            # go through chained functions until all conditions are met and values are within bounds
-            quantity, actual_quantity, cost, status = _handle_available(quantity, actual_quantity, status)
+            if actual_quantity > free_storage:
+                new_actual_quantity = free_storage
+                quantity = new_actual_quantity / self.charging_efficiency
+                status += (f"Quantity to be stored {actual_quantity} is greater than free "
+                           f"storage capacity {free_storage}, charge {quantity} instead. ")
+                actual_quantity = new_actual_quantity
+            
+            if quantity > commodity.available_quantity:
+                new_quantity = commodity.available_quantity
+                actual_quantity = new_quantity * self.charging_efficiency
+                status += (f"Quantity {quantity} is greater than available quantity "
+                           f"{commodity.available_quantity}, charge that much instead. ")
+                quantity = new_quantity
+            
+            cost = round(quantity * self.variable_om, 4)
+            if cost > ptx_system.balance:
+                new_cost = ptx_system.balance
+                quantity = new_cost / self.variable_om
+                actual_quantity = quantity * self.charging_efficiency
+                status += (f"Charging cost {cost} is greater than balance {ptx_system.balance}, "
+                           f"charge quantity {quantity} for that much instead. ")
+                cost = new_cost
+            
             if status == "":
                 status = f"Charge {quantity} {commodity.name} for {cost} in {self.name}."
             else:
@@ -434,6 +416,7 @@ class StorageComponent(BaseComponent):
             actual_quantity = -actual_quantity
             self.discharged_quantity += actual_quantity
             commodity.discharged_quantity += actual_quantity
+            cost = .0 # discharging has no cost
         
         self.charge_state += actual_quantity
         self.total_variable_costs += cost
