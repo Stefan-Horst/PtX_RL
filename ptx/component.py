@@ -111,8 +111,8 @@ class ConversionComponent(BaseComponent):
             new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
-            status += (f" Potential cost is higher than balance, set "
-                        f"quantity from {quantity} to {new_quantity}.")
+            status += (f" Potential cost {potential_max_cost}€ is higher than available balance "
+                        f"{ptx_system.balance}€, set quantity from {quantity} to {new_quantity}.")
             quantity = new_quantity
         
         # ramp up
@@ -185,8 +185,8 @@ class ConversionComponent(BaseComponent):
         # calculate and check cost
         cost = round(current_capacity * main_input_conversion_coefficient * self.variable_om, 4)
         if cost > ptx_system.balance:
-            status += (f" Conversion failed. Cost {cost} is higher than "
-                       f"available balance {ptx_system.balance}.")
+            status += (f" Conversion failed. Cost {cost}€ is higher than "
+                       f"available balance {ptx_system.balance}€.")
             return status, False # false as failure flag
         
         # convert commodities
@@ -384,14 +384,14 @@ class StorageComponent(BaseComponent):
                 new_cost = ptx_system.balance
                 quantity = new_cost / self.variable_om
                 actual_quantity = quantity * self.charging_efficiency
-                status += (f"Charging cost {cost} is greater than balance {ptx_system.balance}, "
+                status += (f"Charging {cost}€ is greater than balance {ptx_system.balance}€, "
                            f"charge quantity {quantity} for that much instead. ")
                 cost = new_cost
             
             if status == "":
-                status = f"Charge {quantity} {commodity.name} for {cost} in {self.name}."
+                status = f"Charge {quantity} {commodity.name} for {cost}€ in {self.name}."
             else:
-                status += f"Finally charge {quantity} {commodity.name} for {cost} in {self.name}."
+                status += f"Finally charge {quantity} {commodity.name} for {cost}€ in {self.name}."
             
             self.charged_quantity += actual_quantity
             commodity.charged_quantity += actual_quantity
@@ -470,30 +470,33 @@ class GenerationComponent(BaseComponent):
         self.curtailment = curtailment
 
     def apply_or_strip_curtailment(self, quantity, ptx_system):
-        """Change curtailment quantity and then generate as much as possible 
-        of the commodity based on curtailment and the current weather."""
+        """Change curtailment quantity and then generate as much as possible of the commodity based 
+        on curtailment and the current weather. If the generation cost would be higher than the 
+        available balance, the curtailment is set to a high enough value to prevent this.
+        Positive values mean increase curtailment, negative values mean decrease curtailment."""
         if quantity == 0:
             return f"Cannot curtail quantity 0 in {self.name}."
         
-        status = None
         # how much the generator is allowed to generate at most
         potential_max_generation = self.fixed_capacity - self.curtailment
         # how much the generator can actually generate at most
-        possible_current_generation = (ptx_system.get_current_weather_coefficient(self.name)
-                                       * self.fixed_capacity)
+        possible_current_generation = (#ptx_system.get_current_weather_coefficient(self.name)
+                                       1* self.fixed_capacity)
+        
+        status = None
         # decrease production
         if quantity > 0:
             # try to curtail as much as possible, limit at stopping generation
             if quantity > potential_max_generation:
-                generated = 0
                 status = (f"Cannot curtail {quantity} from current capacity {potential_max_generation} "
-                          f"in {self.name}. Instead, curtail completely, generating 0 MWh.")
+                          f"in {self.name}. Instead, curtail completely, generating 0 MWh")
                 quantity = potential_max_generation
+                generated = 0
             else:
                 new_potential_max_generation = potential_max_generation - quantity
                 generated = min(possible_current_generation, new_potential_max_generation)
                 status = (f"Curtail {quantity} from {potential_max_generation} current potential "
-                          f"production, generating {generated} MWh in {self.name}.")
+                          f"production, generating {generated} MWh in {self.name}")
         # increase production
         else: # quantity < 0
             curtail_strip_quantity = -quantity
@@ -502,19 +505,33 @@ class GenerationComponent(BaseComponent):
                 generated = possible_current_generation
                 status = (f"Cannot remove curtailment {curtail_strip_quantity} from current "
                           f"curtailment {self.curtailment} in {self.name}. Instead, remove "
-                          f"curtailment completely, generating {generated} MWh.")
+                          f"curtailment completely, generating {generated} MWh")
                 quantity = -self.curtailment
             else:
                 generated = possible_current_generation - self.curtailment + curtail_strip_quantity
                 status = (f"Remove curtailment {curtail_strip_quantity} from {self.curtailment} "
-                          f"curtailment, generating {generated} MWh in {self.name}.")
+                          f"curtailment, generating {generated} MWh in {self.name}")
+        
+        # calculate cost and make sure it is not higher than available balance
+        cost = round(generated * self.variable_om, 4)
+        if cost > ptx_system.balance:
+            new_cost = ptx_system.balance
+            new_generated = ptx_system.balance / self.variable_om
+            quantity = max(0, possible_current_generation - self.curtailment - new_generated)
+            status += (f". Tried to generate {generated} MWh for {cost}€, but only "
+                       f"{ptx_system.balance}€ available. Instead, generate {new_generated} "
+                       f"MWh for {new_cost}€ by increasing curtailment by {quantity}.")
+            cost = new_cost
+            generated = new_generated
+        else:
+            status += (f" for {cost}€.")
         
         self.generated_quantity += generated
         self.potential_generation_quantity += possible_current_generation
         self.curtailment += quantity
-        cost = round(generated * self.variable_om, 4)
         self.total_variable_costs += cost
         commodity = ptx_system.commodities[self.generated_commodity]
+        commodity.available_quantity += generated
         commodity.generated_quantity += generated
         commodity.total_generation_costs += cost
         ptx_system.balance -= cost
