@@ -7,16 +7,20 @@ from util import DATA_DIR
 class WeatherDataProvider():
     """Wrapper for the weather data originally provided in multiple csv files."""
     
-    def __init__(self, dir_data="yearly_profiles/"):
+    def __init__(self, dir_data="yearly_profiles/", offset=0):
+        """Offset adds a static time offset to each tick of the weather data."""
+        self.offset = offset
         self.weather_data = self._load_data(dir_data)
         self.weather_data_joined = pd.concat(self.weather_data)
     
     def get_weather_of_tick(self, tick):
-        return self.weather_data_joined.iloc[tick]
+        actual_tick = tick + self.offset
+        return self.weather_data_joined.iloc[actual_tick]
     
     def get_weather_from_tick_plus_n(self, tick, n):
         """Returns n weather data points starting from tick"""
-        return self.weather_data_joined.iloc[tick:tick+n]
+        actual_tick = tick + self.offset
+        return self.weather_data_joined.iloc[actual_tick:actual_tick+n]
     
     def get_weather_of_datetime(self, datetime):
         return self.weather_data_joined[
