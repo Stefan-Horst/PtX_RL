@@ -161,7 +161,9 @@ class PtxEnvironment(Environment):
         self.terminated = success
         reward = self._calculate_reward(state_change_info)
         observation = self._get_current_observation()
-        info = {} # useful info might be implemented later
+        elements = self._get_element_categories_with_attributes_and_actions()
+        element_names = [item.name for element_tuple in elements for item in element_tuple[0]]
+        info = dict(zip(element_names, state_change_info))
         truncated = False # truncation currently not needed
         return observation, reward, self.terminated, truncated, info
     
