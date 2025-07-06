@@ -143,7 +143,6 @@ class ConversionComponent(BaseComponent):
         convert_status = ""
         for input, input_ratio in zip(input_commodities, input_ratios):
             amount = input_ratio * current_capacity
-            # failure if not enough commodity for conversion available
             if amount > input.available_quantity:
                 status += (f" Conversion failed for {self.name}. {amount} {input.name} "
                            f"required, but only {input.available_quantity} available.")
@@ -362,7 +361,7 @@ class StorageComponent(BaseComponent):
         Positive values mean charge, negative values mean discharge. Quantity is raw storage 
         input, not what is actually stored after applying efficiency coefficient."""
         if quantity == 0:
-            return f"No quantity charged or discharged in {self.name}."
+            return f"No quantity charged or discharged in {self.name}.", True
         
         commodity = ptx_system.commodities[self.stored_commodity]
         max_charge = self.fixed_capacity * self.max_soc
@@ -374,9 +373,9 @@ class StorageComponent(BaseComponent):
         # charge
         if quantity > 0:
             if self.charge_state >= max_charge:
-                return f"Cannot charge quantity {quantity} in {self.name} as it is full."
+                return f"Cannot charge quantity {quantity} in {self.name} as it is full.", True
             if commodity.available_quantity <= 0:
-                return f"Cannot charge quantity {quantity} in {self.name} as none is available."
+                return f"Cannot charge quantity {quantity} in {self.name} as none is available.", True
             
             quantity, actual_quantity, cost, status = self._handle_charge(
                 quantity, free_storage, status, ptx_system.balance, commodity.available_quantity
@@ -392,7 +391,8 @@ class StorageComponent(BaseComponent):
         else: # quantity < 0
             discharge_quantity = -quantity
             if self.charge_state <= min_charge:
-                return f"Cannot discharge quantity {discharge_quantity} in {self.name} as it is empty."
+                return (f"Cannot discharge quantity {discharge_quantity} "
+                        f"in {self.name} as it is empty."), True
             
             # actual output should be specified quantity
             actual_quantity = discharge_quantity
@@ -416,7 +416,7 @@ class StorageComponent(BaseComponent):
         commodity.available_quantity -= quantity
         commodity.total_storage_costs += cost
         ptx_system.balance -= cost
-        return status
+        return status, True
 
     def _handle_charge(self, quantity, free_storage, status, balance, available_quantity):
         """Make sure amount charged is not more than free storage, available commodity, 
@@ -558,7 +558,7 @@ class GenerationComponent(BaseComponent):
         commodity.generated_quantity += generated
         commodity.total_generation_costs += cost
         ptx_system.balance -= cost
-        return status
+        return status, True
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []

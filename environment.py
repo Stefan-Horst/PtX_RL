@@ -129,6 +129,7 @@ class PtxEnvironment(Environment):
         
         self.iteration = 1
         self.step = 0
+        self.terminated = False
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
@@ -156,7 +157,8 @@ class PtxEnvironment(Environment):
     def act(self, action):
         self.step += 1
         self.ptx_system.current_tick += 1
-        state_change_info = self._apply_actions(action)
+        state_change_info, success = self._apply_actions(action)
+        self.terminated = success
         reward = self._calculate_reward(state_change_info)
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
@@ -265,13 +267,15 @@ class PtxEnvironment(Environment):
                 len(actions) == self.action_space_size), \
                "Action must have correct shape and values correct types."
         
-        # execute methods of elements with values  and current state as parameters
-        return_values = []
+        # execute methods of elements with values and current state as parameters
+        state_change_infos = []
+        success = True
         for element, action_method, value in zip(self._action_space, actions):
             # return value is None if the method has no return value
-            return_value = action_method(element, value, self.ptx_system)
-            return_values.append(return_value)
-        return return_values
+            state_change_info, element_success = action_method(element, value, self.ptx_system)
+            state_change_infos.append(state_change_info)
+            success = success and element_success
+        return state_change_infos, success
     
     def _calculate_reward(self, state_change_info):
         return
