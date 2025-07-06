@@ -314,9 +314,11 @@ class ConversionComponent(BaseComponent):
         outputs = copy.deepcopy(self.outputs)
         commodities = copy.deepcopy(self.commodities)
         return ConversionComponent(name=name, ramp_down=self.ramp_down, ramp_up=self.ramp_up,
-                                   min_p=self.min_p, max_p=self.max_p, inputs=inputs, outputs=outputs,
-                                   main_input=self.main_input, main_output=self.main_output, commodities=commodities,
-                                   ixed_capacity=self.fixed_capacity, consumed_commodities=self.consumed_commodities, 
+                                   min_p=self.min_p, max_p=self.max_p, load=self.load, inputs=inputs, 
+                                   outputs=outputs, main_input=self.main_input, 
+                                   main_output=self.main_output, commodities=commodities, 
+                                   fixed_capacity=self.fixed_capacity, 
+                                   consumed_commodities=self.consumed_commodities, 
                                    produced_commodities=self.produced_commodities)
 
 
@@ -459,7 +461,7 @@ class StorageComponent(BaseComponent):
                                 min_soc=self.min_soc, max_soc=self.max_soc,
                                 ratio_capacity_p=self.ratio_capacity_p,
                                 stored_commodity=self.stored_commodity,
-                                fixed_capacity=self.fixed_capacity, 
+                                fixed_capacity=self.fixed_capacity, charge_state=self.charge_state,
                                 charged_quantity=self.charged_quantity, 
                                 discharged_quantity=self.discharged_quantity)
 

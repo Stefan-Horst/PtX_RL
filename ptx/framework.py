@@ -440,8 +440,8 @@ class PtxSystem:
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
         return PtxSystem(project_name=self.project_name, integer_steps=self.integer_steps, 
-                         facility_lifetime=self.facility_lifetime,
-                         commodities=commodities, components=components, 
-                         profile_data=self.profile_data,
+                         starting_budget=self.starting_budget, weather_provider=self.weather_provider, 
+                         current_tick=self.current_tick, facility_lifetime=self.facility_lifetime,
+                         commodities=commodities, components=components, profile_data=self.profile_data,
                          uses_representative_periods=self.uses_representative_periods,
                          covered_period=self.covered_period)
