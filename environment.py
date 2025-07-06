@@ -135,11 +135,11 @@ class PtxEnvironment(Environment):
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
-        action_space_size = len(self._get_action_space())
+        self._action_space = self._get_action_space()
+        action_space_size = len(self._action_space)
         reward_spec = {}
         super().__init__(observation_space_size, observation_space_spec, action_space_size, 
                          action_space_spec, reward_spec)
-        self._action_space = self._get_action_space()
         
     def initialize(self, seed=None):
         self.seed = seed # currently not used
