@@ -6,6 +6,7 @@ import gymnasium as gym
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import PtxSystem
+from ptx.weather import WeatherDataProvider
 from util import contains_only_unique_elements
 
 
@@ -100,13 +101,15 @@ class PtxEnvironment(Environment):
     the exact configuration of the system and allows for its attributes (i.e. observations) 
     and actions to be specified via the constructor."""
     
-    def __init__(self, ptx_system: PtxSystem, 
+    def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, weather_forecast_days=1,
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
                  storage_actions=STORAGE_ACTIONS, generator_actions=GENERATOR_ACTIONS):
         """Create environment with PtX sytem to use and optionally specify 
         relevant attributes and actions for the agent."""
+        self.weather_provider = weather_provider
+        self.weather_forecast_days = weather_forecast_days
         self.commodity_attributes = commodity_attributes
         self.conversion_attributes = conversion_attributes
         self.storage_attributes = storage_attributes
@@ -115,6 +118,8 @@ class PtxEnvironment(Environment):
         self.conversion_actions = conversion_actions
         self.storage_actions = storage_actions
         self.generator_actions = generator_actions
+        
+        ptx_system.weather_provider = weather_provider
         self._original_ptx_system = ptx_system
         self.ptx_system = copy(self._original_ptx_system)
         
@@ -123,7 +128,7 @@ class PtxEnvironment(Environment):
         ), "All elements of the ptx system must have a unique name."
         
         self.iteration = 1
-        self.steps = 0
+        self.step = 0
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
@@ -141,14 +146,16 @@ class PtxEnvironment(Environment):
     def reset(self):
         self.terminated = False
         self.iteration += 1
-        self.steps = 0
+        self.step = 0
         self.ptx_system = copy(self._original_ptx_system)
+        self.ptx_system.current_tick = 0
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
         return observation, info
     
     def act(self, action):
-        self.steps += 1
+        self.step += 1
+        self.ptx_system.current_tick += 1
         state_change_info = self._apply_actions(action)
         reward = self._calculate_reward(state_change_info)
         observation = self._get_current_observation()
@@ -157,11 +164,21 @@ class PtxEnvironment(Environment):
         return observation, reward, self.terminated, truncated, info
     
     def _get_observation_space_spec(self):
-        """Create dict with each element of the ptx system (commodities, components) 
-        as key and possible observations (attributes) as values. Attributes that are 
-        dicts are added with their keys as list."""
-        observation_space_spec = {}
+        """Create dict with each element of the ptx system (commodities, components) as key and 
+        possible observations (attributes) as values, as well as environment data with data for 
+        each tick as values. Attributes that are dicts are added with their keys as list."""
         element_categories = self._get_element_categories_with_attributes_and_actions()
+        
+        environment_data = ["current_step"]
+        generators = element_categories[1][0]
+        for generator in generators:
+                environment_data.append(f"current_{generator.name}")
+        
+        for i in range(self.weather_forecast_days):
+            for generator in generators:
+                environment_data.append(f"step{i+1}_{generator.name}")
+        observation_space_spec = {"environment": environment_data}
+        
         for category, attributes, _ in element_categories:
             for element in category:
                 element_attributes = []
@@ -180,10 +197,20 @@ class PtxEnvironment(Environment):
         return observation_space_spec
     
     def _get_current_observation(self):
-        """Get the current observation by iterating over all elements 
-        of the ptx system and adding the values of their attributes."""
-        observation_space = []
+        """Get the current observation by iterating over all elements of the ptx 
+        system and adding the values of their attributes, as well as the current 
+        step and weather data for each generator for the next specified steps."""
+        observation_space = [self.step]
         element_categories = self._get_element_categories_with_attributes_and_actions()
+        
+        generators = element_categories[1][0]
+        # append current weather and forecast weather
+        for i in range(self.weather_forecast_days + 1):
+            for generator in generators:
+                observation_space.append(
+                    self.weather_provider.get_weather_of_tick(self.step + i)[generator.name]
+                )
+        
         for category, attributes, _ in element_categories:
             for element in category:
                 possible_attributes = element.get_possible_observation_attributes(attributes)
