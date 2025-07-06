@@ -93,7 +93,7 @@ GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs",
 # e.g. selling commodity is only possible if it's set to saleable
 COMMODITY_ACTIONS = [Commodity.purchase_commodity, Commodity.sell_commodity, Commodity.emit_commodity]
 CONVERSION_ACTIONS = [ConversionComponent.ramp_up_or_down] # conversion automatic and only control ramp
-STORAGE_ACTIONS = [StorageComponent.charge_or_discharge_quantity] # maybe discharge automatically if production too low
+STORAGE_ACTIONS = [StorageComponent.charge_or_discharge_quantity]
 GENERATOR_ACTIONS = [GenerationComponent.apply_or_strip_curtailment]
 
 class PtxEnvironment(Environment):
@@ -101,7 +101,8 @@ class PtxEnvironment(Environment):
     the exact configuration of the system and allows for its attributes (i.e. observations) 
     and actions to be specified via the constructor."""
     
-    def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, weather_forecast_days=1,
+    def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
+                 weather_forecast_days=1, max_steps_per_episode=100000,
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
@@ -110,6 +111,7 @@ class PtxEnvironment(Environment):
         relevant attributes and actions for the agent."""
         self.weather_provider = weather_provider
         self.weather_forecast_days = weather_forecast_days
+        self.max_steps_per_episode = max_steps_per_episode
         self.commodity_attributes = commodity_attributes
         self.conversion_attributes = conversion_attributes
         self.storage_attributes = storage_attributes
@@ -140,8 +142,9 @@ class PtxEnvironment(Environment):
         self._action_space = self._get_action_space()
         
     def initialize(self, seed=None):
-        self.seed = seed
-        observation, info = self.reset()
+        self.seed = seed # currently not used
+        observation = self._get_current_observation()
+        info = {} # useful info might be implemented later
         return observation, info
     
     def reset(self):
@@ -157,15 +160,87 @@ class PtxEnvironment(Environment):
     def act(self, action):
         self.step += 1
         self.ptx_system.current_tick += 1
+        
         state_change_info, success = self._apply_actions(action)
-        self.terminated = success
-        reward = self._calculate_reward(state_change_info)
+        reward = self._calculate_reward()
+        truncated = self.step >= self.max_steps_per_episode
+        self.teminated = not success or truncated
+        
         observation = self._get_current_observation()
         elements = self._get_element_categories_with_attributes_and_actions()
         element_names = [item.name for element_tuple in elements for item in element_tuple[0]]
         info = dict(zip(element_names, state_change_info))
-        truncated = False # truncation currently not needed
         return observation, reward, self.terminated, truncated, info
+    
+    def _apply_actions(self, actions):
+        """Call the specified action methods of the elements of the 
+        ptx system with the provided values for the action space"""
+        assert (all(isinstance(x, (int, float)) for x in actions) and 
+            len(actions) == self.action_space_size), \
+            "Action must have correct shape and values correct types."
+
+        # execute methods of elements with values and current state as parameters
+        state_change_infos = []
+        success = True
+        for element, action_method, value in zip(self._action_space, actions):
+            # return value is None if the method has no return value
+            state_change_info, element_success = action_method(element, value, self.ptx_system)
+            state_change_infos.append(state_change_info)
+            success = success and element_success
+        return state_change_infos, success
+    
+    def _calculate_reward(self):
+        """Calculate the reward for the current step based on the current balance of 
+        the ptx system and if any conversion has failed. Also take the amount of time 
+        taken into account by reducing the reward in later steps."""
+        # negative reward if system fails (i.e. conversion with set load is not possible)
+        if self.terminated:
+            return -100
+        
+        # encourage more efficient and early reward maximization
+        discount_factor = 1 - self.step / self.max_steps_per_episode
+        reward = (self.ptx_system.balance - self.ptx_system.starting_budget) * discount_factor
+        return reward
+    
+    def _get_current_observation(self):
+        """Get the current observation by iterating over all elements of the ptx 
+        system and adding the values of their attributes, as well as the current 
+        step and weather data for each generator for the next specified steps."""
+        observation_space = [self.step]
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        
+        generators = element_categories[1][0]
+        # append current weather and forecast weather
+        for i in range(self.weather_forecast_days + 1):
+            for generator in generators:
+                observation_space.append(
+                    self.weather_provider.get_weather_of_tick(self.step + i)[generator.name]
+                )
+        
+        for category, attributes, _ in element_categories:
+            for element in category:
+                possible_attributes = element.get_possible_observation_attributes(attributes)
+                for attribute in possible_attributes:
+                    # add all values of attributes that are dictionaries
+                    if attribute.startswith("[dict]"):
+                        attribute = attribute[6:]
+                        observation_space.extend(
+                            list(getattr(element, attribute).values())
+                        )
+                    else:
+                        observation_space.append(getattr(element, attribute))
+        return observation_space
+    
+    def _get_action_space(self):
+        """Create list with tuples of each element and its possible actions."""
+        action_space = []
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, _, actions in element_categories:
+            for element in category:
+                possible_actions = element.get_possible_action_methods(actions)
+                for action in possible_actions:
+                    action_space.append((element, action))
+        return action_space
     
     def _get_observation_space_spec(self):
         """Create dict with each element of the ptx system (commodities, components) as key and 
@@ -200,35 +275,6 @@ class PtxEnvironment(Environment):
                 observation_space_spec[element.name] = element_attributes
         return observation_space_spec
     
-    def _get_current_observation(self):
-        """Get the current observation by iterating over all elements of the ptx 
-        system and adding the values of their attributes, as well as the current 
-        step and weather data for each generator for the next specified steps."""
-        observation_space = [self.step]
-        element_categories = self._get_element_categories_with_attributes_and_actions()
-        
-        generators = element_categories[1][0]
-        # append current weather and forecast weather
-        for i in range(self.weather_forecast_days + 1):
-            for generator in generators:
-                observation_space.append(
-                    self.weather_provider.get_weather_of_tick(self.step + i)[generator.name]
-                )
-        
-        for category, attributes, _ in element_categories:
-            for element in category:
-                possible_attributes = element.get_possible_observation_attributes(attributes)
-                for attribute in possible_attributes:
-                    # add all values of attributes that are dictionaries
-                    if attribute.startswith("[dict]"):
-                        attribute = attribute[6:]
-                        observation_space.extend(
-                            list(getattr(element, attribute).values())
-                        )
-                    else:
-                        observation_space.append(getattr(element, attribute))
-        return observation_space
-    
     def _get_action_space_spec(self):
         """Create dict with each element of the ptx system (commodities, components) 
         as key and possible actions (methods) as values."""
@@ -243,17 +289,6 @@ class PtxEnvironment(Environment):
                 action_space_spec[element.name] = element_actions
         return action_space_spec
 
-    def _get_action_space(self):
-        """Create list with tuples of each element and its possible actions."""
-        action_space = []
-        element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, actions in element_categories:
-            for element in category:
-                possible_actions = element.get_possible_action_methods(actions)
-                for action in possible_actions:
-                    action_space.append((element, action))
-        return action_space
-    
     def _get_element_categories_with_attributes_and_actions(self):
         commodities = self.ptx_system.get_all_commodities()
         generators = self.ptx_system.get_generator_components_objects()
@@ -263,21 +298,3 @@ class PtxEnvironment(Environment):
                 (generators, self.generator_attributes, self.generator_actions), 
                 (conversions, self.conversion_attributes, self.conversion_actions), 
                 (storages, self.storage_attributes, self.storage_actions)]
-
-    def _apply_actions(self, actions):
-        assert (all(isinstance(x, (int, float)) for x in actions) and 
-                len(actions) == self.action_space_size), \
-               "Action must have correct shape and values correct types."
-        
-        # execute methods of elements with values and current state as parameters
-        state_change_infos = []
-        success = True
-        for element, action_method, value in zip(self._action_space, actions):
-            # return value is None if the method has no return value
-            state_change_info, element_success = action_method(element, value, self.ptx_system)
-            state_change_infos.append(state_change_info)
-            success = success and element_success
-        return state_change_infos, success
-    
-    def _calculate_reward(self, state_change_info):
-        return
