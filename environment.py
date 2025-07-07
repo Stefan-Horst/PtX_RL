@@ -91,10 +91,22 @@ GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs",
                          "generated_quantity", "total_costs", "curtailment"]
 # actual possible actions of each element depend on what the configuration allows
 # e.g. selling commodity is only possible if it's set to saleable
-COMMODITY_ACTIONS = [Commodity.purchase_commodity, Commodity.sell_commodity, Commodity.emit_commodity]
-CONVERSION_ACTIONS = [ConversionComponent.ramp_up_or_down] # conversion automatic and only control ramp
-STORAGE_ACTIONS = [StorageComponent.charge_or_discharge_quantity]
-GENERATOR_ACTIONS = [GenerationComponent.apply_or_strip_curtailment]
+# the numbers are the order of the actions in the order they are executed, starting from 0
+# actions can be executed multiple times in different phases
+COMMODITY_ACTIONS = [
+    (Commodity.purchase_commodity, [2]), 
+    (Commodity.sell_commodity, [4]), 
+    (Commodity.emit_commodity, [6])
+]
+CONVERSION_ACTIONS = [
+    (ConversionComponent.ramp_up_or_down, [3]) # conversion automatic and only control ramp
+]
+STORAGE_ACTIONS = [
+    (StorageComponent.charge_or_discharge_quantity, [1, 5]) # discharge in 1, charge in 5
+]
+GENERATOR_ACTIONS = [
+    (GenerationComponent.apply_or_strip_curtailment, [0]) # generation automatic depending on curtailment
+]
 
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
@@ -179,10 +191,27 @@ class PtxEnvironment(Environment):
             len(actions) == self.action_space_size), \
             "Action must have correct shape and values correct types."
 
+        element_action_values = []
+        for element, action_method_tuple, value in zip(self._action_space, actions):
+            # set phase in which the action is executed based on if 
+            # the value is positive (charge) or negative (discharge)
+            action = action_method_tuple[0]
+            phase = action_method_tuple[1]
+            if action == StorageComponent.charge_or_discharge_quantity:
+                if value <= 0: # discharge
+                    element_action_values.append((element, (action, phase[0]), value))
+                else: # charge
+                    element_action_values.append((element, (action, phase[1]), value))
+            else:
+                assert len(phase) == 1, "Each concrete action of a step may only occur in one phase."
+                element_action_values.append((element, action_method_tuple, value))
+        # sort actions by phase
+        element_action_values = sorted(element_action_values, key=lambda x: x[1][1])
+        
         # execute methods of elements with values and current state as parameters
         state_change_infos = []
         success = True
-        for element, action_method, value in zip(self._action_space, actions):
+        for element, action_method, value in element_action_values:
             # return value is None if the method has no return value
             state_change_info, element_success = action_method(element, value, self.ptx_system)
             state_change_infos.append(state_change_info)
