@@ -144,15 +144,15 @@ class Commodity(Element):
                 possible_attributes.append(attribute)
         return possible_attributes
 
-    def get_possible_action_methods(self, relevant_methods):
+    def get_possible_action_methods(self, relevant_method_tuples):
         possible_methods = []
-        for method in relevant_methods:
+        for method_tuple in relevant_method_tuples:
             if (
-                method == Commodity.purchase_commodity and self.purchasable or 
-                method == Commodity.sell_commodity and self.saleable or 
-                method == Commodity.emit_commodity and self.emittable
+                method_tuple[0] == Commodity.purchase_commodity and self.purchasable or 
+                method_tuple[0] == Commodity.sell_commodity and self.saleable or 
+                method_tuple[0] == Commodity.emit_commodity and self.emittable
             ):
-                possible_methods.append(method)
+                possible_methods.append(method_tuple)
         return possible_methods
 
     def __copy__(self):

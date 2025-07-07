@@ -173,48 +173,50 @@ class PtxEnvironment(Environment):
         self.step += 1
         self.ptx_system.current_tick += 1
         
-        state_change_info, success = self._apply_actions(action)
+        state_change_info, success = self._apply_action(action)
         reward = self._calculate_reward()
         truncated = self.step >= self.max_steps_per_episode
         self.teminated = not success or truncated
         
         observation = self._get_current_observation()
-        elements = self._get_element_categories_with_attributes_and_actions()
-        element_names = [item.name for element_tuple in elements for item in element_tuple[0]]
-        info = dict(zip(element_names, state_change_info))
+        info = {item[0].name: item[1] for item in state_change_info}
         return observation, reward, self.terminated, truncated, info
     
-    def _apply_actions(self, actions):
+    def _apply_action(self, action):
         """Call the specified action methods of the elements of the 
         ptx system with the provided values for the action space"""
-        assert (all(isinstance(x, (int, float)) for x in actions) and 
-            len(actions) == self.action_space_size), \
+        assert (all(isinstance(x, (int, float)) for x in action) and 
+            len(action) == self.action_space_size), \
             "Action must have correct shape and values correct types."
 
         element_action_values = []
-        for element, action_method_tuple, value in zip(self._action_space, actions):
+        for element_action_method_tuple, value in zip(self._action_space, action):
+            element, action_method_tuple = element_action_method_tuple
             # set phase in which the action is executed based on if 
             # the value is positive (charge) or negative (discharge)
-            action = action_method_tuple[0]
+            action_method = action_method_tuple[0]
             phase = action_method_tuple[1]
-            if action == StorageComponent.charge_or_discharge_quantity:
+            if action_method == StorageComponent.charge_or_discharge_quantity:
                 if value <= 0: # discharge
-                    element_action_values.append((element, (action, phase[0]), value))
+                    element_action_values.append((element, (action_method, phase[0]), value))
                 else: # charge
-                    element_action_values.append((element, (action, phase[1]), value))
+                    element_action_values.append((element, (action_method, phase[1]), value))
             else:
                 assert len(phase) == 1, "Each concrete action of a step may only occur in one phase."
-                element_action_values.append((element, action_method_tuple, value))
+                element_action_values.append(
+                    (element, (action_method_tuple[0], action_method_tuple[1][0]), value)
+                )
         # sort actions by phase
         element_action_values = sorted(element_action_values, key=lambda x: x[1][1])
         
         # execute methods of elements with values and current state as parameters
         state_change_infos = []
         success = True
-        for element, action_method, value in element_action_values:
+        for element, action_method_tuple, value in element_action_values:
+            action_method, _ = action_method_tuple
             # return value is None if the method has no return value
             state_change_info, element_success = action_method(element, value, self.ptx_system)
-            state_change_infos.append(state_change_info)
+            state_change_infos.append((element, state_change_info))
             success = success and element_success
         return state_change_infos, success
     
@@ -224,7 +226,7 @@ class PtxEnvironment(Environment):
         taken into account by reducing the reward in later steps."""
         # negative reward if system fails (i.e. conversion with set load is not possible)
         if self.terminated:
-            return -100
+            return -100.
         
         # encourage more efficient and early reward maximization
         discount_factor = 1 - self.step / self.max_steps_per_episode
@@ -264,9 +266,9 @@ class PtxEnvironment(Environment):
         """Create list with tuples of each element and its possible actions."""
         action_space = []
         element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, actions in element_categories:
+        for category, _, action_tuples in element_categories:
             for element in category:
-                possible_actions = element.get_possible_action_methods(actions)
+                possible_actions = element.get_possible_action_methods(action_tuples)
                 for action in possible_actions:
                     action_space.append((element, action))
         return action_space
@@ -309,10 +311,11 @@ class PtxEnvironment(Environment):
         as key and possible actions (methods) as values."""
         action_space_spec = {}
         element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, actions in element_categories:
+        for category, _, action_tuples in element_categories:
             for element in category:
                 element_actions = []
-                possible_actions = element.get_possible_action_methods(actions)
+                possible_action_tuples = element.get_possible_action_methods(action_tuples)
+                possible_actions = [action_tuple[0] for action_tuple in possible_action_tuples]
                 for action in possible_actions:
                     element_actions.append(action.__name__)
                 action_space_spec[element.name] = element_actions

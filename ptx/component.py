@@ -283,9 +283,9 @@ class ConversionComponent(BaseComponent):
         # all attributes are possible for every conversion component
         return relevant_attributes
 
-    def get_possible_action_methods(self, relevant_methods):
+    def get_possible_action_methods(self, relevant_method_tuples):
         # all methods are possible for every conversion component
-        return relevant_methods
+        return relevant_method_tuples
 
     def _initialize_result_dictionaries(self):
         if self.consumed_commodities is None:
@@ -451,9 +451,9 @@ class StorageComponent(BaseComponent):
         # all attributes are possible for every conversion component
         return relevant_attributes
 
-    def get_possible_action_methods(self, relevant_methods):
+    def get_possible_action_methods(self, relevant_method_tuples):
         # all methods are possible for every conversion component
-        return relevant_methods
+        return relevant_method_tuples
 
     def __copy__(self):
         return StorageComponent(name=self.name, charging_efficiency=self.charging_efficiency,
@@ -567,11 +567,14 @@ class GenerationComponent(BaseComponent):
                 possible_attributes.append(attribute)
         return possible_attributes
 
-    def get_possible_action_methods(self, relevant_methods):
+    def get_possible_action_methods(self, relevant_method_tuples):
         possible_methods = []
-        for method in relevant_methods:
-            if method == GenerationComponent.apply_or_strip_curtailment and self.curtailment_possible:
-                possible_methods.append(method)
+        for method_tuple in relevant_method_tuples:
+            if (
+                method_tuple[0] == GenerationComponent.apply_or_strip_curtailment 
+                and self.curtailment_possible
+            ):
+                possible_methods.append(method_tuple)
         return possible_methods
 
     def __copy__(self):
