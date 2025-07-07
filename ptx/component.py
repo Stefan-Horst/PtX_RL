@@ -93,9 +93,9 @@ class ConversionComponent(BaseComponent):
         main_input_conversion_coefficient = self.inputs[self.main_input]
         current_capacity = self.get_current_capacity_level()
         
-        input_commodities = list(map(ptx_system.commodities.get, [list(self.inputs.keys())]))
+        input_commodities = list(map(ptx_system.commodities.get, list(self.inputs.keys())))
         input_ratios = list(self.inputs.values())
-        other_output_commodities = list(map(ptx_system.commodities.get, [list(self.outputs.keys())]))
+        other_output_commodities = list(map(ptx_system.commodities.get, list(self.outputs.keys())))
         output_ratios = list(self.outputs.values())
         
         status = f"In {self.name}:"
@@ -113,7 +113,7 @@ class ConversionComponent(BaseComponent):
         # ramp up
         if quantity > 0:
             quantity, status, new_load = self._handle_ramp_up(
-                quantity, current_capacity, input_commodities, input_ratios
+                quantity, current_capacity, input_commodities, input_ratios, status
             )
             if status == "":
                 status = f"Ramp up {quantity} quantity to {new_load} load."
@@ -121,7 +121,7 @@ class ConversionComponent(BaseComponent):
         elif quantity < 0:
             reduction_quantity = -quantity
             status, new_load, reduction_quantity = self._handle_ramp_down(
-                input_commodities, input_ratios, reduction_quantity
+                input_commodities, input_ratios, reduction_quantity, status
             )
             if status == "":
                 status = f"Ramp down {reduction_quantity} quantity to {new_load} load."
@@ -151,7 +151,7 @@ class ConversionComponent(BaseComponent):
             input.available_quantity -= amount
             input.consumed_quantity += amount
             if input.name == self.main_input:
-                input.total_prodution_costs += cost
+                input.total_production_costs += cost
             self.consumed_commodities[input.name] += amount
             convert_status += f" {amount} {input.name} consumed in conversion."
         for output, output_ratio in zip(other_output_commodities, output_ratios):
@@ -167,7 +167,7 @@ class ConversionComponent(BaseComponent):
         ptx_system.balance -= cost
         return status, True # true as conversion success flag
 
-    def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios):
+    def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios, status):
         """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
         Then, try to limit increase if not enough input commodities are available for the conversion."""
         if quantity > self.ramp_up:
@@ -198,7 +198,7 @@ class ConversionComponent(BaseComponent):
                 quantity = adapted_quantity
         return quantity, status, new_load
 
-    def _handle_ramp_down(self, input_commodities, input_ratios, reduction_quantity):
+    def _handle_ramp_down(self, input_commodities, input_ratios, reduction_quantity, status):
         """Make sure load is not decreased more than is allowed or to a value lower than the minimum. 
         Then, try to decrease more if not enough input commodities are available for the conversion."""
         if reduction_quantity > self.ramp_down:

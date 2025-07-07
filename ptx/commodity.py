@@ -78,19 +78,19 @@ class Commodity(Element):
             # divide with remainder, as only whole units can be purchased
             new_quantity = ptx_system.balance // self.purchase_costs
             new_cost = new_quantity * self.purchase_costs
-            status = (f"Tried to purchase {quantity} {self.name} for {cost}€, "
-                      f"but only {ptx_system.balance}€ available. "
-                      f"Instead, purchase {new_quantity} for {new_cost}€.")
+            status = (f"Tried to purchase {quantity} {self.name} for {cost:.4f}€, "
+                      f"but only {ptx_system.balance:.4f}€ available. "
+                      f"Instead, purchase {new_quantity} for {new_cost:.4f}€.")
             quantity = new_quantity
             cost = new_cost
         else:
-            status = f"Purchased {quantity} {self.name} for {cost}€."
+            status = f"Purchased {quantity} {self.name} for {cost:.4f}€."
         
         self.purchased_quantity += quantity
         self.available_quantity += quantity
         self.purchase_costs += cost
         ptx_system.balance -= cost
-        return status
+        return status, True
     
     def sell_commodity(self, quantity, ptx_system):
         if quantity < 0:
@@ -102,17 +102,17 @@ class Commodity(Element):
             revenue = self.available_quantity * self.sale_price
             status = (f"Tried to sell {quantity} {self.name}, "
                       f"but only {self.available_quantity} available. "
-                      f"Instead, sell {self.available_quantity} for {revenue}€.")
+                      f"Instead, sell {self.available_quantity} for {revenue:.4f}€.")
             quantity = self.available_quantity
         else:
             revenue = quantity * self.sale_price
-            status = f"Sold {quantity} {self.name} for {revenue}€."
+            status = f"Sold {quantity} {self.name} for {revenue:.4f}€."
         
         self.available_quantity -= quantity
         self.sold_quantity += quantity
         self.selling_revenue += revenue
         ptx_system.balance += revenue
-        return status
+        return status, True
     
     def emit_commodity(self, quantity, ptx_system):
         if quantity < 0:
@@ -129,7 +129,7 @@ class Commodity(Element):
         
         self.available_quantity -= quantity
         self.emitted_quantity += quantity
-        return status
+        return status, True
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
