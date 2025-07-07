@@ -44,7 +44,7 @@ commodity:
     purchasable: false
     purchase_price: 0.0
     saleable: true
-    selling_price: 0.0
+    selling_price: 1.0 # todo set realistic price
     total_demand: true
     unit: t
   Hydrogen:
@@ -244,10 +244,5 @@ conversions:
     main_output: Hydrogen
     output:
       Hydrogen: 1.0
-data:
-  profile_data: Chile_c-7100x-5300_t2030_l168.xlsx
 project_name: FT_all_data
-representative_periods:
-  covered_period: 336
-  uses_representative_periods: true
 version: 0.1.1

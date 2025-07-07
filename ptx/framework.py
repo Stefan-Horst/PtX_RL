@@ -5,15 +5,12 @@ import pandas as pd
 
 class PtxSystem:
     
-    def __init__(self, project_name='', integer_steps=5, facility_lifetime=20, 
-                 starting_budget=0, weather_provider=None, current_tick=0, commodities=None, 
-                 components=None, profile_data=None, uses_representative_periods=False, 
-                 covered_period=8760, path_data=None):
+    def __init__(self, project_name='', facility_lifetime=20, starting_budget=0, weather_provider=None, 
+                 current_tick=0, commodities=None, components=None, path_data=None):
         """
         Object which stores all components, commodities, settings, etc.
         
         :param project_name: [string] - name of PtxSystem
-        :param integer_steps: [int] - number of integer steps (used to split capacity)
         :param commodities: [dict] - Dictionary with abbreviations as keys and commodity objects as values
         :param components: [dict] - Dictionary with abbreviations as keys and component objects as values
         """
@@ -36,30 +33,8 @@ class PtxSystem:
         self.commodities = commodities
         self.components = components
 
-        self.covered_period = covered_period
-        self.uses_representative_periods = uses_representative_periods
-        self.integer_steps = integer_steps
-
-        self.profile_data = profile_data
         self.path_data = path_data
-        
-        self.generation_time_series = None
-
-    def get_number_clusters(self):
-        if self.uses_representative_periods:
-            path = self.path_data + self.profile_data
-            if path.split('.')[-1] == 'xlsx':
-                generation_profile = pd.read_excel(path, index_col=0)
-            else:
-                generation_profile = pd.read_csv(path, index_col=0)
-
-            if self.uses_representative_periods:
-                return int(len(generation_profile.index) / self.covered_period)
-            else:
-                return 1
-        else:
-            return 1
-
+    
     def get_component_variable_om_parameters(self):
         variable_om = {}
         for component_object in self.get_all_components():
@@ -257,67 +232,6 @@ class PtxSystem:
         weather_of_source = weather_data[source_name]
         return weather_of_source
 
-    def get_generation_time_series(self):
-        generation_profiles_dict = {}
-        if len(self.get_generator_components_objects()) > 0:
-            path = self.path_data + self.profile_data
-            if path.split('.')[-1] == 'xlsx':
-                profile = pd.read_excel(path, index_col=0)
-            else:
-                profile = pd.read_csv(path, index_col=0)
-
-            for generator in self.get_generator_components_objects():
-                generator_name = generator.name
-                ind = 0
-                for cl in range(self.get_number_clusters()):
-                    for t in range(self.covered_period):
-                        generation_profiles_dict.update(
-                            {(generator_name, cl, t): 
-                                float(profile.loc[profile.index[ind], generator_name])}
-                        )
-                        ind += 1
-        return generation_profiles_dict
-
-    def get_demand_time_series(self):
-        hourly_demand_dict = {}
-        total_demand_dict = {}
-        for commodity in self.commodities:
-            commodity_name = commodity.name
-            if commodity.demanded:
-                if not commodity.is_total_demand:
-                    for cl in range(self.get_number_clusters()):
-                        for t in range(self.covered_period):
-                            hourly_demand_dict.update(
-                                {(commodity_name, cl, t): float(commodity.demand)}
-                            )
-                else:
-                    total_demand_dict.update({commodity_name: float(commodity.demand)})
-        return hourly_demand_dict, total_demand_dict
-
-    def get_purchase_price_time_series(self):
-        purchase_price_dict = {}
-        for commodity in self.commodities:
-            commodity_name = commodity.name
-            if commodity.purchasable:
-                for cl in range(self.get_number_clusters()):
-                    for t in range(self.covered_period):
-                        purchase_price_dict.update(
-                            {(commodity_name, cl, t): float(commodity.purchase_price)}
-                        )
-        return purchase_price_dict
-
-    def get_sale_price_time_series(self):
-        sell_price_dict = {}
-        for commodity in self.commodities:
-            commodity_name = commodity.name
-            if commodity.saleable:
-                for cl in range(self.get_number_clusters()):
-                    for t in range(self.covered_period):
-                        sell_price_dict.update(
-                            {(commodity_name, cl, t): float(commodity.sale_price)}
-                        )
-        return sell_price_dict
-
     def get_conversion_components_names(self):
         conversion_components_names = []
         for c in self.get_all_component_names():
@@ -439,9 +353,7 @@ class PtxSystem:
         # deepcopy mutable objects
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
-        return PtxSystem(project_name=self.project_name, integer_steps=self.integer_steps, 
-                         starting_budget=self.starting_budget, weather_provider=self.weather_provider, 
-                         current_tick=self.current_tick, facility_lifetime=self.facility_lifetime,
-                         commodities=commodities, components=components, profile_data=self.profile_data,
-                         uses_representative_periods=self.uses_representative_periods,
-                         covered_period=self.covered_period)
+        return PtxSystem(project_name=self.project_name, starting_budget=self.starting_budget, 
+                         weather_provider=self.weather_provider, current_tick=self.current_tick, 
+                         facility_lifetime=self.facility_lifetime,
+                         commodities=commodities, components=components)

@@ -17,11 +17,6 @@ def init_project(ptx_system, case_data):
     
     # Set general parameters
     ptx_system.project_name = case_data['project_name']
-    ptx_system.uses_representative_periods = case_data['representative_periods']['uses_representative_periods']
-    ptx_system.covered_period = case_data['representative_periods']['covered_period']
-
-    # Add generation data
-    ptx_system.profile_data = case_data['data']['profile_data']
 
     # Allocate components and parameters
     for component in [*case_data['component'].keys()]:
@@ -109,7 +104,4 @@ def init_project(ptx_system, case_data):
                               purchase_price=purchase_price, sale_price=selling_price)
         ptx_system.add_commodity(name, commodity)
     
-    # add generated dict directly as attribute for easy repeated access
-    ptx_system.generation_time_series = ptx_system.get_generation_time_series()
-
     return ptx_system
