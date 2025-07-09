@@ -358,8 +358,9 @@ class StorageComponent(BaseComponent):
     def charge_or_discharge_quantity(self, quantity, ptx_system):
         """Charge/discharge quantity or as much as possible based on available commodity 
         and current state of charge as well as the available balance. 
-        Positive values mean charge, negative values mean discharge. Quantity is raw storage 
-        input, not what is actually stored after applying efficiency coefficient."""
+        Positive values mean charge, negative values mean discharge. Quantity for charge 
+        is raw storage input, not what is actually stored after applying efficiency coefficient. 
+        Quantity for discharge is actual output, not what is removed from storage."""
         if quantity == 0:
             return f"No quantity charged or discharged in {self.name}.", True
         
@@ -368,6 +369,7 @@ class StorageComponent(BaseComponent):
         min_charge = self.fixed_capacity * self.min_soc
         free_storage = max_charge - self.charge_state
         dischargeable_quantity = max(0, self.charge_state - min_charge)
+        max_possible_amount = self.fixed_capacity * self.ratio_capacity_p
         
         status = ""
         # charge
@@ -378,7 +380,8 @@ class StorageComponent(BaseComponent):
                 return f"Cannot charge quantity {quantity} in {self.name} as none is available.", True
             
             quantity, actual_quantity, cost, status = self._handle_charge(
-                quantity, free_storage, status, ptx_system.balance, commodity.available_quantity
+                quantity, free_storage, ptx_system.balance, 
+                commodity.available_quantity, max_possible_amount, status
             )
             if status == "":
                 status = f"Charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
@@ -394,16 +397,14 @@ class StorageComponent(BaseComponent):
                 return (f"Cannot discharge quantity {discharge_quantity} "
                         f"in {self.name} as it is empty."), True
             
-            # actual output should be specified quantity
-            actual_quantity = discharge_quantity
-            discharge_quantity = discharge_quantity / self.discharging_efficiency
-            # try to discharge as much as possible
-            if self.charge_state - discharge_quantity < min_charge:
-                actual_quantity = dischargeable_quantity * self.discharging_efficiency
-                status = (f"Cannot discharge quantity {discharge_quantity} in {self.name} "
-                          f"from {dischargeable_quantity} {commodity.name} in storage. "
-                          f"Instead, discharge that much.")
-                discharge_quantity = dischargeable_quantity
+            actual_quantity, discharge_quantity, status = self._handle_discharge(
+                commodity, min_charge, dischargeable_quantity, 
+                max_possible_amount, discharge_quantity, status
+            )
+            if status == "":
+                status = f"Discharge {discharge_quantity} {commodity.name} in {self.name}."
+            else:
+                status += f"Finally discharge {discharge_quantity} {commodity.name} in {self.name}."
             
             quantity = -discharge_quantity
             actual_quantity = -actual_quantity
@@ -418,23 +419,31 @@ class StorageComponent(BaseComponent):
         ptx_system.balance -= cost
         return status, True
 
-    def _handle_charge(self, quantity, free_storage, status, balance, available_quantity):
-        """Make sure amount charged is not more than free storage, available commodity, 
-        or the charging cost is more than the available balance."""
+    def _handle_charge(self, quantity, free_storage, balance, 
+                       available_quantity, max_possible_amount, status):
+        """Make sure amount charged is not more than max amount per step, free storage, 
+        available commodity, or the charging cost is more than the available balance."""
         # while quantity is raw input used, actual_quantity is what is actually stored
         actual_quantity = quantity * self.charging_efficiency
+        if actual_quantity > max_possible_amount:
+            new_actual_quantity = max_possible_amount
+            quantity = new_actual_quantity / self.charging_efficiency
+            status += (f"Quantity to be stored {actual_quantity} is greater than maximum possible amount "
+                       f"that can be charged {max_possible_amount}, charge {quantity} instead. ")
+            actual_quantity = new_actual_quantity
+        
         if actual_quantity > free_storage:
             new_actual_quantity = free_storage
             quantity = new_actual_quantity / self.charging_efficiency
             status += (f"Quantity to be stored {actual_quantity} is greater than free "
-                        f"storage capacity {free_storage}, charge {quantity} instead. ")
+                       f"storage capacity {free_storage}, charge {quantity} instead. ")
             actual_quantity = new_actual_quantity
         
         if quantity > available_quantity:
             new_quantity = available_quantity
             actual_quantity = new_quantity * self.charging_efficiency
             status += (f"Quantity {quantity} is greater than available quantity "
-                        f"{available_quantity}, charge that much instead. ")
+                       f"{available_quantity}, charge that much instead. ")
             quantity = new_quantity
         
         cost = quantity * self.variable_om
@@ -443,9 +452,31 @@ class StorageComponent(BaseComponent):
             quantity = new_cost / self.variable_om
             actual_quantity = quantity * self.charging_efficiency
             status += (f"Charging {cost:.4f}€ is greater than balance {balance:.4f}€, "
-                        f"charge quantity {quantity} for that much instead. ")
+                       f"charge quantity {quantity} for that much instead. ")
             cost = new_cost
         return quantity, actual_quantity, cost, status
+    
+    def _handle_discharge(self, commodity, min_charge, dischargeable_quantity, 
+                          max_possible_amount, discharge_quantity, status):
+        """Make sure amount discharged is not more than max amount per step or amount in storage."""
+        # actual_quantity is specified output, while discharge_quantity is what is actually removed
+        actual_quantity = discharge_quantity
+        discharge_quantity = actual_quantity / self.discharging_efficiency
+        if discharge_quantity > max_possible_amount:
+            actual_quantity = discharge_quantity * self.discharging_efficiency
+            status += (f"Cannot discharge quantity {discharge_quantity} in {self.name} "
+                       f"from max possible amount {max_possible_amount} {commodity.name} "
+                       f"in storage. Instead, discharge that much. ")
+            discharge_quantity = max_possible_amount
+            
+        # try to discharge as much as possible
+        if self.charge_state - discharge_quantity < min_charge:
+            actual_quantity = dischargeable_quantity * self.discharging_efficiency
+            status += (f"Cannot discharge quantity {discharge_quantity} in {self.name} from "
+                       f"dischargeable quantity {dischargeable_quantity} {commodity.name} "
+                       f"in storage. Instead, discharge that much. ")
+            discharge_quantity = dischargeable_quantity
+        return actual_quantity, discharge_quantity, status
     
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
