@@ -155,6 +155,21 @@ class Commodity(Element):
                 possible_methods.append(method_tuple)
         return possible_methods
 
+    def __repr__(self):
+        return (f"Commodity(name={self.name!r}, commodity_unit={self.commodity_unit!r}, "
+                f"emittable={self.emittable!r}, available={self.available!r}, "
+                f"purchasable={self.purchasable!r}, purchase_price={self.purchase_price!r}, "
+                f"saleable={self.saleable!r}, sale_price={self.sale_price}, demanded={self.demanded!r}, "
+                f"demand={self.demand!r}, is_total_demand={self.is_total_demand!r}, "
+                f"purchased_quantity={self.purchased_quantity!r}, purchase_costs={self.purchase_costs!r}, "
+                f"sold_quantity={self.sold_quantity!r}, selling_revenue={self.selling_revenue!r}, "
+                f"emitted_quantity={self.emitted_quantity!r}, available_quantity={self.available_quantity!r}, "
+                f"demanded_quantity={self.demanded_quantity!r}, charged_quantity={self.charged_quantity!r}, "
+                f"discharged_quantity={self.discharged_quantity!r}, total_storage_costs={self.total_storage_costs!r}, "
+                f"consumed_quantity={self.consumed_quantity!r}, produced_quantity={self.produced_quantity!r}, "
+                f"total_production_costs={self.total_production_costs!r}, generated_quantity={self.generated_quantity!r}, "
+                f"total_generation_costs={self.total_generation_costs!r})")
+
     def __copy__(self):
         return Commodity(name=self.name, commodity_unit=self.commodity_unit, emittable=self.emittable, 
             available=self.available, purchasable=self.purchasable, purchase_price=self.purchase_price, 

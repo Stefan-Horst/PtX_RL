@@ -43,3 +43,6 @@ class WeatherDataProvider():
             yearly_data["time"] = pd.to_datetime(yearly_data["time"])
             data.append(yearly_data)
         return data
+
+    def __repr__(self):
+        return f"WeatherDataProvider(dir_data={self.dir_data!r}, offset={self.offset!r})"

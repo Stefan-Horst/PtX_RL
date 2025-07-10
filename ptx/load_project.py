@@ -6,7 +6,7 @@ from util import DATA_DIR, open_yaml_file
 
 def load_project(path_data=DATA_DIR, config_file="not_robust_FT_all_data_no_scaling.yaml"):
     """Load project data into PtxSystem."""
-    empty_ps = PtxSystem(path_data=path_data)
+    empty_ps = PtxSystem()
     ptx_config = open_yaml_file(path_data + config_file)
     initialized_ps = init_project(empty_ps, ptx_config)
     return initialized_ps

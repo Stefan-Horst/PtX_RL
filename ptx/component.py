@@ -306,6 +306,17 @@ class ConversionComponent(BaseComponent):
             ):
                 self.set_specific_produced_commodities(commodity, 0)
 
+    def __repr__(self):
+        return (f"ConversionComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
+                f"component_type={self.component_type!r}, fixed_capacity={self.fixed_capacity!r}, "
+                f"total_variable_costs={self.total_variable_costs!r}, ramp_down={self.ramp_down!r}, "
+                f"ramp_up={self.ramp_up!r}, min_p={self.min_p!r}, max_p={self.max_p!r}, "
+                f"load={self.load!r}, inputs={self.inputs!r}, outputs={self.outputs!r}, "
+                f"main_input={self.main_input!r}, main_output={self.main_output!r}, "
+                f"commodities={self.commodities!r}, "
+                f"consumed_commodities={self.consumed_commodities!r}, "
+                f"produced_commodities={self.produced_commodities!r})")
+
     def __copy__(self, name=None):
         if name is None:
             name = self.name
@@ -489,6 +500,16 @@ class StorageComponent(BaseComponent):
         # all methods are possible for every conversion component
         return relevant_method_tuples
 
+    def __repr__(self):
+        return (f"StorageComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
+                f"component_type={self.component_type!r}, fixed_capacity={self.fixed_capacity!r}, "
+                f"total_variable_costs={self.total_variable_costs!r}, "
+                f"charging_efficiency={self.charging_efficiency!r}, "
+                f"discharging_efficiency={self.discharging_efficiency!r}, min_soc={self.min_soc!r}, "
+                f"max_soc={self.max_soc!r}, ratio_capacity_p={self.ratio_capacity_p!r}, "
+                f"stored_commodity={self.stored_commodity!r}, charge_state={self.charge_state!r}, "
+                f"charged_quantity={self.charged_quantity!r}, discharged_quantity={self.discharged_quantity!r})")
+
     def __copy__(self):
         return StorageComponent(name=self.name, charging_efficiency=self.charging_efficiency,
                                 discharging_efficiency=self.discharging_efficiency,
@@ -611,6 +632,15 @@ class GenerationComponent(BaseComponent):
             ):
                 possible_methods.append(method_tuple)
         return possible_methods
+
+    def __repr__(self):
+        return (f"GenerationComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
+                f"component_type={self.component_type!r}, fixed_capacity={self.fixed_capacity!r}, "
+                f"total_variable_costs={self.total_variable_costs!r}, "
+                f"generated_commodity={self.generated_commodity!r}, "
+                f"curtailment_possible={self.curtailment_possible!r}, "
+                f"potential_generation_quantity={self.potential_generation_quantity!r}, "
+                f"generated_quantity={self.generated_quantity!r}, curtailment={self.curtailment!r})")
 
     def __copy__(self):
         return GenerationComponent(name=self.name, generated_commodity=self.generated_commodity,

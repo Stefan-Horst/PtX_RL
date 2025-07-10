@@ -5,7 +5,7 @@ from copy import deepcopy
 class PtxSystem:
     
     def __init__(self, project_name='', starting_budget=0, weather_provider=None, 
-                 current_tick=0, commodities=None, components=None, path_data=None):
+                 current_tick=0, commodities=None, components=None):
         """
         Object which stores all components, commodities, settings, etc.
         
@@ -30,8 +30,6 @@ class PtxSystem:
             components = {}
         self.commodities = commodities
         self.components = components
-
-        self.path_data = path_data
     
     def get_component_variable_om_parameters(self):
         variable_om = {}
@@ -346,6 +344,11 @@ class PtxSystem:
                 if commodity in self.get_commodity_by_component(c):
                     components.append(c)
         return components
+
+    def __repr__(self):
+        return (f"PtxSystem(project_name={self.project_name!r}, starting_budget={self.starting_budget!r}, "
+                f"weather_provider={self.weather_provider!r}, current_tick={self.current_tick!r}, "
+                f"commodities={self.commodities!r}, components={self.components!r})")
 
     def __copy__(self):
         # deepcopy mutable objects
