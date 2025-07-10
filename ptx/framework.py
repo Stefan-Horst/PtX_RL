@@ -345,9 +345,27 @@ class PtxSystem:
                     components.append(c)
         return components
 
+    def __str__(self):
+        if self.weather_provider is not None:
+            weather_data = self.weather_provider.get_weather_of_tick(self.current_tick).to_dict()
+            weather = "{" + ", ".join([
+                                        f'{k}={v:{".4f" if isinstance(v, float) else ""}}' 
+                                        for k, v in weather_data.items()
+                                      ]) + "}"
+        else:
+            weather = "None"
+        commodities = "; ".join([str(commodity) for commodity in self.commodities.values()])
+        components_ordered = (self.get_generator_components_objects() 
+                              + self.get_storage_components_objects() 
+                              + self.get_conversion_components_objects())
+        components = "; ".join([str(component) for component in components_ordered])
+        return (f"PtxSystem: tick={self.current_tick!r}, balance={self.balance!r}, weather: {weather}\n"
+                f"\tcommodities: {commodities},\n\tcomponents: {components}")
+
     def __repr__(self):
         return (f"PtxSystem(project_name={self.project_name!r}, starting_budget={self.starting_budget!r}, "
                 f"weather_provider={self.weather_provider!r}, current_tick={self.current_tick!r}, "
+                f"balance={self.balance!r}, balance_difference={self.balance_difference!r}, "
                 f"commodities={self.commodities!r}, components={self.components!r})")
 
     def __copy__(self):

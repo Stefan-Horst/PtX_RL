@@ -155,6 +155,16 @@ class Commodity(Element):
                 possible_methods.append(method_tuple)
         return possible_methods
 
+    def __str__(self):
+        return (f"--{self.name}--(purchased_quantity={self.purchased_quantity:.4f}, "
+                f"purchase_costs={self.purchase_costs:.4f}, sold_quantity={self.sold_quantity:.4f}, "
+                f"selling_revenue={self.selling_revenue:.4f}, emitted_quantity={self.emitted_quantity:.4f}, "
+                f"available_quantity={self.available_quantity:.4f}, demanded_quantity={self.demanded_quantity:.4f}, "
+                f"charged_quantity={self.charged_quantity:.4f}, discharged_quantity={self.discharged_quantity:.4f}, "
+                f"total_storage_costs={self.total_storage_costs:.4f}, consumed_quantity={self.consumed_quantity:.4f}, "
+                f"produced_quantity={self.produced_quantity:.4f}, total_production_costs={self.total_production_costs:.4f}, "
+                f"generated_quantity={self.generated_quantity:.4f}, total_generation_costs={self.total_generation_costs:.4f})")
+
     def __repr__(self):
         return (f"Commodity(name={self.name!r}, commodity_unit={self.commodity_unit!r}, "
                 f"emittable={self.emittable!r}, available={self.available!r}, "

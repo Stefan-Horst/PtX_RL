@@ -306,6 +306,12 @@ class ConversionComponent(BaseComponent):
             ):
                 self.set_specific_produced_commodities(commodity, 0)
 
+    def __str__(self):
+        consumed = "{" + ", ".join([f"{k}={v:.4f}" for k, v in self.consumed_commodities.items()]) + "}"
+        produced = "{" + ", ".join([f"{k}={v:.4f}" for k, v in self.produced_commodities.items()]) + "}"
+        return (f"--{self.name}--(total_variable_costs={self.total_variable_costs:.4f}, load={self.load:.4f}, "
+                f"consumed_commodities={consumed}, produced_commodities={produced})")
+
     def __repr__(self):
         return (f"ConversionComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
                 f"component_type={self.component_type!r}, fixed_capacity={self.fixed_capacity!r}, "
@@ -500,6 +506,10 @@ class StorageComponent(BaseComponent):
         # all methods are possible for every conversion component
         return relevant_method_tuples
 
+    def __str__(self):
+        return (f"--{self.name}--(total_variable_costs={self.total_variable_costs:.4f}, charge_state={self.charge_state:.4f}, "
+                f"charged_quantity={self.charged_quantity:.4f}, discharged_quantity={self.discharged_quantity:.4f})")
+
     def __repr__(self):
         return (f"StorageComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
                 f"component_type={self.component_type!r}, fixed_capacity={self.fixed_capacity!r}, "
@@ -632,6 +642,11 @@ class GenerationComponent(BaseComponent):
             ):
                 possible_methods.append(method_tuple)
         return possible_methods
+
+    def __str__(self):
+        return (f"--{self.name}--(total_variable_costs={self.total_variable_costs:.4f}, "
+                f"potential_generation_quantity={self.potential_generation_quantity:.4f}, "
+                f"generated_quantity={self.generated_quantity:.4f}, curtailment={self.curtailment:.4f})")
 
     def __repr__(self):
         return (f"GenerationComponent(name={self.name!r}, variable_om={self.variable_om!r}, "
