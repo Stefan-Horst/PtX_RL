@@ -1,11 +1,10 @@
 import copy
 from copy import deepcopy
-import pandas as pd
 
 
 class PtxSystem:
     
-    def __init__(self, project_name='', facility_lifetime=20, starting_budget=0, weather_provider=None, 
+    def __init__(self, project_name='', starting_budget=0, weather_provider=None, 
                  current_tick=0, commodities=None, components=None, path_data=None):
         """
         Object which stores all components, commodities, settings, etc.
@@ -16,7 +15,6 @@ class PtxSystem:
         """
         
         self.project_name = project_name
-        self.facility_lifetime = facility_lifetime
         
         self.starting_budget = starting_budget
         # keep track of all costs and revenues here
@@ -355,5 +353,4 @@ class PtxSystem:
         commodities = copy.deepcopy(self.commodities)
         return PtxSystem(project_name=self.project_name, starting_budget=self.starting_budget, 
                          weather_provider=self.weather_provider, current_tick=self.current_tick, 
-                         facility_lifetime=self.facility_lifetime,
                          commodities=commodities, components=components)
