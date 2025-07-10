@@ -69,7 +69,7 @@ class Commodity(Element):
 
     def purchase_commodity(self, quantity, ptx_system):
         if quantity < 0:
-            return f"Cannot purchase quantity {quantity} of {self.name}."
+            return f"Cannot purchase quantity {quantity:.4f} of {self.name}."
         
         status = None
         cost = quantity * self.purchase_costs
@@ -78,13 +78,13 @@ class Commodity(Element):
             # divide with remainder, as only whole units can be purchased
             new_quantity = ptx_system.balance // self.purchase_costs
             new_cost = new_quantity * self.purchase_costs
-            status = (f"Tried to purchase {quantity} {self.name} for {cost:.4f}€, "
+            status = (f"Tried to purchase {quantity:.4f} {self.name} for {cost:.4f}€, "
                       f"but only {ptx_system.balance:.4f}€ available. "
-                      f"Instead, purchase {new_quantity} for {new_cost:.4f}€.")
+                      f"Instead, purchase {new_quantity:.4f} for {new_cost:.4f}€.")
             quantity = new_quantity
             cost = new_cost
         else:
-            status = f"Purchased {quantity} {self.name} for {cost:.4f}€."
+            status = f"Purchased {quantity:.4f} {self.name} for {cost:.4f}€."
         
         self.purchased_quantity += quantity
         self.available_quantity += quantity
@@ -94,19 +94,19 @@ class Commodity(Element):
     
     def sell_commodity(self, quantity, ptx_system):
         if quantity < 0:
-            return f"Cannot sell quantity {quantity} of {self.name}."
+            return f"Cannot sell quantity {quantity:.4f} of {self.name}."
         
         status = None
         if quantity > self.available_quantity:
             # Try to sell as much as possible
             revenue = self.available_quantity * self.sale_price
-            status = (f"Tried to sell {quantity} {self.name}, "
-                      f"but only {self.available_quantity} available. "
-                      f"Instead, sell {self.available_quantity} for {revenue:.4f}€.")
+            status = (f"Tried to sell {quantity:.4f} {self.name}, but only "
+                      f"{self.available_quantity:.4f} available. Instead, "
+                      f"sell {self.available_quantity:.4f} for {revenue:.4f}€.")
             quantity = self.available_quantity
         else:
             revenue = quantity * self.sale_price
-            status = f"Sold {quantity} {self.name} for {revenue:.4f}€."
+            status = f"Sold {quantity:.4f} {self.name} for {revenue:.4f}€."
         
         self.available_quantity -= quantity
         self.sold_quantity += quantity
@@ -116,16 +116,16 @@ class Commodity(Element):
     
     def emit_commodity(self, quantity, ptx_system):
         if quantity < 0:
-            return f"Cannot emit quantity {quantity} of {self.name}."
+            return f"Cannot emit quantity {quantity:.4f} of {self.name}."
         
         status = None
         if quantity > self.available_quantity:
             # Try to emit as much as possible
-            status = (f"Tried to emit {quantity} {self.name}, but only "
-                      f"{self.available_quantity} available. Instead, emit that much.")
+            status = (f"Tried to emit {quantity:.4f} {self.name}, but only "
+                      f"{self.available_quantity:.4f} available. Instead, emit that much.")
             quantity = self.available_quantity
         else:
-            status = f"Emit {quantity} {self.name}."
+            status = f"Emit {quantity:.4f} {self.name}."
         
         self.available_quantity -= quantity
         self.emitted_quantity += quantity

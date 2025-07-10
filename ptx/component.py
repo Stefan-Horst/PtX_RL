@@ -106,8 +106,9 @@ class ConversionComponent(BaseComponent):
             new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
-            status += (f" Potential cost {potential_max_cost:.4f}€ is higher than available balance "
-                        f"{ptx_system.balance:.4f}€, set quantity from {quantity} to {new_quantity}.")
+            status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
+                       f"than available balance {ptx_system.balance:.4f}€, set "
+                       f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
             quantity = new_quantity
         
         # ramp up
@@ -116,7 +117,7 @@ class ConversionComponent(BaseComponent):
                 quantity, current_capacity, input_commodities, input_ratios, status
             )
             if status == "":
-                status = f"Ramp up {quantity} quantity to {new_load} load."
+                status = f"Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
         # ramp down
         elif quantity < 0:
             reduction_quantity = -quantity
@@ -124,12 +125,12 @@ class ConversionComponent(BaseComponent):
                 input_commodities, input_ratios, reduction_quantity, status
             )
             if status == "":
-                status = f"Ramp down {reduction_quantity} quantity to {new_load} load."
+                status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
             quantity = -reduction_quantity
         # no change in load
         else: # quantity == 0
             new_load = self.load
-            status = f"No ramp up or down of load {new_load} in {self.name}."
+            status = f"No ramp up or down of load {new_load:.4f} in {self.name}."
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost
@@ -144,8 +145,8 @@ class ConversionComponent(BaseComponent):
         for input, input_ratio in zip(input_commodities, input_ratios):
             amount = input_ratio * current_capacity
             if amount > input.available_quantity:
-                status += (f" Conversion failed for {self.name}. {amount} {input.name} "
-                           f"required, but only {input.available_quantity} available.")
+                status += (f" Conversion failed for {self.name}. {amount:.4f} {input.name} "
+                           f"required, but only {input.available_quantity:.4f} available.")
                 return status, False # false as failure flag
             
             input.available_quantity -= amount
@@ -153,13 +154,13 @@ class ConversionComponent(BaseComponent):
             if input.name == self.main_input:
                 input.total_production_costs += cost
             self.consumed_commodities[input.name] += amount
-            convert_status += f" {amount} {input.name} consumed in conversion."
+            convert_status += f" {amount:.4f} {input.name} consumed in conversion."
         for output, output_ratio in zip(other_output_commodities, output_ratios):
             amount = output_ratio * current_capacity
             output.available_quantity += amount
             output.produced_quantity += amount
             self.produced_commodities[output.name] += amount
-            convert_status += f" {amount} {output.name} produced in conversion."
+            convert_status += f" {amount:.4f} {output.name} produced in conversion."
         status += convert_status
         
         self.load += quantity
@@ -171,15 +172,15 @@ class ConversionComponent(BaseComponent):
         """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
         Then, try to limit increase if not enough input commodities are available for the conversion."""
         if quantity > self.ramp_up:
-            status += (f" Quantity {quantity} is higher than max ramp up "
+            status += (f" Quantity {quantity:.4f} is higher than max ramp up "
                        f"{self.ramp_up}, set quantity to that value.")
             quantity = self.ramp_up
                 
         new_load = self.load + quantity    
         if new_load > self.max_p:
             new_quantity = self.max_p - self.load
-            status += (f" New load {new_load} of quantity {quantity} is higher than max "
-                       f"power, set load to that value with quantity {new_quantity}.")
+            status += (f" New load {new_load:.4f} of quantity {quantity:.4f} is higher than max "
+                       f"power, set load to that value with quantity {new_quantity:.4f}.")
             new_load = self.load + new_quantity
             quantity = new_quantity
             
@@ -190,9 +191,9 @@ class ConversionComponent(BaseComponent):
                 adapted_capacity = min(input.available_quantity / input_ratio, current_capacity)
                 adapted_load = adapted_capacity / self.fixed_capacity
                 adapted_quantity = adapted_load - self.load
-                status += (f" Ramp up to {new_load} in {self.name} would use "
+                status += (f" Ramp up to {new_load:.4f} in {self.name} would use "
                            f"more {input.name} than available. Instead, ramp up "
-                           f"quantity {adapted_quantity} to {adapted_load} load.")
+                           f"quantity {adapted_quantity:.4f} to {adapted_load:.4f} load.")
                 new_capacity = adapted_capacity
                 new_load = adapted_load
                 quantity = adapted_quantity
@@ -202,15 +203,15 @@ class ConversionComponent(BaseComponent):
         """Make sure load is not decreased more than is allowed or to a value lower than the minimum. 
         Then, try to decrease more if not enough input commodities are available for the conversion."""
         if reduction_quantity > self.ramp_down:
-            status += (f" Quantity {reduction_quantity} is higher than max ramp "
-                        f"down {self.ramp_down}, set quantity to that value.")
+            status += (f" Quantity {reduction_quantity:.4f} is higher than max ramp "
+                       f"down {self.ramp_down}, set quantity to that value.")
             reduction_quantity = self.ramp_down
             
         new_load = self.load - reduction_quantity
         if new_load < self.min_p:
             new_reduction_quantity = self.load - self.min_p
-            status += (f" New load {new_load} of quantity {reduction_quantity} is lower than min "
-                        f"power, set load to that value with quantity {new_reduction_quantity}.")
+            status += (f" New load {new_load:.4f} of quantity {reduction_quantity:.4f} is lower than "
+                       f"min power, set load to that value with quantity {new_reduction_quantity:.4f}.")
             new_load = self.load - reduction_quantity
             reduction_quantity = new_reduction_quantity
             
@@ -222,9 +223,9 @@ class ConversionComponent(BaseComponent):
                 adapted_capacity = min(input.available_quantity / input_ratio, potential_min_capacity)
                 adapted_load = adapted_capacity / self.fixed_capacity
                 adapted_quantity = adapted_load - self.load
-                status += (f" Ramp down to {new_load} in {self.name} would use "
+                status += (f" Ramp down to {new_load:.4f} in {self.name} would use "
                            f"more {input.name} than available. Instead, ramp down "
-                           f"quantity {adapted_quantity} to {adapted_load} load.")
+                           f"quantity {adapted_quantity:.4f} to {adapted_load:.4f} load.")
                 new_capacity = adapted_capacity
                 new_load = adapted_load
                 reduction_quantity = adapted_quantity
@@ -375,18 +376,19 @@ class StorageComponent(BaseComponent):
         # charge
         if quantity > 0:
             if self.charge_state >= max_charge:
-                return f"Cannot charge quantity {quantity} in {self.name} as it is full.", True
+                return f"Cannot charge quantity {quantity:.4f} in {self.name} as it is full.", True
             if commodity.available_quantity <= 0:
-                return f"Cannot charge quantity {quantity} in {self.name} as none is available.", True
+                return (f"Cannot charge quantity {quantity:.4f} in "
+                        f"{self.name} as none is available."), True
             
             quantity, actual_quantity, cost, status = self._handle_charge(
                 quantity, free_storage, ptx_system.balance, 
                 commodity.available_quantity, max_possible_amount, status
             )
             if status == "":
-                status = f"Charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
+                status = f"Charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
             else:
-                status += f"Finally charge {quantity} {commodity.name} for {cost:.4f}€ in {self.name}."
+                status += f"Finally charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
             
             self.charged_quantity += actual_quantity
             commodity.charged_quantity += actual_quantity
@@ -394,7 +396,7 @@ class StorageComponent(BaseComponent):
         else: # quantity < 0
             discharge_quantity = -quantity
             if self.charge_state <= min_charge:
-                return (f"Cannot discharge quantity {discharge_quantity} "
+                return (f"Cannot discharge quantity {discharge_quantity:.4f} "
                         f"in {self.name} as it is empty."), True
             
             actual_quantity, discharge_quantity, status = self._handle_discharge(
@@ -402,9 +404,9 @@ class StorageComponent(BaseComponent):
                 max_possible_amount, discharge_quantity, status
             )
             if status == "":
-                status = f"Discharge {discharge_quantity} {commodity.name} in {self.name}."
+                status = f"Discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
             else:
-                status += f"Finally discharge {discharge_quantity} {commodity.name} in {self.name}."
+                status += f"Finally discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
             
             quantity = -discharge_quantity
             actual_quantity = -actual_quantity
@@ -428,22 +430,23 @@ class StorageComponent(BaseComponent):
         if actual_quantity > max_possible_amount:
             new_actual_quantity = max_possible_amount
             quantity = new_actual_quantity / self.charging_efficiency
-            status += (f"Quantity to be stored {actual_quantity} is greater than maximum possible amount "
-                       f"that can be charged {max_possible_amount}, charge {quantity} instead. ")
+            status += (f"Quantity to be stored {actual_quantity:.4f} is greater "
+                       f"than maximum possible amount that can be charged "
+                       f"{max_possible_amount:.4f}, charge {quantity:.4f} instead. ")
             actual_quantity = new_actual_quantity
         
         if actual_quantity > free_storage:
             new_actual_quantity = free_storage
             quantity = new_actual_quantity / self.charging_efficiency
-            status += (f"Quantity to be stored {actual_quantity} is greater than free "
-                       f"storage capacity {free_storage}, charge {quantity} instead. ")
+            status += (f"Quantity to be stored {actual_quantity:.4f} is greater than free "
+                       f"storage capacity {free_storage:.4f}, charge {quantity:.4f} instead. ")
             actual_quantity = new_actual_quantity
         
         if quantity > available_quantity:
             new_quantity = available_quantity
             actual_quantity = new_quantity * self.charging_efficiency
-            status += (f"Quantity {quantity} is greater than available quantity "
-                       f"{available_quantity}, charge that much instead. ")
+            status += (f"Quantity {quantity:.4f} is greater than available quantity "
+                       f"{available_quantity:.4f}, charge that much instead. ")
             quantity = new_quantity
         
         cost = quantity * self.variable_om
@@ -452,7 +455,7 @@ class StorageComponent(BaseComponent):
             quantity = new_cost / self.variable_om
             actual_quantity = quantity * self.charging_efficiency
             status += (f"Charging {cost:.4f}€ is greater than balance {balance:.4f}€, "
-                       f"charge quantity {quantity} for that much instead. ")
+                       f"charge quantity {quantity:.4f} for that much instead. ")
             cost = new_cost
         return quantity, actual_quantity, cost, status
     
@@ -464,16 +467,16 @@ class StorageComponent(BaseComponent):
         discharge_quantity = actual_quantity / self.discharging_efficiency
         if discharge_quantity > max_possible_amount:
             actual_quantity = discharge_quantity * self.discharging_efficiency
-            status += (f"Cannot discharge quantity {discharge_quantity} in {self.name} "
-                       f"from max possible amount {max_possible_amount} {commodity.name} "
+            status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} "
+                       f"from max possible amount {max_possible_amount:.4f} {commodity.name} "
                        f"in storage. Instead, discharge that much. ")
             discharge_quantity = max_possible_amount
             
         # try to discharge as much as possible
         if self.charge_state - discharge_quantity < min_charge:
             actual_quantity = dischargeable_quantity * self.discharging_efficiency
-            status += (f"Cannot discharge quantity {discharge_quantity} in {self.name} from "
-                       f"dischargeable quantity {dischargeable_quantity} {commodity.name} "
+            status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} from "
+                       f"dischargeable quantity {dischargeable_quantity:.4f} {commodity.name} "
                        f"in storage. Instead, discharge that much. ")
             discharge_quantity = dischargeable_quantity
         return actual_quantity, discharge_quantity, status
@@ -538,33 +541,34 @@ class GenerationComponent(BaseComponent):
         if quantity > 0:
             # try to curtail as much as possible, limit at stopping generation
             if quantity > potential_max_generation:
-                status = (f"Cannot curtail {quantity} from current capacity {potential_max_generation} "
-                          f"in {self.name}. Instead, curtail completely, generating 0 MWh")
+                status = (f"Cannot curtail {quantity:.4f} from current capacity "
+                          f"{potential_max_generation:.4f} in {self.name}. "
+                          f"Instead, curtail completely, generating 0 MWh")
                 quantity = potential_max_generation
                 generated = 0
             else:
                 new_potential_max_generation = potential_max_generation - quantity
                 generated = min(possible_current_generation, new_potential_max_generation)
-                status = (f"Curtail {quantity} from {potential_max_generation} current potential "
-                          f"production, generating {generated} MWh in {self.name}")
+                status = (f"Curtail {quantity:.4f} from {potential_max_generation:.4f} current "
+                          f"potential production, generating {generated:.4f} MWh in {self.name}")
         # increase production
         elif quantity < 0:
             curtail_strip_quantity = -quantity
             # try to remove curtailment as much as possible, limit at max possible generation
             if curtail_strip_quantity > self.curtailment:
                 generated = possible_current_generation
-                status = (f"Cannot remove curtailment {curtail_strip_quantity} from current "
-                          f"curtailment {self.curtailment} in {self.name}. Instead, remove "
-                          f"curtailment completely, generating {generated} MWh")
+                status = (f"Cannot remove curtailment {curtail_strip_quantity:.4f} from current "
+                          f"curtailment {self.curtailment:.4f} in {self.name}. Instead, remove "
+                          f"curtailment completely, generating {generated:.4f} MWh")
                 quantity = -self.curtailment
             else:
                 generated = possible_current_generation - self.curtailment + curtail_strip_quantity
-                status = (f"Remove curtailment {curtail_strip_quantity} from {self.curtailment} "
-                          f"curtailment, generating {generated} MWh in {self.name}")
+                status = (f"Remove curtailment {curtail_strip_quantity:.4f} from {self.curtailment:.4f} "
+                          f"curtailment, generating {generated:.4f} MWh in {self.name}")
         # no change in production
         else: # quantity == 0
             generated = possible_current_generation - self.curtailment
-            status = f"No curtailment applied or stripped in {self.name}, generating {generated} MWh"
+            status = f"No curtailment applied or stripped in {self.name}, generating {generated:.4f} MWh"
         
         # calculate cost and make sure it is not higher than available balance
         cost = generated * self.variable_om
@@ -572,9 +576,9 @@ class GenerationComponent(BaseComponent):
             new_cost = ptx_system.balance
             new_generated = ptx_system.balance / self.variable_om
             quantity = max(quantity, possible_current_generation - self.curtailment - new_generated)
-            status += (f". Tried to generate {generated} MWh for {cost:.4f}€, but only "
-                       f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated} "
-                       f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity}.")
+            status += (f". Tried to generate {generated:.4f} MWh for {cost:.4f}€, but only "
+                       f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated:.4f} "
+                       f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity:.4f}.")
             cost = new_cost
             generated = new_generated
         else:
