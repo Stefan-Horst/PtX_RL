@@ -5,7 +5,7 @@ from copy import deepcopy
 class PtxSystem:
     
     def __init__(self, project_name='', starting_budget=0, weather_provider=None, 
-                 current_tick=0, commodities=None, components=None):
+                 current_step=0, commodities=None, components=None):
         """
         Object which stores all components, commodities, settings, etc.
         
@@ -19,8 +19,9 @@ class PtxSystem:
         self.starting_budget = starting_budget
         # keep track of all costs and revenues here
         self.balance = starting_budget
+        self.previous_balance = starting_budget
 
-        self.current_tick = current_tick
+        self.current_step = current_step
         
         self.weather_provider = weather_provider
 
@@ -30,6 +31,18 @@ class PtxSystem:
             components = {}
         self.commodities = commodities
         self.components = components
+    
+    def next_step(self):
+        """Go to the next step and return the change in balance since the last step."""
+        self.current_step += 1
+        old_balance = self.previous_balance
+        self.previous_balance = self.balance
+        return self.balance - old_balance
+    
+    def get_current_weather_coefficient(self, source_name):
+        weather_data = self.weather_provider.get_weather_of_tick(self.current_step)
+        weather_of_source = weather_data[source_name]
+        return weather_of_source
     
     def get_component_variable_om_parameters(self):
         variable_om = {}
@@ -223,11 +236,6 @@ class PtxSystem:
                 main_input_to_input_conversion_tuples_dict, output_tuples, 
                 input_to_output_conversion_tuples, input_to_output_conversion_tuples_dict)
 
-    def get_current_weather_coefficient(self, source_name):
-        weather_data = self.weather_provider.get_weather_of_tick(self.current_tick)
-        weather_of_source = weather_data[source_name]
-        return weather_of_source
-
     def get_conversion_components_names(self):
         conversion_components_names = []
         for c in self.get_all_component_names():
@@ -347,7 +355,7 @@ class PtxSystem:
 
     def __str__(self):
         if self.weather_provider is not None:
-            weather_data = self.weather_provider.get_weather_of_tick(self.current_tick).to_dict()
+            weather_data = self.weather_provider.get_weather_of_tick(self.current_step).to_dict()
             weather = "{" + ", ".join([
                                         f'{k}={v:{".4f" if isinstance(v, float) else ""}}' 
                                         for k, v in weather_data.items()
@@ -359,13 +367,13 @@ class PtxSystem:
                               + self.get_storage_components_objects() 
                               + self.get_conversion_components_objects())
         components = "; ".join([str(component) for component in components_ordered])
-        return (f"PtxSystem: tick={self.current_tick!r}, balance={self.balance!r}, weather: {weather}\n"
+        return (f"PtxSystem: step={self.current_step}, balance={self.balance:.4f}, weather: {weather}\n"
                 f"\tcommodities: {commodities},\n\tcomponents: {components}")
 
     def __repr__(self):
         return (f"PtxSystem(project_name={self.project_name!r}, starting_budget={self.starting_budget!r}, "
-                f"weather_provider={self.weather_provider!r}, current_tick={self.current_tick!r}, "
-                f"balance={self.balance!r}, balance_difference={self.balance_difference!r}, "
+                f"weather_provider={self.weather_provider!r}, current_step={self.current_step!r}, "
+                f"balance={self.balance!r}, previous_balance={self.previous_balance!r}, "
                 f"commodities={self.commodities!r}, components={self.components!r})")
 
     def __copy__(self):
@@ -373,5 +381,5 @@ class PtxSystem:
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
         return PtxSystem(project_name=self.project_name, starting_budget=self.starting_budget, 
-                         weather_provider=self.weather_provider, current_tick=self.current_tick, 
+                         weather_provider=self.weather_provider, current_step=self.current_step, 
                          commodities=commodities, components=components)

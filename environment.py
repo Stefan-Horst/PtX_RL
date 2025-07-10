@@ -164,17 +164,17 @@ class PtxEnvironment(Environment):
         self.iteration += 1
         self.step = 0
         self.ptx_system = copy(self._original_ptx_system)
-        self.ptx_system.current_tick = 0
+        self.ptx_system.current_step = 0
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
         return observation, info
     
     def act(self, action):
         self.step += 1
-        self.ptx_system.current_tick += 1
-        
         state_change_info, success = self._apply_action(action)
-        reward = self._calculate_reward()
+        
+        balance_difference = self.ptx_system.next_step()
+        reward = self._calculate_reward(balance_difference)
         truncated = self.step >= self.max_steps_per_episode
         self.teminated = not success or truncated
         
@@ -220,17 +220,17 @@ class PtxEnvironment(Environment):
             success = success and element_success
         return state_change_infos, success
     
-    def _calculate_reward(self):
-        """Calculate the reward for the current step based on the current balance of 
-        the ptx system and if any conversion has failed. Also take the amount of time 
-        taken into account by reducing the reward in later steps."""
+    def _calculate_reward(self, revenue):
+        """Calculate the reward for the current step based on the increase of balance of 
+        the ptx system since the last step and if any conversion has failed. Also take the 
+        amount of time taken into account by reducing the reward in later steps."""
         # negative reward if system fails (i.e. conversion with set load is not possible)
         if self.terminated:
             return -100.
         
         # encourage more efficient and early reward maximization
         discount_factor = 1 - self.step / self.max_steps_per_episode
-        reward = (self.ptx_system.balance - self.ptx_system.starting_budget) * discount_factor
+        reward = revenue * discount_factor
         return reward
     
     def _get_current_observation(self):
@@ -276,7 +276,7 @@ class PtxEnvironment(Environment):
     def _get_observation_space_spec(self):
         """Create dict with each element of the ptx system (commodities, components) as key and 
         possible observations (attributes) as values, as well as environment data with data for 
-        each tick as values. Attributes that are dicts are added with their keys as list."""
+        each step as values. Attributes that are dicts are added with their keys as list."""
         element_categories = self._get_element_categories_with_attributes_and_actions()
         
         environment_data = ["current_step"]
