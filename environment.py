@@ -7,6 +7,7 @@ from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import PtxSystem
 from ptx.weather import WeatherDataProvider
+from logger import log, Level
 from util import contains_only_unique_elements
 
 
@@ -141,6 +142,7 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
+        self.seed = None
         self.iteration = 1
         self.step = 0
         self.terminated = False
@@ -152,11 +154,17 @@ class PtxEnvironment(Environment):
         reward_spec = {}
         super().__init__(observation_space_size, observation_space_spec, action_space_size, 
                          action_space_spec, reward_spec)
+        log(f"Observation space: {observation_space_spec}")
+        log(f"Action space: {action_space_spec}")
         
     def initialize(self, seed=None):
         self.seed = seed # currently not used
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
+        msg = "ENVIRONMENT INITIALIZED"
+        log(msg)
+        log(msg, loggername="status")
+        log(msg, loggername="reward")
         return observation, info
     
     def reset(self):
@@ -167,6 +175,10 @@ class PtxEnvironment(Environment):
         self.ptx_system.current_step = 0
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
+        msg = "ENVIRONMENT RESET"
+        log(msg)
+        log(msg, loggername="status")
+        log(msg, loggername="reward")
         return observation, info
     
     def act(self, action):
@@ -180,6 +192,20 @@ class PtxEnvironment(Environment):
         
         observation = self._get_current_observation()
         info = {item[0].name: item[1] for item in state_change_info}
+        info["step_revenue"] = balance_difference
+        log(str(self.ptx_system))
+        log(info, loggername="status")
+        log(f"reward: {reward:.4f}", loggername="reward")
+        if truncated:
+            msg = "ENVIRONMENT TRUNCATED"
+            log(msg, level=Level.WARNING)
+            log(msg, level=Level.WARNING, loggername="status")
+            log(msg, level=Level.WARNING, loggername="reward")
+        elif self.terminated:
+            msg = "ENVIRONMENT TERMINATED"
+            log(msg, level=Level.WARNING)
+            log(msg, level=Level.WARNING, loggername="status")
+            log(msg, level=Level.WARNING, loggername="reward")
         return observation, reward, self.terminated, truncated, info
     
     def _apply_action(self, action):
