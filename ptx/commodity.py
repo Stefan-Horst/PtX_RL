@@ -74,9 +74,8 @@ class Commodity(Element):
         status = None
         cost = quantity * self.purchase_costs
         if cost > ptx_system.balance:
-            # Try to purchase as much as possible
-            # divide with remainder, as only whole units can be purchased
-            new_quantity = ptx_system.balance // self.purchase_costs
+            # try to purchase as much as possible
+            new_quantity = ptx_system.balance / self.purchase_costs
             new_cost = new_quantity * self.purchase_costs
             status = (f"Tried to purchase {quantity:.4f} {self.name} for {cost:.4f}€, "
                       f"but only {ptx_system.balance:.4f}€ available. "
@@ -98,7 +97,7 @@ class Commodity(Element):
         
         status = None
         if quantity > self.available_quantity:
-            # Try to sell as much as possible
+            # try to sell as much as possible
             revenue = self.available_quantity * self.sale_price
             status = (f"Tried to sell {quantity:.4f} {self.name}, but only "
                       f"{self.available_quantity:.4f} available. Instead, "
@@ -120,7 +119,7 @@ class Commodity(Element):
         
         status = None
         if quantity > self.available_quantity:
-            # Try to emit as much as possible
+            # try to emit as much as possible
             status = (f"Tried to emit {quantity:.4f} {self.name}, but only "
                       f"{self.available_quantity:.4f} available. Instead, emit that much.")
             quantity = self.available_quantity
