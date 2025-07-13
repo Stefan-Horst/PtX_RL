@@ -133,8 +133,8 @@ class ConversionComponent(BaseComponent):
             status = f"No ramp up or down of load {new_load:.4f} in {self.name}."
         
         current_capacity = new_load * self.fixed_capacity
-        # calculate and check cost
-        cost = current_capacity * main_input_conversion_coefficient * self.variable_om
+        # calculate and check cost (cost is based on main output)
+        cost = current_capacity * self.outputs[self.main_output] * self.variable_om
         if cost > ptx_system.balance:
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
