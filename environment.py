@@ -254,6 +254,13 @@ class PtxEnvironment(Environment):
         if self.terminated:
             return -100.
         
+        # negative reward if any "loose" commodities are left in the system at the end of a step
+        total_available_commodities = sum(
+            [commodity.available_quantity for commodity in self.ptx_system.get_all_commodities()]
+        )
+        if total_available_commodities >= 0:
+            return -10.
+        
         # encourage more efficient and early reward maximization
         discount_factor = 1 - self.step / self.max_steps_per_episode
         reward = revenue * discount_factor
