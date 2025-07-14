@@ -146,6 +146,8 @@ class PtxEnvironment(Environment):
         self.iteration = 1
         self.step = 0
         self.terminated = False
+        self.cumulative_reward = 0.
+        self.current_iteration_reward = 0.
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
@@ -159,27 +161,28 @@ class PtxEnvironment(Environment):
         
     def initialize(self, seed=None):
         self.seed = seed # currently not used
+        self.iteration = 1
+        self.cumulative_reward = 0.
+        self._init_new_iteration("ENVIRONMENT INITIALIZED")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
-        msg = "ENVIRONMENT INITIALIZED"
-        log(msg)
-        log(msg, loggername="status")
-        log(msg, loggername="reward")
         return observation, info
     
     def reset(self):
-        self.terminated = False
         self.iteration += 1
-        self.step = 0
-        self.ptx_system = copy(self._original_ptx_system)
-        self.ptx_system.current_step = 0
+        self._init_new_iteration(f"ENVIRONMENT RESET, ITERATION {self.iteration}")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
-        msg = "ENVIRONMENT RESET"
+        return observation, info
+    
+    def _init_new_iteration(self, msg):
+        self.terminated = False
+        self.step = 0
+        self.current_iteration_reward = 0
+        self.ptx_system = copy(self._original_ptx_system)
         log(msg)
         log(msg, loggername="status")
         log(msg, loggername="reward")
-        return observation, info
     
     def act(self, action):
         self.step += 1
@@ -187,22 +190,26 @@ class PtxEnvironment(Environment):
         
         balance_difference = self.ptx_system.next_step()
         reward = self._calculate_reward(balance_difference)
+        self.cumulative_reward += reward
+        self.current_iteration_reward += reward
         truncated = self.step >= self.max_steps_per_episode
         self.teminated = not success or truncated
         
         observation = self._get_current_observation()
         info = {item[0].name: item[1] for item in state_change_info}
         info["step_revenue"] = balance_difference
-        log(str(self.ptx_system))
-        log(info, loggername="status")
-        log(f"reward: {reward:.4f}", loggername="reward")
-        if truncated:
-            msg = "ENVIRONMENT TRUNCATED"
-            log(msg, level=Level.WARNING)
-            log(msg, level=Level.WARNING, loggername="status")
-            log(msg, level=Level.WARNING, loggername="reward")
-        elif self.terminated:
-            msg = "ENVIRONMENT TERMINATED"
+        # logging below
+        reward_msg = (f"Reward: {reward:.4f}, Current iteration reward: "
+                      f"{self.current_iteration_reward:.4f}, "
+                      f"Cumulative reward: {self.cumulative_reward:.4f}")
+        log(str(self.ptx_system) + "\n\t" + reward_msg)
+        log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
+        log(reward_msg, loggername="reward")
+        if self.terminated:
+            if truncated:
+                msg = "ENVIRONMENT TRUNCATED"
+            else:
+                msg = "ENVIRONMENT TERMINATED"
             log(msg, level=Level.WARNING)
             log(msg, level=Level.WARNING, loggername="status")
             log(msg, level=Level.WARNING, loggername="reward")
