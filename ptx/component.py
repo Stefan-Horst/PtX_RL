@@ -113,7 +113,7 @@ class ConversionComponent(BaseComponent):
         
         # ramp up
         if quantity > 0:
-            quantity, status, new_load = self._handle_ramp_up(
+            quantity, new_load, status = self._handle_ramp_up(
                 quantity, current_capacity, input_commodities, input_ratios, status
             )
             if status == "":
@@ -121,8 +121,8 @@ class ConversionComponent(BaseComponent):
         # ramp down
         elif quantity < 0:
             reduction_quantity = -quantity
-            status, new_load, reduction_quantity = self._handle_ramp_down(
-                input_commodities, input_ratios, reduction_quantity, status
+            reduction_quantity, new_load, status = self._handle_ramp_down(
+                reduction_quantity, input_commodities, input_ratios, status
             )
             if status == "":
                 status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
@@ -197,9 +197,9 @@ class ConversionComponent(BaseComponent):
                 new_capacity = adapted_capacity
                 new_load = adapted_load
                 quantity = adapted_quantity
-        return quantity, status, new_load
+        return quantity, new_load, status
 
-    def _handle_ramp_down(self, input_commodities, input_ratios, reduction_quantity, status):
+    def _handle_ramp_down(self, reduction_quantity, input_commodities, input_ratios, status):
         """Make sure load is not decreased more than is allowed or to a value lower than the minimum. 
         Then, try to decrease more if not enough input commodities are available for the conversion."""
         if reduction_quantity > self.ramp_down:
@@ -229,7 +229,7 @@ class ConversionComponent(BaseComponent):
                 new_capacity = adapted_capacity
                 new_load = adapted_load
                 reduction_quantity = adapted_quantity
-        return status, new_load, reduction_quantity
+        return reduction_quantity, new_load, status
     
     def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
@@ -420,9 +420,9 @@ class StorageComponent(BaseComponent):
                 return (f"Cannot discharge quantity {discharge_quantity:.4f} "
                         f"in {self.name} as it is empty."), True
             
-            actual_quantity, discharge_quantity, status = self._handle_discharge(
-                commodity, min_charge, dischargeable_quantity, 
-                max_possible_amount, discharge_quantity, status
+            discharge_quantity, actual_quantity, status = self._handle_discharge(
+                discharge_quantity, dischargeable_quantity, 
+                commodity.name, max_possible_amount, status
             )
             if status == "":
                 status = f"Discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
@@ -480,8 +480,8 @@ class StorageComponent(BaseComponent):
             cost = new_cost
         return quantity, actual_quantity, cost, status
     
-    def _handle_discharge(self, commodity, min_charge, dischargeable_quantity, 
-                          max_possible_amount, discharge_quantity, status):
+    def _handle_discharge(self, discharge_quantity, dischargeable_quantity, 
+                          commodity_name, max_possible_amount, status):
         """Make sure amount discharged is not more than max amount per step or amount in storage."""
         # actual_quantity is specified output, while discharge_quantity is what is actually removed
         actual_quantity = discharge_quantity
@@ -489,18 +489,18 @@ class StorageComponent(BaseComponent):
         if discharge_quantity > max_possible_amount:
             actual_quantity = discharge_quantity * self.discharging_efficiency
             status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} "
-                       f"from max possible amount {max_possible_amount:.4f} {commodity.name} "
+                       f"from max possible amount {max_possible_amount:.4f} {commodity_name} "
                        f"in storage. Instead, discharge that much. ")
             discharge_quantity = max_possible_amount
             
         # try to discharge as much as possible
-        if self.charge_state - discharge_quantity < min_charge:
+        if discharge_quantity > dischargeable_quantity:
             actual_quantity = dischargeable_quantity * self.discharging_efficiency
             status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} from "
-                       f"dischargeable quantity {dischargeable_quantity:.4f} {commodity.name} "
+                       f"dischargeable quantity {dischargeable_quantity:.4f} {commodity_name} "
                        f"in storage. Instead, discharge that much. ")
             discharge_quantity = dischargeable_quantity
-        return actual_quantity, discharge_quantity, status
+        return discharge_quantity, actual_quantity, status
     
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
