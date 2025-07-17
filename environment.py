@@ -196,7 +196,7 @@ class PtxEnvironment(Environment):
         self.teminated = not success or truncated
         
         observation = self._get_current_observation()
-        info = {item[0].name: item[1] for item in state_change_info}
+        info = {item[0]: item[1] for item in state_change_info}
         info["step_revenue"] = balance_difference
         # logging below
         reward_msg = (f"Reward: {reward:.4f}, Current iteration reward: "
@@ -214,44 +214,6 @@ class PtxEnvironment(Environment):
             log(msg, level=Level.WARNING, loggername="status")
             log(msg, level=Level.WARNING, loggername="reward")
         return observation, reward, self.terminated, truncated, info
-    
-    def _apply_action(self, action):
-        """Call the specified action methods of the elements of the 
-        ptx system with the provided values for the action space"""
-        assert (all(isinstance(x, (int, float)) for x in action) and 
-            len(action) == self.action_space_size), \
-            "Action must have correct shape and values correct types."
-
-        element_action_values = []
-        for element_action_method_tuple, value in zip(self._action_space, action):
-            element, action_method_tuple = element_action_method_tuple
-            # set phase in which the action is executed based on if 
-            # the value is positive (charge) or negative (discharge)
-            action_method = action_method_tuple[0]
-            phase = action_method_tuple[1]
-            if action_method == StorageComponent.charge_or_discharge_quantity:
-                if value <= 0: # discharge
-                    element_action_values.append((element, (action_method, phase[0]), value))
-                else: # charge
-                    element_action_values.append((element, (action_method, phase[1]), value))
-            else:
-                assert len(phase) == 1, "Each concrete action of a step may only occur in one phase."
-                element_action_values.append(
-                    (element, (action_method_tuple[0], action_method_tuple[1][0]), value)
-                )
-        # sort actions by phase
-        element_action_values = sorted(element_action_values, key=lambda x: x[1][1])
-        
-        # execute methods of elements with values and current state as parameters
-        state_change_infos = []
-        success = True
-        for element, action_method_tuple, value in element_action_values:
-            action_method, _ = action_method_tuple
-            # return value is None if the method has no return value
-            state_change_info, element_success = action_method(element, value, self.ptx_system)
-            state_change_infos.append((element, state_change_info))
-            success = success and element_success
-        return state_change_infos, success
     
     def _calculate_reward(self, revenue):
         """Calculate the reward for the current step based on the increase of balance of 
@@ -272,6 +234,95 @@ class PtxEnvironment(Environment):
         discount_factor = 1 - self.step / self.max_steps_per_episode
         reward = revenue * discount_factor
         return reward
+    
+    def _apply_action(self, action):
+        """Call the specified action methods of the elements of the 
+        ptx system with the provided values for the action space"""
+        assert (all(isinstance(x, (int, float)) for x in action) and 
+            len(action) == self.action_space_size), \
+            "Action must have correct shape and values correct types."
+        
+        element_action_values = self._set_action_execution_order(action)
+        
+        pre_conversion_eavs, conversion_eavs, post_conversion_eavs = \
+            self._create_action_execution_stages(element_action_values)
+        
+        # execute methods of elements with values and current state as parameters
+        state_change_infos = []
+        total_success = True
+        for element, action_method_tuple, value in pre_conversion_eavs:
+            state_change_info, success = self._execute_action(element, action_method_tuple, value)
+            state_change_infos.append(state_change_info)
+            total_success = total_success and success
+        
+        for element, action_method_tuple, value in conversion_eavs:
+            state_change_info, success = self._execute_action(element, action_method_tuple, value)
+            state_change_infos.append(state_change_info)
+            total_success = total_success and success
+        
+        for element, action_method_tuple, value in post_conversion_eavs:
+            state_change_info, success = self._execute_action(element, action_method_tuple, value)
+            state_change_infos.append(state_change_info)
+            total_success = total_success and success
+        return state_change_infos, total_success
+
+    def _set_action_execution_order(self, action):
+        """Set the order in which the action methods are executed based on the phase numbers 
+        defined in the constants. For action methods with multiple possible phases defined, the 
+        correct phase for this step is chosen based on the value of the action method's parameter."""
+        element_action_values = []
+        for element_action_method_tuple, value in zip(self._action_space, action):
+            element, action_method_tuple = element_action_method_tuple
+            # set phase in which the action is executed based on if 
+            # the value is positive (charge) or negative (discharge)
+            action_method = action_method_tuple[0]
+            phase = action_method_tuple[1]
+            if action_method == StorageComponent.charge_or_discharge_quantity:
+                if value <= 0: # discharge
+                    element_action_values.append((element, (action_method, phase[0]), value))
+                else: # charge
+                    element_action_values.append((element, (action_method, phase[1]), value))
+            else:
+                assert len(phase) == 1, "Each concrete action of a step may only occur in one phase."
+                element_action_values.append(
+                    (element, (action_method_tuple[0], action_method_tuple[1][0]), value)
+                )
+        # sort actions by phase
+        element_action_values = sorted(element_action_values, key=lambda x: x[1][1])
+        return element_action_values
+
+    def _create_action_execution_stages(self, element_action_values):
+        """Separate the action methods which are already ordered by phase into three stages based 
+        on if they are executed before, during or after the conversion phase (ramp_up_or_down)."""
+        pre_conversion_eavs = []
+        conversion_eavs = []
+        post_conversion_eavs = []
+        stage = 0
+        for item in element_action_values:
+            action_method = item[1][0]
+            if stage == 0:
+                if action_method == ConversionComponent.ramp_up_or_down:
+                    conversion_eavs.append(item)
+                    stage = 1
+                else:
+                    pre_conversion_eavs.append(item)
+            elif stage == 1:
+                if action_method != ConversionComponent.ramp_up_or_down:
+                    post_conversion_eavs.append(item)
+                    stage = 2
+                else:
+                    conversion_eavs.append(item)
+            else: # stage == 2
+                post_conversion_eavs.append(item)
+        return pre_conversion_eavs, conversion_eavs, post_conversion_eavs
+    
+    def _execute_action(self, element, action_method_tuple, value):
+        """Execute a single action method of an element of the ptx 
+        system with the provided value as that method's parameter."""
+        action_method, _ = action_method_tuple
+        status, success = action_method(element, value, self.ptx_system)
+        state_change_info = (element.name, status)
+        return state_change_info, success
     
     def _get_current_observation(self):
         """Get the current observation by iterating over all elements of the ptx 
