@@ -82,20 +82,41 @@ class ConversionComponent(BaseComponent):
         
         self._initialize_result_dictionaries()
     
-    def ramp_up_or_down(self, quantity, ptx_system):
+    def apply_action_method(self, method, ptx_system, values):
+        """Actually apply the values returned by the action method to this component."""
+        if method == self.try_ramp_up_or_down:
+            quantity, cost, input_values, output_values = values
+            for input, amount in input_values:
+                input.available_quantity -= amount
+                input.consumed_quantity += amount
+                if input.name == self.main_input:
+                    input.total_production_costs += cost
+                self.consumed_commodities[input.name] += amount
+            for output, amount in output_values:
+                output.available_quantity += amount
+                output.produced_quantity += amount
+                self.produced_commodities[output.name] += amount
+            self.load += quantity
+            self.total_variable_costs += cost
+            ptx_system.balance -= cost
+            return True
+        return False
+    
+    def try_ramp_up_or_down(self, quantity, ptx_system):
         """Increase/decrease the current load and then convert that much of the main input plus 
         other inputs to the outputs of the conversion. If the load would be increased too much or 
         decreased too little so that the conversion would consume more inputs than available or the 
         cost would be higher than the available balance, it is attempted to reduce the load as much 
         as possible. If the conversion then still attempts to consume more inputs than available or 
         costs too much, the conversion fails completely.
-        Positive quantity means ramp up, negative quantity means ramp down."""
+        Positive quantity means ramp up, negative quantity means ramp down.
+        Note that this method only calculates the new values, but does not apply them to this component."""
         main_input_conversion_coefficient = self.inputs[self.main_input]
         current_capacity = self.get_current_capacity_level()
         
         input_commodities = list(map(ptx_system.commodities.get, list(self.inputs.keys())))
         input_ratios = list(self.inputs.values())
-        other_output_commodities = list(map(ptx_system.commodities.get, list(self.outputs.keys())))
+        output_commodities = list(map(ptx_system.commodities.get, list(self.outputs.keys())))
         output_ratios = list(self.outputs.values())
         
         status = f"In {self.name}:"
@@ -142,31 +163,23 @@ class ConversionComponent(BaseComponent):
         
         # convert commodities
         convert_status = ""
-        for input, input_ratio in zip(input_commodities, input_ratios):
-            amount = input_ratio * current_capacity
+        input_amounts = [input_ratio * current_capacity for input_ratio in input_ratios]
+        input_values = zip(input_commodities, input_amounts)
+        for input, amount in input_values:
             if amount > input.available_quantity:
                 status += (f" Conversion failed for {self.name}. {amount:.4f} {input.name} "
                            f"required, but only {input.available_quantity:.4f} available.")
                 return status, False # false as failure flag
-            
-            input.available_quantity -= amount
-            input.consumed_quantity += amount
-            if input.name == self.main_input:
-                input.total_production_costs += cost
-            self.consumed_commodities[input.name] += amount
             convert_status += f" {amount:.4f} {input.name} consumed in conversion."
-        for output, output_ratio in zip(other_output_commodities, output_ratios):
-            amount = output_ratio * current_capacity
-            output.available_quantity += amount
-            output.produced_quantity += amount
-            self.produced_commodities[output.name] += amount
+        
+        output_amounts = [output_ratio * current_capacity for output_ratio in output_ratios]
+        output_values = zip(output_commodities, output_amounts)
+        for output, amount in output_values:
             convert_status += f" {amount:.4f} {output.name} produced in conversion."
         status += convert_status
         
-        self.load += quantity
-        self.total_variable_costs += cost
-        ptx_system.balance -= cost
-        return status, True # true as conversion success flag
+        values = (quantity, cost, input_values, output_values)
+        return values, status, True # true as conversion success flag
 
     def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios, status):
         """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
@@ -377,12 +390,32 @@ class StorageComponent(BaseComponent):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
     
-    def charge_or_discharge_quantity(self, quantity, ptx_system):
+    def apply_action_method(self, method, ptx_system, values):
+        """Actually apply the values returned by the action method to this component."""
+        if method == self.try_charge_or_discharge_quantity:
+            quantity, actual_quantity, cost, is_charging = values
+            self.charge_state += actual_quantity
+            self.total_variable_costs += cost
+            commodity = ptx_system.commodities[self.stored_commodity]
+            commodity.available_quantity -= quantity
+            commodity.total_storage_costs += cost
+            ptx_system.balance -= cost
+            if is_charging:
+                self.charged_quantity += actual_quantity
+                commodity.charged_quantity += actual_quantity
+            else:
+                self.discharged_quantity += actual_quantity
+                commodity.discharged_quantity += actual_quantity
+            return True
+        return False
+    
+    def try_charge_or_discharge_quantity(self, quantity, ptx_system):
         """Charge/discharge quantity or as much as possible based on available commodity 
         and current state of charge as well as the available balance. 
         Positive values mean charge, negative values mean discharge. Quantity for charge 
         is raw storage input, not what is actually stored after applying efficiency coefficient. 
-        Quantity for discharge is actual output, not what is removed from storage."""
+        Quantity for discharge is actual output, not what is removed from storage.
+        Note that this method only calculates the new values, but does not apply them to this component."""
         if quantity == 0:
             return f"No quantity charged or discharged in {self.name}.", True
         
@@ -411,8 +444,7 @@ class StorageComponent(BaseComponent):
             else:
                 status += f"Finally charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
             
-            self.charged_quantity += actual_quantity
-            commodity.charged_quantity += actual_quantity
+            is_charging = True
         # discharge
         else: # quantity < 0
             discharge_quantity = -quantity
@@ -429,18 +461,13 @@ class StorageComponent(BaseComponent):
             else:
                 status += f"Finally discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
             
+            is_charging = False
             quantity = -discharge_quantity
             actual_quantity = -actual_quantity
-            self.discharged_quantity += actual_quantity
-            commodity.discharged_quantity += actual_quantity
             cost = 0. # discharging has no cost
         
-        self.charge_state += actual_quantity
-        self.total_variable_costs += cost
-        commodity.available_quantity -= quantity
-        commodity.total_storage_costs += cost
-        ptx_system.balance -= cost
-        return status, True
+        values = (quantity, actual_quantity, cost, is_charging)
+        return values, status, True
 
     def _handle_charge(self, quantity, free_storage, balance, 
                        available_quantity, max_possible_amount, status):
@@ -560,11 +587,28 @@ class GenerationComponent(BaseComponent):
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
 
-    def apply_or_strip_curtailment(self, quantity, ptx_system):
+    def apply_action_method(self, method, ptx_system, values):
+        """Actually apply the values returned by the action method to this component."""
+        if method == self.try_apply_or_strip_curtailment:
+            quantity, generated, cost, possible_current_generation = values
+            self.generated_quantity += generated
+            self.potential_generation_quantity += possible_current_generation
+            self.curtailment += quantity
+            self.total_variable_costs += cost
+            commodity = ptx_system.commodities[self.generated_commodity]
+            commodity.available_quantity += generated
+            commodity.generated_quantity += generated
+            commodity.total_generation_costs += cost
+            ptx_system.balance -= cost
+            return True
+        return False
+
+    def try_apply_or_strip_curtailment(self, quantity, ptx_system):
         """Change curtailment quantity and then generate as much as possible of the commodity based 
         on curtailment and the current weather. If the generation cost would be higher than the 
         available balance, the curtailment is set to a high enough value to prevent this.
-        Positive values mean increase curtailment, negative values mean decrease curtailment."""
+        Positive values mean increase curtailment, negative values mean decrease curtailment.
+        Note that this method only calculates the new values, but does not apply them to this component."""
         # how much the generator is allowed to generate at most
         potential_max_generation = self.fixed_capacity - self.curtailment
         # how much the generator can actually generate at most
@@ -619,16 +663,8 @@ class GenerationComponent(BaseComponent):
         else:
             status += (f" for {cost:.4f}€.")
         
-        self.generated_quantity += generated
-        self.potential_generation_quantity += possible_current_generation
-        self.curtailment += quantity
-        self.total_variable_costs += cost
-        commodity = ptx_system.commodities[self.generated_commodity]
-        commodity.available_quantity += generated
-        commodity.generated_quantity += generated
-        commodity.total_generation_costs += cost
-        ptx_system.balance -= cost
-        return status, True
+        values = (quantity, generated, cost, possible_current_generation)
+        return values, status, True
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
