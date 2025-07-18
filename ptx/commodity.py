@@ -67,7 +67,33 @@ class Commodity(Element):
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
 
+    def apply_action_method(self, method, ptx_system, values):
+        """Actually apply the values returned by the action method to this component."""
+        if method == self.purchase_commodity:
+            quantity, cost = values
+            self.purchased_quantity += quantity
+            self.available_quantity += quantity
+            self.purchase_costs += cost
+            ptx_system.balance -= cost
+            return True
+        if method == self.sell_commodity:
+            quantity, revenue = values
+            self.available_quantity -= quantity
+            self.sold_quantity += quantity
+            self.selling_revenue += revenue
+            ptx_system.balance += revenue
+            return True
+        if method == self.emit_commodity:
+            quantity = values[0]
+            self.available_quantity -= quantity
+            self.emitted_quantity += quantity
+            return True
+        return False
+
     def purchase_commodity(self, quantity, ptx_system):
+        """Purchase quantity of commodity if available balance is sufficient. 
+        Otherwise purchase as much as possible. 
+        Note that this method only calculates the new values, but does not apply them to this component."""
         if quantity < 0:
             return f"Cannot purchase quantity {quantity:.4f} of {self.name}."
         
@@ -85,13 +111,13 @@ class Commodity(Element):
         else:
             status = f"Purchased {quantity:.4f} {self.name} for {cost:.4f}€."
         
-        self.purchased_quantity += quantity
-        self.available_quantity += quantity
-        self.purchase_costs += cost
-        ptx_system.balance -= cost
-        return status, True
+        values = (quantity, cost)
+        return values, status, True
     
     def sell_commodity(self, quantity, ptx_system):
+        """Sell quantity of commodity. If quantity is greater than available quantity, 
+        sell as much as possible. 
+        Note that this method only calculates the new values, but does not apply them to this component."""
         if quantity < 0:
             return f"Cannot sell quantity {quantity:.4f} of {self.name}."
         
@@ -107,13 +133,13 @@ class Commodity(Element):
             revenue = quantity * self.sale_price
             status = f"Sold {quantity:.4f} {self.name} for {revenue:.4f}€."
         
-        self.available_quantity -= quantity
-        self.sold_quantity += quantity
-        self.selling_revenue += revenue
-        ptx_system.balance += revenue
-        return status, True
+        values = (quantity, revenue)
+        return values, status, True
     
     def emit_commodity(self, quantity, ptx_system):
+        """Emit quantity of commodity. If quantity is greater than available quantity, 
+        emit as much as possible.
+        Note that this method only calculates the new values, but does not apply them to this component."""
         if quantity < 0:
             return f"Cannot emit quantity {quantity:.4f} of {self.name}."
         
@@ -126,9 +152,8 @@ class Commodity(Element):
         else:
             status = f"Emit {quantity:.4f} {self.name}."
         
-        self.available_quantity -= quantity
-        self.emitted_quantity += quantity
-        return status, True
+        values = (quantity,)
+        return values, status, True
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
