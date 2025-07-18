@@ -110,7 +110,9 @@ class ConversionComponent(BaseComponent):
         as possible. If the conversion then still attempts to consume more inputs than available or 
         costs too much, the conversion fails completely.
         Positive quantity means ramp up, negative quantity means ramp down.
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether the conversion succeeded, 
+        and whether the conversion could be completed exactly as requested."""
         main_input_conversion_coefficient = self.inputs[self.main_input]
         current_capacity = self.get_current_capacity_level()
         
@@ -120,7 +122,7 @@ class ConversionComponent(BaseComponent):
         output_ratios = list(self.outputs.values())
         
         status = f"In {self.name}:"
-        
+        exact_completion = True
         # set quantity so conversion cannot cost more than balance
         potential_max_cost = current_capacity * main_input_conversion_coefficient * self.variable_om
         if potential_max_cost > ptx_system.balance:
@@ -130,6 +132,7 @@ class ConversionComponent(BaseComponent):
             status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
                        f"than available balance {ptx_system.balance:.4f}€, set "
                        f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
+            exact_completion = False
             quantity = new_quantity
         
         # ramp up
@@ -139,6 +142,8 @@ class ConversionComponent(BaseComponent):
             )
             if status == "":
                 status = f"Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
+            else:
+                exact_completion = False
         # ramp down
         elif quantity < 0:
             reduction_quantity = -quantity
@@ -147,6 +152,8 @@ class ConversionComponent(BaseComponent):
             )
             if status == "":
                 status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
+            else:
+                exact_completion = False
             quantity = -reduction_quantity
         # no change in load
         else: # quantity == 0
@@ -159,7 +166,7 @@ class ConversionComponent(BaseComponent):
         if cost > ptx_system.balance:
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
-            return status, False # false as failure flag
+            return status, False, False # conversion failed
         
         # convert commodities
         convert_status = ""
@@ -169,7 +176,7 @@ class ConversionComponent(BaseComponent):
             if amount > input.available_quantity:
                 status += (f" Conversion failed for {self.name}. {amount:.4f} {input.name} "
                            f"required, but only {input.available_quantity:.4f} available.")
-                return status, False # false as failure flag
+                return status, False, False # conversion failed
             convert_status += f" {amount:.4f} {input.name} consumed in conversion."
         
         output_amounts = [output_ratio * current_capacity for output_ratio in output_ratios]
@@ -179,7 +186,7 @@ class ConversionComponent(BaseComponent):
         status += convert_status
         
         values = (quantity, cost, input_values, output_values)
-        return values, status, True # true as conversion success flag
+        return values, status, True, exact_completion
 
     def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios, status):
         """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
@@ -415,9 +422,11 @@ class StorageComponent(BaseComponent):
         Positive values mean charge, negative values mean discharge. Quantity for charge 
         is raw storage input, not what is actually stored after applying efficiency coefficient. 
         Quantity for discharge is actual output, not what is removed from storage.
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether charging/discharging succeeded, 
+        and whether this action could be completed exactly as requested."""
         if quantity == 0:
-            return f"No quantity charged or discharged in {self.name}.", True
+            return f"No quantity charged or discharged in {self.name}.", True, True
         
         commodity = ptx_system.commodities[self.stored_commodity]
         max_charge = self.fixed_capacity * self.max_soc
@@ -427,13 +436,14 @@ class StorageComponent(BaseComponent):
         max_possible_amount = self.fixed_capacity * self.ratio_capacity_p
         
         status = ""
+        exact_completion = True
         # charge
         if quantity > 0:
             if self.charge_state >= max_charge:
-                return f"Cannot charge quantity {quantity:.4f} in {self.name} as it is full.", True
+                return f"Cannot charge quantity {quantity:.4f} in {self.name} as it is full.", True, False
             if commodity.available_quantity <= 0:
                 return (f"Cannot charge quantity {quantity:.4f} in "
-                        f"{self.name} as none is available."), True
+                        f"{self.name} as none is available."), True, False
             
             quantity, actual_quantity, cost, status = self._handle_charge(
                 quantity, free_storage, ptx_system.balance, 
@@ -443,6 +453,7 @@ class StorageComponent(BaseComponent):
                 status = f"Charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
             else:
                 status += f"Finally charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
+                exact_completion = False
             
             is_charging = True
         # discharge
@@ -450,7 +461,7 @@ class StorageComponent(BaseComponent):
             discharge_quantity = -quantity
             if self.charge_state <= min_charge:
                 return (f"Cannot discharge quantity {discharge_quantity:.4f} "
-                        f"in {self.name} as it is empty."), True
+                        f"in {self.name} as it is empty."), True, False
             
             discharge_quantity, actual_quantity, status = self._handle_discharge(
                 discharge_quantity, dischargeable_quantity, 
@@ -460,6 +471,7 @@ class StorageComponent(BaseComponent):
                 status = f"Discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
             else:
                 status += f"Finally discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
+                exact_completion = False
             
             is_charging = False
             quantity = -discharge_quantity
@@ -467,7 +479,7 @@ class StorageComponent(BaseComponent):
             cost = 0. # discharging has no cost
         
         values = (quantity, actual_quantity, cost, is_charging)
-        return values, status, True
+        return values, status, True, exact_completion
 
     def _handle_charge(self, quantity, free_storage, balance, 
                        available_quantity, max_possible_amount, status):
@@ -608,7 +620,9 @@ class GenerationComponent(BaseComponent):
         on curtailment and the current weather. If the generation cost would be higher than the 
         available balance, the curtailment is set to a high enough value to prevent this.
         Positive values mean increase curtailment, negative values mean decrease curtailment.
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether applying curtailment succeeded, 
+        and whether this action could be completed exactly as requested."""
         # how much the generator is allowed to generate at most
         potential_max_generation = self.fixed_capacity - self.curtailment
         # how much the generator can actually generate at most
@@ -616,6 +630,7 @@ class GenerationComponent(BaseComponent):
                                        * self.fixed_capacity)
         
         status = None
+        exact_completion = True
         # decrease production
         if quantity > 0:
             # try to curtail as much as possible, limit at stopping generation
@@ -623,6 +638,7 @@ class GenerationComponent(BaseComponent):
                 status = (f"Cannot curtail {quantity:.4f} from current capacity "
                           f"{potential_max_generation:.4f} in {self.name}. "
                           f"Instead, curtail completely, generating 0 MWh")
+                exact_completion = False
                 quantity = potential_max_generation
                 generated = 0
             else:
@@ -639,6 +655,7 @@ class GenerationComponent(BaseComponent):
                 status = (f"Cannot remove curtailment {curtail_strip_quantity:.4f} from current "
                           f"curtailment {self.curtailment:.4f} in {self.name}. Instead, remove "
                           f"curtailment completely, generating {generated:.4f} MWh")
+                exact_completion = False
                 quantity = -self.curtailment
             else:
                 generated = possible_current_generation - self.curtailment + curtail_strip_quantity
@@ -658,13 +675,14 @@ class GenerationComponent(BaseComponent):
             status += (f". Tried to generate {generated:.4f} MWh for {cost:.4f}€, but only "
                        f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated:.4f} "
                        f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity:.4f}.")
+            exact_completion = False
             cost = new_cost
             generated = new_generated
         else:
             status += (f" for {cost:.4f}€.")
         
         values = (quantity, generated, cost, possible_current_generation)
-        return values, status, True
+        return values, status, True, exact_completion
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
