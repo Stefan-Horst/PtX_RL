@@ -93,11 +93,14 @@ class Commodity(Element):
     def purchase_commodity(self, quantity, ptx_system):
         """Purchase quantity of commodity if available balance is sufficient. 
         Otherwise purchase as much as possible. 
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether purchasing the commodity succeeded, 
+        and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot purchase quantity {quantity:.4f} of {self.name}."
+            return f"Cannot purchase quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
+        exact_completion = True
         cost = quantity * self.purchase_costs
         if cost > ptx_system.balance:
             # try to purchase as much as possible
@@ -106,54 +109,63 @@ class Commodity(Element):
             status = (f"Tried to purchase {quantity:.4f} {self.name} for {cost:.4f}€, "
                       f"but only {ptx_system.balance:.4f}€ available. "
                       f"Instead, purchase {new_quantity:.4f} for {new_cost:.4f}€.")
+            exact_completion = False
             quantity = new_quantity
             cost = new_cost
         else:
             status = f"Purchased {quantity:.4f} {self.name} for {cost:.4f}€."
         
         values = (quantity, cost)
-        return values, status, True
+        return values, status, True, exact_completion
     
     def sell_commodity(self, quantity, ptx_system):
         """Sell quantity of commodity. If quantity is greater than available quantity, 
         sell as much as possible. 
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether selling the commodity succeeded, 
+        and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot sell quantity {quantity:.4f} of {self.name}."
+            return f"Cannot sell quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
+        exact_completion = True
         if quantity > self.available_quantity:
             # try to sell as much as possible
             revenue = self.available_quantity * self.sale_price
             status = (f"Tried to sell {quantity:.4f} {self.name}, but only "
                       f"{self.available_quantity:.4f} available. Instead, "
                       f"sell {self.available_quantity:.4f} for {revenue:.4f}€.")
+            exact_completion = False
             quantity = self.available_quantity
         else:
             revenue = quantity * self.sale_price
             status = f"Sold {quantity:.4f} {self.name} for {revenue:.4f}€."
         
         values = (quantity, revenue)
-        return values, status, True
+        return values, status, True, exact_completion
     
     def emit_commodity(self, quantity, ptx_system):
         """Emit quantity of commodity. If quantity is greater than available quantity, 
         emit as much as possible.
-        Note that this method only calculates the new values, but does not apply them to this component."""
+        Note that this method only calculates the new values, but does not apply them to this component. 
+        Returns new values to be applied, status, whether emitting the commodity succeeded, 
+        and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot emit quantity {quantity:.4f} of {self.name}."
+            return f"Cannot emit quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
+        exact_completion = True
         if quantity > self.available_quantity:
             # try to emit as much as possible
             status = (f"Tried to emit {quantity:.4f} {self.name}, but only "
                       f"{self.available_quantity:.4f} available. Instead, emit that much.")
+            exact_completion = False
             quantity = self.available_quantity
         else:
             status = f"Emit {quantity:.4f} {self.name}."
         
         values = (quantity,)
-        return values, status, True
+        return values, status, True, exact_completion
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
