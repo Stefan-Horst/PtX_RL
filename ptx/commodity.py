@@ -28,42 +28,31 @@ class Commodity(Element):
         :param demand: [float] - Demand
         :param is_total_demand: [boolean] - Demand over all time steps or for each time step
         """
-
         self.name = name
         self.commodity_unit = commodity_unit
-
         self.emittable = bool(emittable)
         self.available = bool(available)
-
         self.purchasable = bool(purchasable)
         self.purchase_price = float(purchase_price)
-        
         self.saleable = bool(saleable)
         self.sale_price = float(sale_price)
-
         self.demanded = bool(demanded)
         self.is_total_demand = bool(is_total_demand)
         self.demand = float(demand)
-
         self.purchased_quantity = purchased_quantity
         self.purchase_costs = purchase_costs
-
         self.sold_quantity = sold_quantity
         self.selling_revenue = selling_revenue
-
         self.emitted_quantity = emitted_quantity
         self.available_quantity = available_quantity
         self.demanded_quantity = demanded_quantity
-
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
         self.total_storage_costs = total_storage_costs
-
         self.produced_quantity = produced_quantity
         self.consumed_quantity = consumed_quantity
         # Important: total production costs only derive from conversion components where commodity is main output
         self.total_production_costs = total_production_costs
-
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
 
@@ -101,11 +90,11 @@ class Commodity(Element):
         
         status = None
         exact_completion = True
-        cost = quantity * self.purchase_costs
+        cost = quantity * self.purchase_price
         if cost > ptx_system.balance:
             # try to purchase as much as possible
-            new_quantity = ptx_system.balance / self.purchase_costs
-            new_cost = new_quantity * self.purchase_costs
+            new_quantity = ptx_system.balance / self.purchase_price
+            new_cost = new_quantity * self.purchase_price
             status = (f"Tried to purchase {quantity:.4f} {self.name} for {cost:.4f}€, "
                       f"but only {ptx_system.balance:.4f}€ available. "
                       f"Instead, purchase {new_quantity:.4f} for {new_cost:.4f}€.")

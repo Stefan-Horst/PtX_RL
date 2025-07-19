@@ -83,13 +83,13 @@ COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quant
                          "emitted_quantity", "demanded_quantity", "charged_quantity", 
                          "discharged_quantity", "consumed_quantity", "produced_quantity", 
                          "generated_quantity", "selling_revenue", "total_storage_costs", 
-                         "total_production_costs", "total_generation_costs"]
+                         "total_production_costs", "total_generation_costs", "purchase_costs"]
 CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
-                         "[dict]consumed_commodities", "[dict]produced_commodities"]
+                         "[dict]consumed_commodities", "[dict]produced_commodities", "load"]
 STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
-                         "charged_quantity", "discharged_quantity"]
+                         "charged_quantity", "discharged_quantity", "charge_state"]
 GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
-                         "generated_quantity", "total_costs", "curtailment"]
+                         "generated_quantity", "potential_generation_quantity", "curtailment"]
 # actual possible actions of each element depend on what the configuration allows
 # e.g. selling commodity is only possible if it's set to saleable
 # the numbers are the order of the actions in the order they are executed, starting from 0
