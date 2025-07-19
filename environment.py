@@ -267,11 +267,22 @@ class PtxEnvironment(Environment):
         return state_change_infos, total_success
 
     def _handle_conversion_action_method_execution(self, conversion_eavs):
+        """Execute the conversion action methods in the approximately best order. First, the action 
+        methods that can be exactly completed as specified are executed. If any remain after that, 
+        the action method that is closest to being exactly completed is executed. It is determined 
+        by having the smallest deviation between the specified quantity (method parameter) and the 
+        actually possible quantity. Then these steps are repeated from the first step until all 
+        action methods have been executed. This ordering matters as the execution of one conversion 
+        can make the execution of other conversions possible.
+        """
         state_change_infos = []
         total_success = True
         while len(conversion_eavs) > 0:
+            lowest_quantity_deviation = float("inf")
+            lowest_quantity_deviation_item = None
+            last_return_value = None
             # execute all conversions that can be exactly completed and return if all could be completed
-            while True: # repeat until no more exact completions of converions are possible
+            while True: # repeat until no more exact completions of conversions are possible
                 progress_made = False
                 for item in conversion_eavs:
                     element, action_method_tuple, value = item
@@ -279,13 +290,21 @@ class PtxEnvironment(Environment):
                     values, status, success, exact_completion = action_method(
                         element, value, self.ptx_system
                     )
-                    if exact_completion:
+                    if exact_completion: # directly execute conversion
                         element.apply_action_method(action_method, self.ptx_system, values)
                         state_change_info = (element.name, status)
                         state_change_infos.append(state_change_info)
                         total_success = total_success and success
                         conversion_eavs.remove(item)
                         progress_made = True
+                    else:
+                        # calculate deviation between specified quantity and actually possible 
+                        # quantity and update the item with the lowest deviation
+                        deviation = abs(values[0] - value)
+                        if deviation < lowest_quantity_deviation:
+                            lowest_quantity_deviation = deviation
+                            lowest_quantity_deviation_item = item
+                            last_return_value = (values, status, success)
                 if not progress_made:
                     break
             if len(conversion_eavs) == 0:
@@ -293,8 +312,6 @@ class PtxEnvironment(Environment):
             
             # if not all conversions could be exactly completed, execute the conversion with 
             # the lowest deviation between specified quantity and actually possible quantity
-            lowest_quantity_deviation_item, last_return_value = \
-                self._get_lowest_deviation_item(conversion_eavs)
             element, action_method_tuple, value = lowest_quantity_deviation_item
             action_method, _ = action_method_tuple
             values, status, success = last_return_value
@@ -304,23 +321,6 @@ class PtxEnvironment(Environment):
             total_success = total_success and success
             conversion_eavs.remove(lowest_quantity_deviation_item)
         return state_change_infos, total_success
-
-    def _get_lowest_deviation_item(self, conversion_eavs):
-        """Get the conversion with the lowest deviation between 
-        specified quantity and actually possible quantity."""
-        lowest_quantity_deviation = float("inf")
-        lowest_quantity_deviation_item = None
-        last_return_value = None
-        for item in conversion_eavs:
-            element, action_method_tuple, value = item
-            action_method, _ = action_method_tuple
-            values, status, success, _ = action_method(element, value, self.ptx_system)
-            deviation = abs(values[0] - value)
-            if deviation < lowest_quantity_deviation:
-                lowest_quantity_deviation = deviation
-                lowest_quantity_deviation_item = item
-                last_return_value = (values, status, success)
-        return lowest_quantity_deviation_item, last_return_value
 
     def _set_action_execution_order(self, action):
         """Set the order in which the action methods are executed based on the phase numbers 
