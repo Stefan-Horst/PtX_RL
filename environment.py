@@ -160,6 +160,9 @@ class PtxEnvironment(Environment):
         log(f"Action space: {action_space_spec}")
         
     def initialize(self, seed=None):
+        """Initialize the environment after its creation or again after 
+        training is done and return the initial observation. This resets 
+        all attributes of the environment including the iteration."""
         self.seed = seed # currently not used
         self.iteration = 1
         self.cumulative_reward = 0.
@@ -169,6 +172,8 @@ class PtxEnvironment(Environment):
         return observation, info
     
     def reset(self):
+        """Reset the environment, go to the next iteration and return the new initial 
+        observation. This method should be called when the environment has terminated."""
         self.iteration += 1
         self._init_new_iteration(f"ENVIRONMENT RESET, ITERATION {self.iteration}")
         observation = self._get_current_observation()
@@ -184,7 +189,11 @@ class PtxEnvironment(Environment):
         log(msg, loggername="status")
         log(msg, loggername="reward")
     
+    ##### ACT FUNCTIONALITY #####
+    
     def act(self, action):
+        """Perform the actions in the ptx system for one 
+        step of the current iteration in the environment."""
         self.step += 1
         state_change_info, success = self._apply_action(action)
         
@@ -381,6 +390,8 @@ class PtxEnvironment(Environment):
         state_change_info = (element.name, status)
         return state_change_info, success, exact_completion
     
+    ##### OBSERVATION #####
+    
     def _get_current_observation(self):
         """Get the current observation by iterating over all elements of the ptx 
         system and adding the values of their attributes, as well as the current 
@@ -409,6 +420,8 @@ class PtxEnvironment(Environment):
                     else:
                         observation_space.append(getattr(element, attribute))
         return observation_space
+    
+    ##### INITIALIZATION #####
     
     def _get_action_space(self):
         """Create list with tuples of each element and its possible actions."""
@@ -468,6 +481,8 @@ class PtxEnvironment(Environment):
                     element_actions.append(action.__name__)
                 action_space_spec[element.name] = element_actions
         return action_space_spec
+
+    ##### UTILITY #####
 
     def _get_element_categories_with_attributes_and_actions(self):
         commodities = self.ptx_system.get_all_commodities()
