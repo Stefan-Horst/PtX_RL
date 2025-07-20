@@ -58,21 +58,21 @@ class Commodity(Element):
 
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
-        if method == self.purchase_commodity:
+        if method == Commodity.purchase_commodity:
             quantity, cost = values
             self.purchased_quantity += quantity
             self.available_quantity += quantity
             self.purchase_costs += cost
             ptx_system.balance -= cost
             return True
-        if method == self.sell_commodity:
+        if method == Commodity.sell_commodity:
             quantity, revenue = values
             self.available_quantity -= quantity
             self.sold_quantity += quantity
             self.selling_revenue += revenue
             ptx_system.balance += revenue
             return True
-        if method == self.emit_commodity:
+        if method == Commodity.emit_commodity:
             quantity = values[0]
             self.available_quantity -= quantity
             self.emitted_quantity += quantity

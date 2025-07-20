@@ -75,7 +75,7 @@ class ConversionComponent(BaseComponent):
     
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
-        if method == self.ramp_up_or_down:
+        if method == ConversionComponent.ramp_up_or_down:
             quantity, cost, input_values, output_values = values
             for input, amount in input_values:
                 input.available_quantity -= amount
@@ -386,7 +386,7 @@ class StorageComponent(BaseComponent):
     
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
-        if method == self.charge_or_discharge_quantity:
+        if method == StorageComponent.charge_or_discharge_quantity:
             quantity, actual_quantity, cost, is_charging = values
             self.charge_state += actual_quantity
             self.total_variable_costs += cost
@@ -587,7 +587,7 @@ class GenerationComponent(BaseComponent):
 
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
-        if method == self.apply_or_strip_curtailment:
+        if method == GenerationComponent.apply_or_strip_curtailment:
             quantity, generated, cost, possible_current_generation = values
             self.generated_quantity += generated
             self.potential_generation_quantity += possible_current_generation
