@@ -185,6 +185,7 @@ class PtxEnvironment(Environment):
         self.step = 0
         self.current_iteration_reward = 0
         self.ptx_system = copy(self._original_ptx_system)
+        self._action_space = self._get_action_space()
         log(msg)
         log(msg, loggername="status")
         log(msg, loggername="reward")
