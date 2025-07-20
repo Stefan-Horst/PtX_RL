@@ -195,7 +195,7 @@ class PtxEnvironment(Environment):
         """Perform the actions in the ptx system for one 
         step of the current iteration in the environment."""
         self.step += 1
-        state_change_info, success = self._apply_action(action)
+        state_change_info, exact_completion_info, success = self._apply_action(action)
         
         balance_difference = self.ptx_system.next_step()
         reward = self._calculate_reward(balance_difference)
@@ -207,11 +207,12 @@ class PtxEnvironment(Environment):
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}
         info["step_revenue"] = balance_difference
+        
         # logging below
         reward_msg = (f"Reward: {reward:.4f}, Current iteration reward: "
                       f"{self.current_iteration_reward:.4f}, "
                       f"Cumulative reward: {self.cumulative_reward:.4f}")
-        log(str(self.ptx_system) + "\n\t" + reward_msg)
+        log(str(self.ptx_system) + "\n\t" + str(exact_completion_info) + "\n\t" + reward_msg)
         log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
         log(reward_msg, loggername="reward")
         if self.terminated:
@@ -259,21 +260,30 @@ class PtxEnvironment(Environment):
         # execute methods of elements with values and current state as parameters
         # handle the action methods of the three stages separately one after another
         state_change_infos = []
+        exact_completion_info = {}
         total_success = True
         for element, action_method_tuple, value in pre_conversion_eavs:
-            state_change_info, success, _ = self._execute_action(element, action_method_tuple, value)
+            state_change_info, success, exact_completion = self._execute_action(
+                element, action_method_tuple, value
+            )
             state_change_infos.append(state_change_info)
+            exact_completion_info[element.name] = exact_completion
             total_success = total_success and success
         
-        state_change_info, success = self._handle_conversion_action_method_execution(conversion_eavs)
+        state_change_info, conversion_exact_completion_info, success = \
+            self._handle_conversion_action_method_execution(conversion_eavs)
         state_change_infos.extend(state_change_info)
+        exact_completion_info.update(conversion_exact_completion_info)
         total_success = total_success and success
         
         for element, action_method_tuple, value in post_conversion_eavs:
-            state_change_info, success, _ = self._execute_action(element, action_method_tuple, value)
+            state_change_info, success, exact_completion = self._execute_action(
+                element, action_method_tuple, value
+            )
             state_change_infos.append(state_change_info)
+            exact_completion_info[element.name] = exact_completion
             total_success = total_success and success
-        return state_change_infos, total_success
+        return state_change_infos, exact_completion_info, total_success
 
     def _handle_conversion_action_method_execution(self, conversion_eavs):
         """Execute the conversion action methods in the approximately best order. First, the action 
@@ -285,6 +295,7 @@ class PtxEnvironment(Environment):
         can make the execution of other conversions possible.
         """
         state_change_infos = []
+        conversion_exact_completion_info = {}
         total_success = True
         while len(conversion_eavs) > 0:
             lowest_quantity_deviation = float("inf")
@@ -303,6 +314,7 @@ class PtxEnvironment(Environment):
                         element.apply_action_method(action_method, self.ptx_system, values)
                         state_change_info = (element.name, status)
                         state_change_infos.append(state_change_info)
+                        conversion_exact_completion_info[element.name] = exact_completion
                         total_success = total_success and success
                         conversion_eavs.remove(item)
                         progress_made = True
@@ -327,9 +339,10 @@ class PtxEnvironment(Environment):
             element.apply_action_method(action_method, self.ptx_system, values)
             state_change_info = (element.name, status)
             state_change_infos.append(state_change_info)
+            conversion_exact_completion_info[element.name] = exact_completion
             total_success = total_success and success
             conversion_eavs.remove(lowest_quantity_deviation_item)
-        return state_change_infos, total_success
+        return state_change_infos, conversion_exact_completion_info, total_success
 
     def _set_action_execution_order(self, action):
         """Set the order in which the action methods are executed based on the phase numbers 
