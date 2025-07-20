@@ -104,6 +104,7 @@ class ConversionComponent(BaseComponent):
         Note that this method only calculates the new values, but does not apply them to this component. 
         Returns new values to be applied, status, whether the conversion succeeded, 
         and whether the conversion could be completed exactly as requested."""
+        empty_values = (0,0,[],[])
         main_input_conversion_coefficient = self.inputs[self.main_input]
         current_capacity = self.get_current_capacity_level()
         
@@ -157,7 +158,7 @@ class ConversionComponent(BaseComponent):
         if cost > ptx_system.balance:
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
-            return status, False, False # conversion failed
+            return empty_values, status, False, False # conversion failed
         
         # convert commodities
         convert_status = ""
@@ -167,7 +168,7 @@ class ConversionComponent(BaseComponent):
             if amount > input.available_quantity:
                 status += (f" Conversion failed for {self.name}. {amount:.4f} {input.name} "
                            f"required, but only {input.available_quantity:.4f} available.")
-                return status, False, False # conversion failed
+                return empty_values, status, False, False # conversion failed
             convert_status += f" {amount:.4f} {input.name} consumed in conversion."
         
         output_amounts = [output_ratio * current_capacity for output_ratio in output_ratios]
@@ -411,8 +412,9 @@ class StorageComponent(BaseComponent):
         Note that this method only calculates the new values, but does not apply them to this component. 
         Returns new values to be applied, status, whether charging/discharging succeeded, 
         and whether this action could be completed exactly as requested."""
+        empty_values = (0,0,0,False)
         if quantity == 0:
-            return f"No quantity charged or discharged in {self.name}.", True, True
+            return empty_values, f"No quantity charged or discharged in {self.name}.", True, True
         
         commodity = ptx_system.commodities[self.stored_commodity]
         max_charge = self.fixed_capacity * self.max_soc
@@ -426,10 +428,11 @@ class StorageComponent(BaseComponent):
         # charge
         if quantity > 0:
             if self.charge_state >= max_charge:
-                return f"Cannot charge quantity {quantity:.4f} in {self.name} as it is full.", True, False
+                return empty_values, (f"Cannot charge quantity {quantity:.4f} in {self.name} "
+                                       "as it is full."), True, False
             if commodity.available_quantity <= 0:
-                return (f"Cannot charge quantity {quantity:.4f} in "
-                        f"{self.name} as none is available."), True, False
+                return empty_values, (f"Cannot charge quantity {quantity:.4f} in "
+                       f"{self.name} as none is available."), True, False
             
             quantity, actual_quantity, cost, status = self._handle_charge(
                 quantity, free_storage, ptx_system.balance, 
@@ -446,8 +449,8 @@ class StorageComponent(BaseComponent):
         else: # quantity < 0
             discharge_quantity = -quantity
             if self.charge_state <= min_charge:
-                return (f"Cannot discharge quantity {discharge_quantity:.4f} "
-                        f"in {self.name} as it is empty."), True, False
+                return empty_values, (f"Cannot discharge quantity {discharge_quantity:.4f} "
+                       f"in {self.name} as it is empty."), True, False
             
             discharge_quantity, actual_quantity, status = self._handle_discharge(
                 discharge_quantity, dischargeable_quantity, 

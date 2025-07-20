@@ -86,7 +86,7 @@ class Commodity(Element):
         Returns new values to be applied, status, whether purchasing the commodity succeeded, 
         and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot purchase quantity {quantity:.4f} of {self.name}.", True, False
+            return (0,0), f"Cannot purchase quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
         exact_completion = True
@@ -114,7 +114,7 @@ class Commodity(Element):
         Returns new values to be applied, status, whether selling the commodity succeeded, 
         and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot sell quantity {quantity:.4f} of {self.name}.", True, False
+            return (0,0), f"Cannot sell quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
         exact_completion = True
@@ -140,7 +140,7 @@ class Commodity(Element):
         Returns new values to be applied, status, whether emitting the commodity succeeded, 
         and whether this action could be completed exactly as requested."""
         if quantity < 0:
-            return f"Cannot emit quantity {quantity:.4f} of {self.name}.", True, False
+            return (0,), f"Cannot emit quantity {quantity:.4f} of {self.name}.", True, False
         
         status = None
         exact_completion = True
