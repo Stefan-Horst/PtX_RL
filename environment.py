@@ -311,7 +311,11 @@ class PtxEnvironment(Environment):
                         element, value, self.ptx_system
                     )
                     if exact_completion: # directly execute conversion
-                        element.apply_action_method(action_method, self.ptx_system, values)
+                        actual_success = element.apply_action_method(
+                            action_method, self.ptx_system, values
+                        )
+                        assert actual_success, (f"Execution of action method {action_method.__name__} "
+                                                f"failed when it should have succeeded in {element.name}.")
                         state_change_info = (element.name, status)
                         state_change_infos.append(state_change_info)
                         conversion_exact_completion_info[element.name] = exact_completion
@@ -336,7 +340,9 @@ class PtxEnvironment(Environment):
             element, action_method_tuple, value = lowest_quantity_deviation_item
             action_method, _ = action_method_tuple
             values, status, success = last_return_value
-            element.apply_action_method(action_method, self.ptx_system, values)
+            actual_success = element.apply_action_method(action_method, self.ptx_system, values)
+            assert actual_success, (f"Execution of action method {action_method.__name__} failed "
+                                    f"when it should have succeeded in {element.name}.")
             state_change_info = (element.name, status)
             state_change_infos.append(state_change_info)
             conversion_exact_completion_info[element.name] = exact_completion
@@ -399,7 +405,9 @@ class PtxEnvironment(Environment):
         system with the provided value as that method's parameter."""
         action_method, _ = action_method_tuple
         values, status, success, exact_completion = action_method(element, value, self.ptx_system)
-        element.apply_action_method(action_method, self.ptx_system, values)
+        actual_success = element.apply_action_method(action_method, self.ptx_system, values)
+        assert actual_success, (f"Execution of action method {action_method.__name__} failed "
+                                f"when it should have succeeded in {element.name}.")
         state_change_info = (element.name, status)
         return state_change_info, success, exact_completion
     
