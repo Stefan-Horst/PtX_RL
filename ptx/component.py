@@ -224,11 +224,11 @@ class ConversionComponent(BaseComponent):
             new_reduction_quantity = self.load - self.min_p
             status += (f" New load {new_load:.4f} of quantity {reduction_quantity:.4f} is lower than "
                        f"min power, set load to that value with quantity {new_reduction_quantity:.4f}.")
-            new_load = self.load - reduction_quantity
+            new_load = self.load - new_reduction_quantity
             reduction_quantity = new_reduction_quantity
             
         new_capacity = self.fixed_capacity * new_load
-        potential_min_capacity = min(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
+        potential_min_capacity = max(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
         # try to set production even lower if available input quantities are too low
         for input, input_ratio in zip(input_commodities, input_ratios):
             if new_capacity * input_ratio > input.available_quantity:
@@ -643,7 +643,7 @@ class GenerationComponent(BaseComponent):
                 exact_completion = False
                 quantity = -self.curtailment
             else:
-                generated = possible_current_generation - self.curtailment + curtail_strip_quantity
+                generated = max(0, possible_current_generation - self.curtailment) + curtail_strip_quantity
                 status = (f"Remove curtailment {curtail_strip_quantity:.4f} from {self.curtailment:.4f} "
                           f"curtailment, generating {generated:.4f} MWh in {self.name}")
         # no change in production

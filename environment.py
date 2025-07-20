@@ -207,7 +207,7 @@ class PtxEnvironment(Environment):
         
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}
-        info["step_revenue"] = balance_difference
+        info["Step revenue"] = round(balance_difference, 4)
         
         # logging below
         reward_msg = (f"Reward: {reward:.4f}, Current iteration reward: "
