@@ -116,41 +116,57 @@ class ConversionComponent(BaseComponent):
         status = f"In {self.name}:"
         exact_completion = True
         # set quantity so conversion cannot cost more than balance
-        potential_max_cost = current_capacity * main_input_conversion_coefficient * self.variable_om
-        if potential_max_cost > ptx_system.balance:
-            new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
-            new_load = new_capacity / self.fixed_capacity
-            new_quantity = new_load - self.load
-            status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
-                       f"than available balance {ptx_system.balance:.4f}€, set "
-                       f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
-            exact_completion = False
-            quantity = new_quantity
+        quantity, exact_completion, status = self._check_cost_not_higher_than_balance(
+            quantity, ptx_system, main_input_conversion_coefficient, current_capacity, status
+        )
         
+        intermediate_status = ""
         # ramp up
         if quantity > 0:
-            quantity, new_load, status = self._handle_ramp_up(
-                quantity, current_capacity, input_commodities, input_ratios, status
+            quantity, _, intermediate_status = self._check_quantity_not_higher_than_ramp_up(
+                quantity, intermediate_status
             )
-            if status == "":
-                status = f"Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
+            new_load = self.load + quantity
+            quantity, new_load, _, intermediate_status = self._check_load_not_higher_than_max_p(
+                quantity, new_load, intermediate_status
+            )
+            quantity, new_load, _, intermediate_status = self._check_enough_inputs_available_for_ramp_up(
+                quantity, new_load, current_capacity, input_commodities, input_ratios, intermediate_status
+            )
+            if intermediate_status == "":
+                intermediate_status = f"Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
             else:
                 exact_completion = False
+            status += intermediate_status
         # ramp down
         elif quantity < 0:
             reduction_quantity = -quantity
-            reduction_quantity, new_load, status = self._handle_ramp_down(
-                reduction_quantity, input_commodities, input_ratios, status
+            reduction_quantity, _, intermediate_status = self._check_reduction_quantity_not_higher_than_ramp_down(
+                reduction_quantity, intermediate_status
             )
-            if status == "":
-                status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
+            new_load = self.load - reduction_quantity
+            reduction_quantity, new_load, _, intermediate_status = self._check_load_not_lower_than_min_p(
+                reduction_quantity, new_load, intermediate_status
+            )
+            reduction_quantity, new_load, _, intermediate_status = self._check_enough_inputs_available_for_ramp_down(
+                reduction_quantity, new_load, input_commodities, input_ratios, intermediate_status
+            )
+            if intermediate_status == "":
+                intermediate_status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
             else:
                 exact_completion = False
             quantity = -reduction_quantity
+            status += intermediate_status
         # no change in load
         else: # quantity == 0
-            new_load = self.load
-            status = f"No ramp up or down of load {new_load:.4f} in {self.name}."
+            quantity, new_load, _, intermediate_status = self._check_enough_inputs_available(
+                input_commodities, input_ratios, intermediate_status
+            )
+            if intermediate_status == "":
+                intermediate_status = f"No ramp up or down of load {new_load:.4f} in {self.name}."
+            else:
+                exact_completion = False
+            status += intermediate_status
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost (cost is based on main output)
@@ -176,26 +192,48 @@ class ConversionComponent(BaseComponent):
         for output, amount in output_values:
             convert_status += f" {amount:.4f} {output.name} produced in conversion."
         status += convert_status
-        
+                
         values = (quantity, cost, input_values, output_values)
         return values, status, True, exact_completion
 
-    def _handle_ramp_up(self, quantity, current_capacity, input_commodities, input_ratios, status):
-        """Make sure load is not increased more than is allowed or to a value higher than the maximum. 
-        Then, try to limit increase if not enough input commodities are available for the conversion."""
+    def _check_cost_not_higher_than_balance(self, quantity, ptx_system, main_input_conversion_coefficient, 
+                                            current_capacity, status):
+        exact_completion = True
+        potential_max_cost = current_capacity * main_input_conversion_coefficient * self.variable_om
+        if potential_max_cost > ptx_system.balance:
+            new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
+            new_load = new_capacity / self.fixed_capacity
+            new_quantity = new_load - self.load
+            status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
+                       f"than available balance {ptx_system.balance:.4f}€, set "
+                       f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
+            exact_completion = False
+            quantity = new_quantity
+        return quantity, exact_completion, status
+
+    def _check_quantity_not_higher_than_ramp_up(self, quantity, status):
+        exact_completion = True
         if quantity > self.ramp_up:
             status += (f" Quantity {quantity:.4f} is higher than max ramp up "
                        f"{self.ramp_up}, set quantity to that value.")
+            exact_completion = False
             quantity = self.ramp_up
-                
-        new_load = self.load + quantity    
+        return quantity, exact_completion, status
+    
+    def _check_load_not_higher_than_max_p(self, quantity, new_load, status):
+        exact_completion = True
         if new_load > self.max_p:
             new_quantity = self.max_p - self.load
             status += (f" New load {new_load:.4f} of quantity {quantity:.4f} is higher than max "
                        f"power, set load to that value with quantity {new_quantity:.4f}.")
+            exact_completion = False
             new_load = self.load + new_quantity
             quantity = new_quantity
-            
+        return quantity, new_load, exact_completion, status
+    
+    def _check_enough_inputs_available_for_ramp_up(self, quantity, new_load, current_capacity, 
+                                                   input_commodities, input_ratios, status):
+        exact_completion = True
         new_capacity = self.fixed_capacity * new_load
         # don't set production higher than available input quantities if possible
         for input, input_ratio in zip(input_commodities, input_ratios):
@@ -206,27 +244,34 @@ class ConversionComponent(BaseComponent):
                 status += (f" Ramp up to {new_load:.4f} in {self.name} would use "
                            f"more {input.name} than available. Instead, ramp up "
                            f"quantity {adapted_quantity:.4f} to {adapted_load:.4f} load.")
-                new_capacity = adapted_capacity
+                exact_completion = False
                 new_load = adapted_load
                 quantity = adapted_quantity
-        return quantity, new_load, status
+            return quantity, new_load, exact_completion, status
 
-    def _handle_ramp_down(self, reduction_quantity, input_commodities, input_ratios, status):
-        """Make sure load is not decreased more than is allowed or to a value lower than the minimum. 
-        Then, try to decrease more if not enough input commodities are available for the conversion."""
+    def _check_reduction_quantity_not_higher_than_ramp_down(self, reduction_quantity, status):
+        exact_completion = True
         if reduction_quantity > self.ramp_down:
             status += (f" Quantity {reduction_quantity:.4f} is higher than max ramp "
                        f"down {self.ramp_down}, set quantity to that value.")
+            exact_completion = False
             reduction_quantity = self.ramp_down
-            
-        new_load = self.load - reduction_quantity
+        return reduction_quantity, exact_completion, status
+    
+    def _check_load_not_lower_than_min_p(self, reduction_quantity, new_load, status):
+        exact_completion = True
         if new_load < self.min_p:
             new_reduction_quantity = self.load - self.min_p
             status += (f" New load {new_load:.4f} of quantity {reduction_quantity:.4f} is lower than "
                        f"min power, set load to that value with quantity {new_reduction_quantity:.4f}.")
+            exact_completion = False
             new_load = self.load - new_reduction_quantity
             reduction_quantity = new_reduction_quantity
-            
+        return reduction_quantity, new_load, exact_completion, status
+    
+    def _check_enough_inputs_available_for_ramp_down(self, reduction_quantity, new_load, 
+                                                     input_commodities, input_ratios, status):
+        exact_completion = True
         new_capacity = self.fixed_capacity * new_load
         potential_min_capacity = max(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
         # try to set production even lower if available input quantities are too low
@@ -238,10 +283,28 @@ class ConversionComponent(BaseComponent):
                 status += (f" Ramp down to {new_load:.4f} in {self.name} would use "
                            f"more {input.name} than available. Instead, ramp down "
                            f"quantity {adapted_quantity:.4f} to {adapted_load:.4f} load.")
-                new_capacity = adapted_capacity
+                exact_completion = False
                 new_load = adapted_load
                 reduction_quantity = adapted_quantity
-        return reduction_quantity, new_load, status
+            return reduction_quantity, new_load, exact_completion, status
+    
+    def _check_enough_inputs_available(self, input_commodities, input_ratios, status):
+        exact_completion = True
+        capacity = self.fixed_capacity * self.load
+        potential_min_capacity = max(self.load - self.ramp_down, self.min_p) * self.fixed_capacity
+        # try to set production lower if available input quantities are too low
+        for input, input_ratio in zip(input_commodities, input_ratios):
+            if capacity * input_ratio > input.available_quantity:
+                adapted_capacity = min(input.available_quantity / input_ratio, potential_min_capacity)
+                adapted_load = adapted_capacity / self.fixed_capacity
+                adapted_quantity = adapted_load - self.load
+                status += (f" Not changing load {self.load:.4f} in {self.name} would "
+                           f"use more {input.name} than available. Instead, ramp down "
+                           f"quantity {adapted_quantity:.4f} to {adapted_load:.4f} load.")
+                exact_completion = False
+                new_load = adapted_load
+                quantity = adapted_quantity
+            return quantity, new_load, exact_completion, status
     
     def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
