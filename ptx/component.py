@@ -453,9 +453,20 @@ class StorageComponent(BaseComponent):
                 return empty_values, (f"Cannot charge quantity {quantity:.4f} in "
                        f"{self.name} as none is available."), True, False
             
-            quantity, actual_quantity, cost, status = self._handle_charge(
-                quantity, free_storage, ptx_system.balance, 
-                commodity.available_quantity, max_possible_amount, status
+            # while quantity is raw input used, actual_quantity is what is actually stored
+            actual_quantity = quantity * self.charging_efficiency
+            quantity, actual_quantity, _, status = self._check_actual_quantity_not_higher_than_possible_amount(
+                quantity, actual_quantity, max_possible_amount, status
+            )
+            quantity, actual_quantity, _, status = self._check_actual_quantity_not_higher_than_free_storage(
+                quantity, actual_quantity, free_storage, status
+            )
+            quantity, actual_quantity, _, status = self._check_quantity_not_higher_than_available_quantity(
+                quantity, actual_quantity, commodity.available_quantity, status
+            )
+            cost = quantity * self.variable_om
+            quantity, actual_quantity, cost, _, status = self._check_cost_not_higher_than_balance(
+                quantity, actual_quantity, cost, ptx_system.balance, status
             )
             if status == "":
                 status = f"Charge {quantity:.4f} {commodity.name} for {cost:.4f}€ in {self.name}."
@@ -471,9 +482,14 @@ class StorageComponent(BaseComponent):
                 return empty_values, (f"Cannot discharge quantity {discharge_quantity:.4f} "
                        f"in {self.name} as it is empty."), True, False
             
-            discharge_quantity, actual_quantity, status = self._handle_discharge(
-                discharge_quantity, dischargeable_quantity, 
-                commodity.name, max_possible_amount, status
+            # actual_quantity is specified output, while discharge_quantity is what is actually removed
+            actual_quantity = discharge_quantity
+            discharge_quantity = actual_quantity / self.discharging_efficiency
+            discharge_quantity, actual_quantity, _, status = self._check_discharge_quantity_not_higher_than_possible_amount(
+                discharge_quantity, actual_quantity, max_possible_amount, commodity.name, status
+            )
+            discharge_quantity, actual_quantity, _, status = self._check_discharge_quantity_not_higher_than_dischargeable_quantity(
+                discharge_quantity, actual_quantity, dischargeable_quantity, commodity.name, status
             )
             if status == "":
                 status = f"Discharge {discharge_quantity:.4f} {commodity.name} in {self.name}."
@@ -489,65 +505,79 @@ class StorageComponent(BaseComponent):
         values = (quantity, actual_quantity, cost, is_charging)
         return values, status, True, exact_completion
 
-    def _handle_charge(self, quantity, free_storage, balance, 
-                       available_quantity, max_possible_amount, status):
-        """Make sure amount charged is not more than max amount per step, free storage, 
-        available commodity, or the charging cost is more than the available balance."""
-        # while quantity is raw input used, actual_quantity is what is actually stored
-        actual_quantity = quantity * self.charging_efficiency
+    def _check_actual_quantity_not_higher_than_possible_amount(self, quantity, actual_quantity, 
+                                                               max_possible_amount, status):
+        exact_completion = True
         if actual_quantity > max_possible_amount:
             new_actual_quantity = max_possible_amount
             quantity = new_actual_quantity / self.charging_efficiency
             status += (f"Quantity to be stored {actual_quantity:.4f} is greater "
                        f"than maximum possible amount that can be charged "
                        f"{max_possible_amount:.4f}, charge {quantity:.4f} instead. ")
+            exact_completion = False
             actual_quantity = new_actual_quantity
-        
+        return quantity, actual_quantity, exact_completion, status
+
+    def _check_actual_quantity_not_higher_than_free_storage(self, quantity, actual_quantity, 
+                                                            free_storage, status):
+        exact_completion = True
         if actual_quantity > free_storage:
             new_actual_quantity = free_storage
             quantity = new_actual_quantity / self.charging_efficiency
             status += (f"Quantity to be stored {actual_quantity:.4f} is greater than free "
                        f"storage capacity {free_storage:.4f}, charge {quantity:.4f} instead. ")
+            exact_completion = False
             actual_quantity = new_actual_quantity
-        
+        return quantity, actual_quantity, exact_completion, status
+
+    def _check_quantity_not_higher_than_available_quantity(self, quantity, actual_quantity,
+                                                           available_quantity, status):
+        exact_completion = True
         if quantity > available_quantity:
             new_quantity = available_quantity
             actual_quantity = new_quantity * self.charging_efficiency
             status += (f"Quantity {quantity:.4f} is greater than available quantity "
                        f"{available_quantity:.4f}, charge that much instead. ")
+            exact_completion = False
             quantity = new_quantity
-        
-        cost = quantity * self.variable_om
+        return quantity, actual_quantity, exact_completion, status
+
+    def _check_cost_not_higher_than_balance(self, quantity, actual_quantity, cost, balance, status):
+        exact_completion = True
         if cost > balance:
             new_cost = balance
             quantity = new_cost / self.variable_om
             actual_quantity = quantity * self.charging_efficiency
             status += (f"Charging {cost:.4f}€ is greater than balance {balance:.4f}€, "
                        f"charge quantity {quantity:.4f} for that much instead. ")
+            exact_completion = False
             cost = new_cost
-        return quantity, actual_quantity, cost, status
-    
-    def _handle_discharge(self, discharge_quantity, dischargeable_quantity, 
-                          commodity_name, max_possible_amount, status):
-        """Make sure amount discharged is not more than max amount per step or amount in storage."""
-        # actual_quantity is specified output, while discharge_quantity is what is actually removed
-        actual_quantity = discharge_quantity
-        discharge_quantity = actual_quantity / self.discharging_efficiency
+        return quantity, actual_quantity, cost, exact_completion, status
+
+    def _check_discharge_quantity_not_higher_than_possible_amount(self, discharge_quantity, actual_quantity, 
+                                                                  max_possible_amount, commodity_name, status):
+        exact_completion = True
         if discharge_quantity > max_possible_amount:
             actual_quantity = discharge_quantity * self.discharging_efficiency
             status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} "
                        f"from max possible amount {max_possible_amount:.4f} {commodity_name} "
                        f"in storage. Instead, discharge that much. ")
+            exact_completion = False
             discharge_quantity = max_possible_amount
-            
+        return discharge_quantity, actual_quantity, exact_completion, status
+    
+    def _check_discharge_quantity_not_higher_than_dischargeable_quantity(self, discharge_quantity, actual_quantity, 
+                                                                         dischargeable_quantity, commodity_name, status):
+        exact_completion = True
         # try to discharge as much as possible
         if discharge_quantity > dischargeable_quantity:
             actual_quantity = dischargeable_quantity * self.discharging_efficiency
             status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} from "
                        f"dischargeable quantity {dischargeable_quantity:.4f} {commodity_name} "
                        f"in storage. Instead, discharge that much. ")
+            exact_completion = False
             discharge_quantity = dischargeable_quantity
-        return discharge_quantity, actual_quantity, status
+        return discharge_quantity, actual_quantity, exact_completion, status
     
     def get_possible_observation_attributes(self, relevant_attributes):
         # all attributes are possible for every conversion component
@@ -633,38 +663,31 @@ class GenerationComponent(BaseComponent):
         # how much the generator can actually generate at most
         possible_current_generation = (ptx_system.get_current_weather_coefficient(self.name)
                                        * self.fixed_capacity)
-        status = None
+        status = ""
         exact_completion = True
         # decrease production
         if quantity > 0:
-            # try to curtail as much as possible, limit at stopping generation
-            if quantity > potential_max_generation:
-                status = (f"Cannot curtail {quantity:.4f} from current capacity "
-                          f"{potential_max_generation:.4f} in {self.name}. "
-                          f"Instead, curtail completely, generating 0 MWh")
-                exact_completion = False
-                quantity = potential_max_generation
-                generated = 0
-            else:
-                new_potential_max_generation = potential_max_generation - quantity
-                generated = min(possible_current_generation, new_potential_max_generation)
-                status = (f"Curtail {quantity:.4f} from {potential_max_generation:.4f} current "
-                          f"potential production, generating {generated:.4f} MWh in {self.name}")
+            new_potential_max_generation = potential_max_generation - quantity
+            generated = min(possible_current_generation, new_potential_max_generation)
+            quantity, generated, completion, status = self._check_quantity_not_higher_than_potential_generation(
+                quantity, generated, potential_max_generation, status
+            )
+            if completion:
+                status += (f"Curtail {quantity:.4f} from {potential_max_generation:.4f} current "
+                           f"potential production, generating {generated:.4f} MWh in {self.name}")
+            exact_completion = exact_completion and completion
         # increase production
         elif quantity < 0:
             curtail_strip_quantity = -quantity
-            # try to remove curtailment as much as possible, limit at max possible generation
-            if curtail_strip_quantity > self.curtailment:
-                generated = possible_current_generation
-                status = (f"Cannot remove curtailment {curtail_strip_quantity:.4f} from current "
-                          f"curtailment {self.curtailment:.4f} in {self.name}. Instead, remove "
-                          f"curtailment completely, generating {generated:.4f} MWh")
-                exact_completion = False
-                quantity = -self.curtailment
-            else:
-                generated = max(0, possible_current_generation - self.curtailment) + curtail_strip_quantity
-                status = (f"Remove curtailment {curtail_strip_quantity:.4f} from {self.curtailment:.4f} "
-                          f"curtailment, generating {generated:.4f} MWh in {self.name}")
+            generated = max(0, possible_current_generation - self.curtailment) + curtail_strip_quantity
+            curtail_strip_quantity, generated, completion, status = self._check_curtail_strip_quantity_not_higher_than_curtailment(
+                curtail_strip_quantity, generated, possible_current_generation, status
+            )
+            if completion:
+                status += (f"Remove curtailment {curtail_strip_quantity:.4f} from {self.curtailment:.4f} "
+                           f"curtailment, generating {generated:.4f} MWh in {self.name}")
+            exact_completion = exact_completion and completion
+            quantity = -curtail_strip_quantity
         # no change in production
         else: # quantity == 0
             generated = possible_current_generation - self.curtailment
@@ -672,21 +695,56 @@ class GenerationComponent(BaseComponent):
         
         # calculate cost and make sure it is not higher than available balance
         cost = generated * self.variable_om
-        if cost > ptx_system.balance:
-            new_cost = ptx_system.balance
-            new_generated = ptx_system.balance / self.variable_om
+        quantity, generated, cost, completion, status = self._check_cost_not_higher_than_balance(
+            quantity, generated, cost, possible_current_generation, ptx_system.balance, status
+        )
+        if completion:
+            status += (f" for {cost:.4f}€.")
+        exact_completion = exact_completion and completion  
+        
+        values = (quantity, generated, cost, possible_current_generation)
+        return values, status, True, exact_completion
+
+    def _check_quantity_not_higher_than_potential_generation(self, quantity, generated, 
+                                                             potential_max_generation, status):
+        exact_completion = True
+        # try to curtail as much as possible, limit at stopping generation
+        if quantity > potential_max_generation:
+            status = (f"Cannot curtail {quantity:.4f} from current capacity "
+                      f"{potential_max_generation:.4f} in {self.name}. "
+                      f"Instead, curtail completely, generating 0 MWh")
+            exact_completion = False
+            quantity = potential_max_generation
+            generated = 0
+        return quantity, generated, exact_completion, status
+
+    def _check_curtail_strip_quantity_not_higher_than_curtailment(self, curtail_strip_quantity, generated, 
+                                                                  possible_current_generation, status):
+        exact_completion = True
+        # try to remove curtailment as much as possible, limit at max possible generation
+        if curtail_strip_quantity > self.curtailment:
+                generated = possible_current_generation
+                status = (f"Cannot remove curtailment {curtail_strip_quantity:.4f} from current "
+                          f"curtailment {self.curtailment:.4f} in {self.name}. Instead, remove "
+                          f"curtailment completely, generating {generated:.4f} MWh")
+                exact_completion = False
+                curtail_strip_quantity = self.curtailment
+        return curtail_strip_quantity, generated, exact_completion, status
+
+    def _check_cost_not_higher_than_balance(self, quantity, generated, cost, 
+                                            possible_current_generation, balance, status):
+        exact_completion = True
+        if cost > balance:
+            new_cost = balance
+            new_generated = balance / self.variable_om
             quantity = max(quantity, possible_current_generation - self.curtailment - new_generated)
             status += (f". Tried to generate {generated:.4f} MWh for {cost:.4f}€, but only "
-                       f"{ptx_system.balance:.4f}€ available. Instead, generate {new_generated:.4f} "
+                       f"{balance:.4f}€ available. Instead, generate {new_generated:.4f} "
                        f"MWh for {new_cost:.4f}€ by increasing curtailment by {quantity:.4f}.")
             exact_completion = False
             cost = new_cost
             generated = new_generated
-        else:
-            status += (f" for {cost:.4f}€.")
-        
-        values = (quantity, generated, cost, possible_current_generation)
-        return values, status, True, exact_completion
+        return quantity, generated, cost, exact_completion, status
 
     def get_possible_observation_attributes(self, relevant_attributes):
         possible_attributes = []
