@@ -19,8 +19,7 @@ DATA_DIR = PROJECT_DIR / "data"
 
 
 def mkdir(path):
-    if not os.path.exists(path):
-        os.makedirs(get_root_path() / path)
+    os.makedirs(PROJECT_DIR / path, exist_ok=True)
 
 def open_yaml_file(path):
     with open(path) as file:

@@ -6,7 +6,7 @@ import gymnasium as gym
 from ptx.commodity import Commodity
 from ptx.component import ConversionComponent, GenerationComponent, StorageComponent
 from ptx.framework import PtxSystem
-from ptx.weather import WeatherDataProvider
+from environment.weather import WeatherDataProvider
 from logger import log, Level
 from util import contains_only_unique_elements
 
