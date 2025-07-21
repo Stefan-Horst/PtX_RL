@@ -130,7 +130,7 @@ class ConversionComponent(BaseComponent):
                 quantity, new_load, intermediate_status
             )
             if intermediate_status == "":
-                intermediate_status = f"Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
+                intermediate_status = f" Ramp up {quantity:.4f} quantity to {new_load:.4f} load."
             else:
                 exact_completion = False
             status += intermediate_status
@@ -145,7 +145,7 @@ class ConversionComponent(BaseComponent):
                 reduction_quantity, new_load, intermediate_status
             )
             if intermediate_status == "":
-                intermediate_status = f"Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
+                intermediate_status = f" Ramp down {reduction_quantity:.4f} quantity to {new_load:.4f} load."
             else:
                 exact_completion = False
             quantity = -reduction_quantity
@@ -153,7 +153,7 @@ class ConversionComponent(BaseComponent):
         # no change in load
         else: # quantity == 0
             new_load = self.load
-            status += f"No ramp up or down of load {new_load:.4f} in {self.name}."
+            status += f" No ramp up or down of load {new_load:.4f} in {self.name}."
         
         # try to decrease load if not enough inputs available
         quantity, new_load, completion, intermediate_status = self._check_enough_inputs_available(
@@ -170,24 +170,31 @@ class ConversionComponent(BaseComponent):
             return empty_values, status, False, False # conversion failed
         
         # convert commodities
-        convert_status = ""
         input_amounts = [input_ratio * current_capacity for input_ratio in input_ratios]
         input_values = zip(input_commodities, input_amounts)
-        for input, amount in input_values:
-            if amount > input.available_quantity:
-                status += (f" Conversion failed for {self.name}. {amount:.4f} {input.name} "
-                           f"required, but only {input.available_quantity:.4f} available.")
-                return empty_values, status, False, False # conversion failed
-            convert_status += f" {amount:.4f} {input.name} consumed in conversion."
-        
         output_amounts = [output_ratio * current_capacity for output_ratio in output_ratios]
         output_values = zip(output_commodities, output_amounts)
-        for output, amount in output_values:
-            convert_status += f" {amount:.4f} {output.name} produced in conversion."
+        success, convert_status, status = self._try_convert_commodities(
+            input_values, output_values, status
+        )
+        if not success:
+            return empty_values, status, False, False # conversion failed
         status += convert_status
                 
         values = (quantity, cost, input_values, output_values)
-        return values, status, True, exact_completion
+        return values, status, True, exact_completion # conversion succeeded
+
+    def _try_convert_commodities(self, input_values, output_values, status):
+        convert_status = ""
+        for input, amount in input_values:
+            if amount > input.available_quantity:
+                status += (f" Conversion failed. {amount:.4f} {input.name} required, "
+                           f"but only {input.available_quantity:.4f} available.")
+                return False, convert_status, status # conversion failed
+            convert_status += f" {amount:.4f} {input.name} consumed in conversion."
+        for output, amount in output_values:
+            convert_status += f" {amount:.4f} {output.name} produced in conversion."
+        return True, convert_status, status # conversion succeeded
 
     def _check_cost_not_higher_than_balance(self, quantity, ptx_system, main_input_conversion_coefficient, 
                                             current_capacity, status):
