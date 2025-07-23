@@ -1,6 +1,8 @@
+pyyaml
 numpy
 pandas
 matplotlib
 scikit-learn
 gymnasium
 mujoco==3.2.5
+pytest
