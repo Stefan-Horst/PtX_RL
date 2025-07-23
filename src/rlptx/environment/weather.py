@@ -1,7 +1,7 @@
 from glob import glob
 import pandas as pd
 
-from util import DATA_DIR
+from rlptx.util import DATA_DIR
 
 
 class WeatherDataProvider():

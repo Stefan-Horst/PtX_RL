@@ -1,6 +1,6 @@
 import copy
 
-from ptx.core import Element
+from rlptx.ptx.core import Element
 
 
 class BaseComponent(Element):

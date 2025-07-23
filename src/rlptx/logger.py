@@ -2,7 +2,7 @@ import logging
 import datetime
 from enum import Enum
 
-import util
+import rlptx.util as util
 
 
 LOGFILE_PATH = 'logs/'

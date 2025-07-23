@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
-from ptx.framework import PtxSystem
+from rlptx.ptx.framework import PtxSystem
 
 class Element(ABC):
     """Abstract base class for all classes (commodities, components) of the PtX system."""
