@@ -565,7 +565,7 @@ class StorageComponent(BaseComponent):
                                                                   max_possible_amount, commodity_name, status):
         exact_completion = True
         if discharge_quantity > max_possible_amount:
-            actual_quantity = discharge_quantity * self.discharging_efficiency
+            actual_quantity = max_possible_amount * self.discharging_efficiency
             status += (f"Cannot discharge quantity {discharge_quantity:.4f} in {self.name} "
                        f"from max possible amount {max_possible_amount:.4f} {commodity_name} "
                        f"in storage. Instead, discharge that much. ")
