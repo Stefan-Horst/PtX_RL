@@ -80,12 +80,12 @@ class ConversionComponent(BaseComponent):
             for input, amount in input_values:
                 input.available_quantity -= amount
                 input.consumed_quantity += amount
-                if input.name == self.main_input:
-                    input.total_production_costs += cost
                 self.consumed_commodities[input.name] += amount
             for output, amount in output_values:
                 output.available_quantity += amount
                 output.produced_quantity += amount
+                if output.name == self.main_output:
+                    output.total_production_costs += cost
                 self.produced_commodities[output.name] += amount
             self.load += quantity
             self.total_variable_costs += cost
@@ -105,7 +105,7 @@ class ConversionComponent(BaseComponent):
         Returns new values to be applied, status, whether the conversion succeeded, 
         and whether the conversion could be completed exactly as requested."""
         empty_values = (0,0,[],[])
-        main_input_conversion_coefficient = self.inputs[self.main_input]
+        main_output_conversion_coefficient = self.outputs[self.main_output]
         current_capacity = self.get_current_capacity_level()
         
         input_commodities = list(map(ptx_system.commodities.get, list(self.inputs.keys())))
@@ -116,7 +116,7 @@ class ConversionComponent(BaseComponent):
         status = f"In {self.name}:"
         # set quantity so conversion cannot cost more than balance
         quantity, exact_completion, status = self._check_cost_not_higher_than_balance(
-            quantity, ptx_system, main_input_conversion_coefficient, current_capacity, status
+            quantity, ptx_system.balance, main_output_conversion_coefficient, current_capacity, status
         )
         
         intermediate_status = ""
@@ -163,7 +163,7 @@ class ConversionComponent(BaseComponent):
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost (cost is based on main output)
-        cost = current_capacity * self.outputs[self.main_output] * self.variable_om
+        cost = current_capacity * main_output_conversion_coefficient * self.variable_om
         if cost > ptx_system.balance:
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
@@ -171,16 +171,16 @@ class ConversionComponent(BaseComponent):
         
         # convert commodities
         input_amounts = [input_ratio * current_capacity for input_ratio in input_ratios]
-        input_values = zip(input_commodities, input_amounts)
+        input_values = list(zip(input_commodities, input_amounts))
         output_amounts = [output_ratio * current_capacity for output_ratio in output_ratios]
-        output_values = zip(output_commodities, output_amounts)
+        output_values = list(zip(output_commodities, output_amounts))
         success, convert_status, status = self._try_convert_commodities(
             input_values, output_values, status
         )
         if not success:
             return empty_values, status, False, False # conversion failed
         status += convert_status
-                
+        
         values = (quantity, cost, input_values, output_values)
         return values, status, True, exact_completion # conversion succeeded
 
@@ -196,16 +196,16 @@ class ConversionComponent(BaseComponent):
             convert_status += f" {amount:.4f} {output.name} produced in conversion."
         return True, convert_status, status # conversion succeeded
 
-    def _check_cost_not_higher_than_balance(self, quantity, ptx_system, main_input_conversion_coefficient, 
+    def _check_cost_not_higher_than_balance(self, quantity, balance, main_output_conversion_coefficient, 
                                             current_capacity, status):
         exact_completion = True
-        potential_max_cost = current_capacity * main_input_conversion_coefficient * self.variable_om
-        if potential_max_cost > ptx_system.balance:
-            new_capacity = ptx_system.balance / (main_input_conversion_coefficient * self.variable_om)
+        potential_max_cost = current_capacity * main_output_conversion_coefficient * self.variable_om
+        if potential_max_cost > balance:
+            new_capacity = balance / (main_output_conversion_coefficient * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
             status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
-                       f"than available balance {ptx_system.balance:.4f}€, set "
+                       f"than available balance {balance:.4f}€, set "
                        f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
             exact_completion = False
             quantity = new_quantity
