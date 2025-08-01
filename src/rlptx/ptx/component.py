@@ -168,6 +168,7 @@ class ConversionComponent(BaseComponent):
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
             return empty_values, status, False, False # conversion failed
+        status += f" Convert for cost {cost:.4f}€."
         
         # convert commodities
         input_amounts = [input_ratio * current_capacity for input_ratio in input_ratios]
@@ -204,11 +205,12 @@ class ConversionComponent(BaseComponent):
             new_capacity = balance / (main_output_conversion_coefficient * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
-            status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
-                       f"than available balance {balance:.4f}€, set "
-                       f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
-            exact_completion = False
-            quantity = new_quantity
+            if new_quantity != quantity:
+                status += (f" Potential cost {potential_max_cost:.4f}€ is higher "
+                           f"than available balance {balance:.4f}€, set "
+                           f"quantity from {quantity:.4f} to {new_quantity:.4f}.")
+                exact_completion = False
+                quantity = new_quantity
         return quantity, exact_completion, status
 
     def _check_quantity_not_higher_than_ramp_up(self, quantity, status):
@@ -267,7 +269,7 @@ class ConversionComponent(BaseComponent):
                 exact_completion = False
                 new_load = adapted_load
                 quantity = adapted_quantity
-            return quantity, new_load, exact_completion, status
+        return quantity, new_load, exact_completion, status
     
     def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
