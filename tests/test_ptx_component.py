@@ -1,6 +1,315 @@
-from rlptx.ptx.component import StorageComponent, GenerationComponent
+from pytest import approx
+
+from rlptx.ptx.component import ConversionComponent, StorageComponent, GenerationComponent
 from rlptx.ptx.framework import PtxSystem
 from rlptx.ptx.commodity import Commodity
+
+
+class TestConversionComponent():
+    
+    def setup_method(self):
+        self.cc = ConversionComponent("cc")
+        self.cc.inputs = {"Electricity": 1.0, "Water": 0.5}
+        self.cc.outputs = {"H2": 2.0, "O2": 2.0}
+        self.cc.main_output = "H2"
+        self.ptx = PtxSystem()
+        self.ptx.commodities = {
+            "Electricity": Commodity("Electricity", None), 
+            "Water": Commodity("Water", None), 
+            "H2": Commodity("H2", None), 
+            "O2": Commodity("O2", None)
+        }
+    
+    def test_ramp_up_or_down__up(self):
+        quantity = 0.5
+        self.cc.load = 0.5
+        self.cc.fixed_capacity = 10
+        self.cc.variable_om = 1
+        self.cc.main_output = "H2"
+        self.cc.ramp_up = 0.5
+        self.cc.max_p = 1
+        self.cc.ramp_down = 0.5
+        self.cc.min_p = 0
+        self.ptx.balance = 20
+        self.ptx.commodities["Electricity"].available_quantity = 10
+        self.ptx.commodities["Water"].available_quantity = 5
+        
+        values, _, success, exact_completion = self.cc.ramp_up_or_down(quantity, self.ptx)
+        nquantity, cost, input_values, output_values = values
+        input_vals = list(input_values)
+        output_vals = list(output_values)
+        assert nquantity == approx(0.5)
+        assert cost == 20
+        assert input_vals[0] == (self.ptx.commodities["Electricity"], 10)
+        assert input_vals[1] == (self.ptx.commodities["Water"], 5)
+        assert output_vals[0] == (self.ptx.commodities["H2"], 20)
+        assert output_vals[1] == (self.ptx.commodities["O2"], 20)
+        assert success
+        assert exact_completion
+    
+    def test_ramp_up_or_down__down(self):
+        quantity = -0.5
+        self.cc.load = 1
+        self.cc.fixed_capacity = 10
+        self.cc.variable_om = 1
+        self.cc.main_output = "H2"
+        self.cc.ramp_up = 0.5
+        self.cc.max_p = 1
+        self.cc.ramp_down = 0.5
+        self.cc.min_p = 0
+        self.ptx.balance = 10
+        self.ptx.commodities["Electricity"].available_quantity = 5
+        self.ptx.commodities["Water"].available_quantity = 2.5
+        
+        values, _, success, exact_completion = self.cc.ramp_up_or_down(quantity, self.ptx)
+        print(_)
+        nquantity, cost, input_values, output_values = values
+        input_values = list(input_values)
+        output_values = list(output_values)
+        assert nquantity == approx(-0.5)
+        assert cost == 10
+        assert input_values[0] == (self.ptx.commodities["Electricity"], 5)
+        assert input_values[1] == (self.ptx.commodities["Water"], approx(2.5))
+        assert output_values[0] == (self.ptx.commodities["H2"], 10)
+        assert output_values[1] == (self.ptx.commodities["O2"], 10)
+        assert success
+        assert exact_completion
+    
+    def test_ramp_up_or_down__fail_cost(self):
+        quantity = 0.5
+        self.cc.load = 0.5
+        self.cc.fixed_capacity = 10
+        self.cc.variable_om = 1
+        self.cc.main_output = "H2"
+        self.cc.ramp_up = 0.5
+        self.cc.max_p = 1
+        self.cc.ramp_down = 0.5
+        self.cc.min_p = 0.1 # make conversion unable to just shut down
+        self.ptx.balance = 0
+        self.ptx.commodities["Electricity"].available_quantity = 10
+        self.ptx.commodities["Water"].available_quantity = 5
+        
+        values, _, success, exact_completion = self.cc.ramp_up_or_down(quantity, self.ptx)
+        
+        assert values == (0,0,[],[])
+        assert not success
+        assert not exact_completion
+    
+    def test_ramp_up_or_down__fail_conversion(self):
+        quantity = 0.5
+        self.cc.load = 0.5
+        self.cc.fixed_capacity = 10
+        self.cc.variable_om = 1
+        self.cc.main_output = "H2"
+        self.cc.ramp_up = 0.5
+        self.cc.max_p = 1
+        self.cc.ramp_down = 0.1
+        self.cc.min_p = 0.1 # make conversion unable to just shut down
+        self.ptx.balance = 10
+        self.ptx.commodities["Electricity"].available_quantity = 10
+        self.ptx.commodities["Water"].available_quantity = 0
+        
+        values, _, success, exact_completion = self.cc.ramp_up_or_down(quantity, self.ptx)
+        
+        assert values == (0,0,[],[])
+        assert not success
+        assert not exact_completion
+    
+    def test_try_convert_commodities__exact(self):
+        self.ptx.commodities["Electricity"].available_quantity = 1
+        self.ptx.commodities["Water"].available_quantity = 1
+        input_values = [(self.ptx.commodities["Electricity"], 1), (self.ptx.commodities["Water"], 1)]
+        output_values = [(self.ptx.commodities["H2"], 1), (self.ptx.commodities["O2"], 1)]
+        
+        success, _, _ = self.cc._try_convert_commodities(
+            input_values, output_values, ""
+        )
+        
+        assert success
+    
+    def test_try_convert_commodities__adjusted(self):
+        self.ptx.commodities["Electricity"].available_quantity = 1
+        self.ptx.commodities["Water"].available_quantity = 0.5
+        input_values = [(self.ptx.commodities["Electricity"], 1), (self.ptx.commodities["Water"], 1)]
+        output_values = [(self.ptx.commodities["H2"], 1), (self.ptx.commodities["O2"], 1)]
+        
+        success, _, _ = self.cc._try_convert_commodities(
+            input_values, output_values, ""
+        )
+        
+        assert not success
+    
+    def test_check_cost_not_higher_than_balance__exact(self):
+        quantity = 0.5
+        main_output_conversion_coefficient = 0.5
+        current_capacity = 2
+        self.cc.variable_om = 1
+        self.cc.fixed_capacity = 4
+        self.cc.load = 0.5
+        self.ptx.balance = 1
+        
+        nquantity, exact_completion, _ = self.cc._check_cost_not_higher_than_balance(
+            quantity, self.ptx.balance, main_output_conversion_coefficient, current_capacity, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert exact_completion
+    
+    def test_check_cost_not_higher_than_balance__adjusted(self):
+        quantity = 0.5
+        main_output_conversion_coefficient = 0.5
+        current_capacity = 4
+        self.cc.variable_om = 1
+        self.cc.fixed_capacity = 8
+        self.cc.load = 0.5
+        self.ptx.balance = 1
+        
+        nquantity, exact_completion, _ = self.cc._check_cost_not_higher_than_balance(
+            quantity, self.ptx.balance, main_output_conversion_coefficient, current_capacity, ""
+        )
+        
+        assert nquantity == approx(-0.25)
+        assert not exact_completion
+    
+    def test_check_quantity_not_higher_than_ramp_up__exact(self):
+        quantity = 0.5
+        self.cc.ramp_up = 0.5
+        
+        nquantity, exact_completion, _ = self.cc._check_quantity_not_higher_than_ramp_up(
+            quantity, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert exact_completion
+    
+    def test_check_quantity_not_higher_than_ramp_up__adjusted(self):
+        quantity = 0.6
+        self.cc.ramp_up = 0.5
+        
+        nquantity, exact_completion, _ = self.cc._check_quantity_not_higher_than_ramp_up(
+            quantity, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert not exact_completion
+    
+    def test_check_load_not_higher_than_max_p__exact(self):
+        quantity = 0.4
+        new_load = 0.5
+        self.cc.max_p = 0.5
+        self.cc.load = 0.1
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_load_not_higher_than_max_p(
+            quantity, new_load, ""
+        )
+        
+        assert nquantity == approx(0.4)
+        assert nnew_load == approx(0.5)
+        assert exact_completion
+    
+    def test_check_load_not_higher_than_max_p__adjusted(self):
+        quantity = 0.5
+        new_load = 0.6
+        self.cc.max_p = 0.5
+        self.cc.load = 0.1
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_load_not_higher_than_max_p(
+            quantity, new_load, ""
+        )
+        
+        assert nquantity == approx(0.4)
+        assert nnew_load == approx(0.5)
+        assert not exact_completion
+    
+    def test_check_reduction_quantity_not_higher_than_ramp_down__exact(self):
+        quantity = 0.5
+        self.cc.ramp_down = 0.5
+        
+        nquantity, exact_completion, _ = self.cc._check_reduction_quantity_not_higher_than_ramp_down(
+            quantity, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert exact_completion
+    
+    def test_check_reduction_quantity_not_higher_than_ramp_down__adjusted(self):
+        quantity = 0.6
+        self.cc.ramp_down = 0.5
+        
+        nquantity, exact_completion, _ = self.cc._check_reduction_quantity_not_higher_than_ramp_down(
+            quantity, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert not exact_completion
+    
+    def test_check_load_not_lower_than_min_p__exact(self):
+        quantity = 0.3
+        new_load = 0.2
+        self.cc.load = 0.5
+        self.cc.min_p = 0.2
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_load_not_lower_than_min_p(
+            quantity, new_load, ""
+        )
+        
+        assert nquantity == approx(0.3)
+        assert nnew_load == approx(0.2)
+        assert exact_completion
+    
+    def test_check_load_not_lower_than_min_p__adjusted(self):
+        quantity = 0.4
+        new_load = 0.1
+        self.cc.load = 0.5
+        self.cc.min_p = 0.2
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_load_not_lower_than_min_p(
+            quantity, new_load, ""
+        )
+        
+        assert nquantity == approx(0.3)
+        assert nnew_load == approx(0.2)
+        assert not exact_completion
+    
+    def test_check_enough_inputs_available__exact(self):
+        quantity = 0.5
+        new_load = 1
+        self.ptx.commodities["Electricity"].available_quantity = 10
+        self.ptx.commodities["Water"].available_quantity = 5
+        input_commodities = list(self.ptx.commodities.values())[:2]
+        input_ratios = self.cc.inputs.values()
+        self.cc.fixed_capacity = 10
+        self.cc.load = 0.5
+        self.cc.ramp_down = 0.5
+        self.cc.min_p = 0.1
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_enough_inputs_available(
+            quantity, new_load, input_commodities, input_ratios, ""
+        )
+        
+        assert nquantity == approx(0.5)
+        assert nnew_load == 1
+        assert exact_completion
+    
+    def test_check_enough_inputs_available__adjusted(self):
+        quantity = 0.5
+        new_load = 1
+        self.ptx.commodities["Electricity"].available_quantity = 10
+        self.ptx.commodities["Water"].available_quantity = 4
+        input_commodities = list(self.ptx.commodities.values())[:2]
+        input_ratios = self.cc.inputs.values()
+        self.cc.fixed_capacity = 10
+        self.cc.load = 0.5
+        self.cc.ramp_down = 0.5
+        self.cc.min_p = 0.1
+        
+        nquantity, nnew_load, exact_completion, _ = self.cc._check_enough_inputs_available(
+            quantity, new_load, input_commodities, input_ratios, ""
+        )
+        
+        assert nquantity == approx(0.3)
+        assert nnew_load == approx(0.8)
+        assert not exact_completion
 
 
 class TestStorageComponent():
