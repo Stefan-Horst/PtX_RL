@@ -91,7 +91,7 @@ class ConversionComponent(BaseComponent):
             self.total_variable_costs += cost
             ptx_system.balance -= cost
             return True
-        return False
+        return False    
     
     def ramp_up_or_down(self, quantity, ptx_system):
         """Increase/decrease the current load and then convert that much of the main input plus 
@@ -105,18 +105,21 @@ class ConversionComponent(BaseComponent):
         Returns new values to be applied, status, whether the conversion succeeded, 
         and whether the conversion could be completed exactly as requested."""
         empty_values = (0,0,[],[])
-        main_output_conversion_coefficient = self.outputs[self.main_output]
         current_capacity = self.get_current_capacity_level()
+        
+        if self.inputs[self.main_input] != 1:
+            self._normalize_commodity_ratios_based_on_main_input()
         
         input_commodities = list(map(ptx_system.commodities.get, list(self.inputs.keys())))
         input_ratios = list(self.inputs.values())
         output_commodities = list(map(ptx_system.commodities.get, list(self.outputs.keys())))
         output_ratios = list(self.outputs.values())
+        main_output_ratio = self.outputs[self.main_output]
         
         status = f"In {self.name}:"
         # set quantity so conversion cannot cost more than balance
         quantity, exact_completion, status = self._check_cost_not_higher_than_balance(
-            quantity, ptx_system.balance, main_output_conversion_coefficient, current_capacity, status
+            quantity, ptx_system.balance, main_output_ratio, current_capacity, status
         )
         
         intermediate_status = ""
@@ -163,7 +166,7 @@ class ConversionComponent(BaseComponent):
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost (cost is based on main output)
-        cost = current_capacity * main_output_conversion_coefficient * self.variable_om
+        cost = current_capacity * main_output_ratio * self.variable_om
         if cost > ptx_system.balance:
             status += (f" Conversion failed. Cost {cost:.4f}€ is higher than "
                        f"available balance {ptx_system.balance:.4f}€.")
@@ -185,6 +188,18 @@ class ConversionComponent(BaseComponent):
         values = (quantity, cost, input_values, output_values)
         return values, status, True, exact_completion # conversion succeeded
 
+    def _normalize_commodity_ratios_based_on_main_input(self):
+        """Normalize inputs and outputs based on the main input by setting the main input to one and 
+        adjusting the other ratios. This is necessary because the capacity of conversions directly 
+        relates to how much of the main input is consumed."""
+        main_input_ratio = self.inputs[self.main_input]
+        self.inputs[self.main_input] = 1
+        for input in self.inputs.keys():
+            if input != self.main_input:
+                self.inputs[input] = self.inputs[input] / main_input_ratio
+        for output in self.outputs.keys():
+            self.outputs[output] = self.outputs[output] / main_input_ratio
+
     def _try_convert_commodities(self, input_values, output_values, status):
         convert_status = ""
         for input, amount in input_values:
@@ -197,12 +212,12 @@ class ConversionComponent(BaseComponent):
             convert_status += f" {amount:.4f} {output.name} produced in conversion."
         return True, convert_status, status # conversion succeeded
 
-    def _check_cost_not_higher_than_balance(self, quantity, balance, main_output_conversion_coefficient, 
+    def _check_cost_not_higher_than_balance(self, quantity, balance, main_output_ratio, 
                                             current_capacity, status):
         exact_completion = True
-        potential_max_cost = current_capacity * main_output_conversion_coefficient * self.variable_om
+        potential_max_cost = current_capacity * main_output_ratio * self.variable_om
         if potential_max_cost > balance:
-            new_capacity = balance / (main_output_conversion_coefficient * self.variable_om)
+            new_capacity = balance / (main_output_ratio * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
             if new_quantity != quantity:

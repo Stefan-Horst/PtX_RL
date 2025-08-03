@@ -10,6 +10,7 @@ class TestConversionComponent():
     def setup_method(self):
         self.cc = ConversionComponent("cc")
         self.cc.inputs = {"Electricity": 1.0, "Water": 0.5}
+        self.cc.main_input = "Electricity"
         self.cc.outputs = {"H2": 2.0, "O2": 2.0}
         self.cc.main_output = "H2"
         self.ptx = PtxSystem()
@@ -62,7 +63,7 @@ class TestConversionComponent():
         self.ptx.commodities["Water"].available_quantity = 2.5
         
         values, _, success, exact_completion = self.cc.ramp_up_or_down(quantity, self.ptx)
-        print(_)
+        
         nquantity, cost, input_values, output_values = values
         input_values = list(input_values)
         output_values = list(output_values)
