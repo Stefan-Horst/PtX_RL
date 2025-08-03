@@ -116,6 +116,14 @@ class TestConversionComponent():
         assert not success
         assert not exact_completion
     
+    def test_normalize_commodity_ratios_based_on_main_input(self):
+        self.cc.inputs = {"Electricity": 0.5, "Water": 1.0}
+        
+        self.cc._normalize_commodity_ratios_based_on_main_input()
+        
+        assert self.cc.inputs == {"Electricity": 1, "Water": 2}
+        assert self.cc.outputs == {"H2": 4, "O2": 4}
+    
     def test_try_convert_commodities__exact(self):
         self.ptx.commodities["Electricity"].available_quantity = 1
         self.ptx.commodities["Water"].available_quantity = 1
