@@ -2,7 +2,7 @@ pyyaml
 numpy
 pandas
 matplotlib
-scikit-learn
+torch
 gymnasium
 mujoco==3.2.5
 pytest
