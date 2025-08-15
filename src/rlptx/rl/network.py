@@ -1,0 +1,94 @@
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+STANDARD_DEVIATION_BOUNDS = (-20, 2)
+
+
+class Actor(nn.Module):
+    """Probabilistic actor network representing the policy function of the agent. 
+    The policy network consists of a multi-layer perceptron and two additional 
+    parallel output layers for mean and standard deviation values. They are used to 
+    create normal distributions from which the actual output values are sampled."""
+    
+    def __init__(self, observation_size, action_size, action_upper_bounds, hidden_sizes=(256, 256)):
+        super().__init__()
+        self.policy_net = create_mlp([observation_size, *hidden_sizes])
+        self.mean_layer = nn.Linear(hidden_sizes[-1], action_size)
+        self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size)
+        self.action_upper_bounds = action_upper_bounds
+    
+    def forward(self, observation, action):
+        """Combines observation and action into a single input tensor which is 
+        fed into the network. The network outputs mean and standard deviation values 
+        which are used to create normal distributions from which actions are sampled.
+        Returns the actions and their log probabilities (entropy values)."""
+        inputs = torch.cat([observation, action], dim=1)
+        policy_output = self.policy_net(inputs)
+        
+        mean = self.mean_layer(policy_output)
+        # the network outputs the log of the standard deviation, meaning the actual 
+        # standard deviation needs to be calculated. The log values have the advantage 
+        # that they are more numerically stable by having a wider range of values with 
+        # negative values being legal. They are clamped before being exponentiated so that 
+        # the resulting actual standard deviation is not too small to computationally handle
+        log_standard_deviation = self.standard_deviation_layer(policy_output)
+        log_standard_deviation = torch.clamp(log_standard_deviation, *STANDARD_DEVIATION_BOUNDS)
+        standard_deviation = torch.exp(log_standard_deviation)
+        probability_distributions = torch.distributions.Normal(mean, standard_deviation)
+        
+        # apply reparameterization trick to address problem of backpropagation through 
+        # a node with a source of randomness (sampling from distribution). 
+        # This is done by splitting the distribution to train into two parts: one that 
+        # takes the trainable parameters as inputs and is trained during backpropagation 
+        # and another consisting of a static standard normal distribution which 
+        # can therefore be ignored during backpropagation.
+        actions = probability_distributions.rsample()
+        # squash actions to [-1, 1] with tanh and scale them to their environment bounds
+        squashed_actions = torch.tanh(action) * self.action_upper_bounds
+        
+        # compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
+        # they are used as the entropy term in the loss function with lower  
+        # values meaning higher entropy as they are less probable.
+        # lower values of higher entropy are rewarded because they encourage exploration
+        log_probs = probability_distributions.log_prob(actions)
+        # correction for tanh squashing, using alternative formula from spinningup
+        # original formula: log_probs -= torch.log(1 - action.pow(2) + noise)
+        log_probs -= (2*(np.log(2) - log_probs - F.softplus(-2*log_probs))).sum(axis=1)
+        return squashed_actions, log_probs
+
+
+class Critic(nn.Module):
+    """Critic network representing the Q-value function of the agent. This quality 
+    value expresses the expected reward for taking an action in a given state.
+    SAC uses two separate twin networks for the Q-value function. 
+    Therefore, the forward method returns two single values for Q1 and Q2."""
+    
+    def __init__(self, observation_size, action_size, hidden_sizes=(256, 256)):
+        super().__init__()
+        # fixed output layer of size one for returning a single value
+        self.q1_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
+        self.q2_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
+    
+    def forward(self, observation, action):
+        """Combines observation and action into a single input tensor which 
+        is fed into the two networks. Returns output values of both networks."""
+        inputs = torch.cat([observation, action], dim=1)
+        q1 = self.q1_net(inputs)
+        q2 = self.q2_net(inputs)
+        return q1, q2
+
+
+def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.ReLU()):
+    """Create a multi-layer perceptron with the specified layer sizes and activation functions."""
+    layers = []
+    for i in range(len(layer_sizes) - 1):
+        layers.append(nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
+        if i < len(layer_sizes) - 2:
+            layers.append(activation)
+        else:
+            layers.append(output_activation)
+    model = nn.Sequential(*layers)
+    return model
