@@ -4,7 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-STANDARD_DEVIATION_BOUNDS = (-20, 2)
+# hyperparameters taken from sac paper (as well as activation function and optimizer)
+HIDDEN_SIZES = (256, 256)
+LEARNING_RATE = 3e-4
+STANDARD_DEVIATION_BOUNDS = (-20, 2) # as in spinningup implementation
 
 
 class Actor(nn.Module):
@@ -13,12 +16,14 @@ class Actor(nn.Module):
     parallel output layers for mean and standard deviation values. They are used to 
     create normal distributions from which the actual output values are sampled."""
     
-    def __init__(self, observation_size, action_size, action_upper_bounds, hidden_sizes=(256, 256)):
+    def __init__(self, observation_size, action_size, action_upper_bounds, 
+                 hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
         self.policy_net = create_mlp([observation_size, *hidden_sizes])
         self.mean_layer = nn.Linear(hidden_sizes[-1], action_size)
         self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size)
         self.action_upper_bounds = action_upper_bounds
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation, action):
         """Combines observation and action into a single input tensor which is 
@@ -66,11 +71,13 @@ class Critic(nn.Module):
     SAC uses two separate twin networks for the Q-value function. 
     Therefore, the forward method returns two single values for Q1 and Q2."""
     
-    def __init__(self, observation_size, action_size, hidden_sizes=(256, 256)):
+    def __init__(self, observation_size, action_size, 
+                 hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
         # fixed output layer of size one for returning a single value
         self.q1_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
         self.q2_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation, action):
         """Combines observation and action into a single input tensor which 
