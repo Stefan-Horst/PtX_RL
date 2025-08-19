@@ -15,6 +15,7 @@ ENTROPY_REGULARIZATION_COEFFICIENT = 0.01 # (/alpha) for calculating actor loss
 
 
 class Agent(ABC):
+    """Abstract base class for all agents."""
     
     @abstractmethod
     def act(self, observation: Any) -> Any:
@@ -30,6 +31,9 @@ class Agent(ABC):
 
 
 class SacAgent(Agent):
+    """Soft actor-critic agent implementation following the two original 
+    SAC papers by Haarnoja et al. (2018). This includes the actor and 
+    critic classes from the network module."""
     
     def __init__(self, observation_size, action_size, action_upper_bounds, 
                  discount=DISCOUNT_FACTOR, entropy=ENTROPY_REGULARIZATION_COEFFICIENT, 

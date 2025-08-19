@@ -14,12 +14,8 @@ from rlptx.util import contains_only_unique_elements
 class Environment(ABC):
     """Abstract base class for all environments."""
     
-    def __init__(self, 
-                 observation_space_size: int, 
-                 observation_space_spec: Any, 
-                 action_space_size: int, 
-                 action_space_spec: Any,
-                 reward_spec: Any):
+    def __init__(self, observation_space_size: int, observation_space_spec: Any, 
+                 action_space_size: int, action_space_spec: Any, reward_spec: Any):
         """Create the environment with given specifications and sizes of the 
         observation and action spaces as well as specs of the reward."""
         self.observation_space_size = observation_space_size
@@ -54,11 +50,8 @@ class GymEnvironment(Environment):
     
     def __init__(self, env="HalfCheetah-v5"):
         self.env = gym.make(env)
-        super().__init__(self.env.observation_space.shape[0], 
-                         self.env.observation_space, 
-                         self.env.action_space.shape[0], 
-                         self.env.action_space,
-                         None)
+        super().__init__(self.env.observation_space.shape[0], self.env.observation_space, 
+                         self.env.action_space.shape[0], self.env.action_space, None)
     
     def initialize(self, seed=None):
         self.seed = seed

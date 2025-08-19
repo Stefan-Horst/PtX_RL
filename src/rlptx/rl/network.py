@@ -34,33 +34,33 @@ class Actor(nn.Module):
         policy_output = self.policy_net(inputs)
         
         mean = self.mean_layer(policy_output)
-        # the network outputs the log of the standard deviation, meaning the actual 
+        # The network outputs the log of the standard deviation, meaning the actual 
         # standard deviation needs to be calculated. The log values have the advantage 
         # that they are more numerically stable by having a wider range of values with 
         # negative values being legal. They are clamped before being exponentiated so that 
-        # the resulting actual standard deviation is not too small to computationally handle
+        # the resulting actual standard deviation is not too small to computationally handle.
         log_standard_deviation = self.standard_deviation_layer(policy_output)
         log_standard_deviation = torch.clamp(log_standard_deviation, *STANDARD_DEVIATION_BOUNDS)
         standard_deviation = torch.exp(log_standard_deviation)
         probability_distributions = torch.distributions.Normal(mean, standard_deviation)
         
-        # apply reparameterization trick to address problem of backpropagation through 
+        # Apply reparameterization trick to address problem of backpropagation through 
         # a node with a source of randomness (sampling from distribution). 
         # This is done by splitting the distribution to train into two parts: one that 
         # takes the trainable parameters as inputs and is trained during backpropagation 
         # and another consisting of a static standard normal distribution which 
         # can therefore be ignored during backpropagation.
         actions = probability_distributions.rsample()
-        # squash actions to [-1, 1] with tanh and scale them to their environment bounds
+        # Squash actions to [-1, 1] with tanh and scale them to their environment bounds.
         squashed_actions = torch.tanh(action) * self.action_upper_bounds
         
-        # compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
-        # they are used as the entropy term in the loss function with lower  
+        # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
+        # They are used as the entropy term in the loss function with lower  
         # values meaning higher entropy as they are less probable.
-        # lower values of higher entropy are rewarded because they encourage exploration
+        # Lower values of higher entropy are rewarded because they encourage exploration.
         log_probs = probability_distributions.log_prob(actions)
-        # correction for tanh squashing, using alternative formula from spinningup
-        # original formula: log_probs -= torch.log(1 - action.pow(2) + noise)
+        # Correction for tanh squashing, using alternative formula from spinningup.
+        # Original formula: log_probs -= torch.log(1 - action.pow(2) + noise)
         log_probs -= (2*(np.log(2) - log_probs - F.softplus(-2*log_probs))).sum(axis=1)
         return squashed_actions, log_probs
 

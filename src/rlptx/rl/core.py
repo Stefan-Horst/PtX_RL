@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+
 class ReplayBuffer:
     """Replay buffer for storing and sampling transitions from an environment. 
     Every environment step produces transition data that is stored in the replay buffer. 
@@ -44,4 +45,3 @@ class ReplayBuffer:
             torch.as_tensor(self.actions[indices]),
             torch.as_tensor(self.terminateds[indices])
         )
-    
