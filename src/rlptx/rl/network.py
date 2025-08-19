@@ -7,7 +7,7 @@ import torch.nn.functional as F
 # hyperparameters taken from sac paper (as well as activation function and optimizer)
 HIDDEN_SIZES = (256, 256)
 LEARNING_RATE = 3e-4
-STANDARD_DEVIATION_BOUNDS = (-20, 2) # as in spinningup implementation
+STANDARD_DEVIATION_BOUNDS = (-20, 2) # values from spinningup implementation
 
 
 class Actor(nn.Module):
@@ -23,6 +23,7 @@ class Actor(nn.Module):
         self.mean_layer = nn.Linear(hidden_sizes[-1], action_size)
         self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size)
         self.action_upper_bounds = action_upper_bounds
+        self.learning_rate = learning_rate
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation, action):

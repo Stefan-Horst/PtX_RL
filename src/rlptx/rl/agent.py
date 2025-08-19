@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
+import numpy as np
 import torch
 import torch.nn.functional as F
 
-from rlptx.rl.network import Actor, Critic
+from rlptx.rl.network import Actor, Critic, LEARNING_RATE
 
 
 # hyperparameters taken from sac paper
 DISCOUNT_FACTOR = 0.99 # (/gamma) used in calculating critic loss
 POLYAK_COEFFICIENT = 0.995 # (/tau) for polyak averaging in target
 # hyperparameters not used in paper
-ENTROPY_REGULARIZATION_COEFFICIENT = 0.01 # (/alpha) for calculating actor loss
+INITIAL_ENTROPY_COEFFICIENT = 0.01 # (/alpha) for calculating actor loss
 
 
 class Agent(ABC):
@@ -36,12 +37,21 @@ class SacAgent(Agent):
     critic classes from the network module."""
     
     def __init__(self, observation_size, action_size, action_upper_bounds, 
-                 discount=DISCOUNT_FACTOR, entropy=ENTROPY_REGULARIZATION_COEFFICIENT, 
-                 polyak=POLYAK_COEFFICIENT):
+                 discount=DISCOUNT_FACTOR, polyak=POLYAK_COEFFICIENT, 
+                 initial_entropy=INITIAL_ENTROPY_COEFFICIENT):
         self.actor = Actor(observation_size, action_size, action_upper_bounds)
         self.critic = Critic(observation_size, action_size)
         self.discount = discount # factor for discounting future rewards
-        self.entropy_regularization = entropy # coefficient for entropy importance
+        # The entropy regularization coefficient is not fixed, but instead varies to 
+        # enforce an entropy constraint. It is trained together with the actor and 
+        # critic. The target entropy is determined heuristically and used in the loss.
+        self.entropy_regularization = torch.tensor(
+            np.log(initial_entropy), requires_grad=True
+        )
+        self.target_entropy = torch.tensor(-action_size) # heuristic value
+        self.entropy_optimizer = torch.optim.Adam(
+            [self.entropy_regularization], lr=self.actor.learning_rate, weight_decay=0
+        )
         # Separate target critic to improve stability.
         # Its networks are slowly updated to match the critic networks.
         self.target_critic = deepcopy(self.critic)
@@ -66,7 +76,7 @@ class SacAgent(Agent):
         for parameter in self.critic.parameters():
             parameter.requires_grad = False
         self.actor.optimizer.zero_grad()
-        loss_actor = self._calculate_actor_loss(observation)
+        loss_actor, log_probs_actor = self._calculate_actor_loss(observation)
         loss_actor.backward()
         self.actor.optimizer.step()
         for parameter in self.critic.parameters():
@@ -83,6 +93,18 @@ class SacAgent(Agent):
             target_param.data.copy_(
                 self.polyak * critic_param.data + (1 - self.polyak) * target_param.data
             )
+        
+        # Perform gradient descent steps for entropy coefficient. This is a more simple 
+        # process as the entropy coefficient is a single value and not a network. 
+        # The entropy loss is determined by the entropy of the action plus the 
+        # (always negative) heuristic target entropy value (action dimension). 
+        # This trains the coefficient to converge to the target entropy value.
+        self.entropy_optimizer.zero_grad()
+        loss_entropy = (
+            -self.entropy_regularization * (log_probs_actor.detach() + self.target_entropy)
+        ).mean()
+        loss_entropy.backward()
+        self.entropy_optimizer.step()
     
     def _calculate_critic_loss(self, observation, action, next_observation, 
                                reward, terminated):
@@ -119,5 +141,5 @@ class SacAgent(Agent):
         q = torch.min(q1, q2)
         # Calculate mean just to get scalar value from tensor.
         loss = (self.entropy_regularization * log_probabilities - q).mean()
-        return loss
+        return loss, log_probabilities
     
