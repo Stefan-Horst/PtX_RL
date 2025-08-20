@@ -24,6 +24,7 @@ class Environment(ABC):
         self.action_space_spec = action_space_spec
         self.reward_spec = reward_spec
         self.terminated = False
+        self.truncated = False
         self.seed = None
     
     @abstractmethod
@@ -61,11 +62,13 @@ class GymEnvironment(Environment):
     def reset(self):
         observation, info = self.env.reset()
         self.terminated = False
+        self.truncated = False
         return observation, info
     
     def act(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
-        self.terminated = terminated or truncated
+        self.terminated = terminated
+        self.truncated = truncated
         return observation, reward, terminated, truncated, info
 
 
@@ -136,11 +139,12 @@ class PtxEnvironment(Environment):
         ), "All elements of the ptx system must have a unique name."
         
         self.seed = None
-        self.iteration = 1
+        self.episode = 1
         self.step = 0
         self.terminated = False
+        self.truncated = False
         self.cumulative_reward = 0.
-        self.current_iteration_reward = 0.
+        self.current_episode_reward = 0.
         observation_space_spec = self._get_observation_space_spec()
         observation_space_size = len(self._get_current_observation())
         action_space_spec = self._get_action_space_spec()
@@ -155,28 +159,29 @@ class PtxEnvironment(Environment):
     def initialize(self, seed=None):
         """Initialize the environment after its creation or again after 
         training is done and return the initial observation. This resets 
-        all attributes of the environment including the iteration."""
+        all attributes of the environment including the episode."""
         self.seed = seed # currently not used
-        self.iteration = 1
+        self.episode = 1
         self.cumulative_reward = 0.
-        self._init_new_iteration("ENVIRONMENT INITIALIZED")
+        self._init_new_episode("ENVIRONMENT INITIALIZED")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
         return observation, info
     
     def reset(self):
-        """Reset the environment, go to the next iteration and return the new initial 
+        """Reset the environment, go to the next episode and return the new initial 
         observation. This method should be called when the environment has terminated."""
-        self.iteration += 1
-        self._init_new_iteration(f"ENVIRONMENT RESET, ITERATION {self.iteration}")
+        self.episode += 1
+        self._init_new_episode(f"ENVIRONMENT RESET, EPISODE {self.episode}")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
         return observation, info
     
-    def _init_new_iteration(self, msg):
+    def _init_new_episode(self, msg):
         self.terminated = False
+        self.truncated = False
         self.step = 0
-        self.current_iteration_reward = 0
+        self.current_episode_reward = 0
         self.ptx_system = copy(self._original_ptx_system)
         self._action_space = self._get_action_space()
         log(msg)
@@ -187,37 +192,37 @@ class PtxEnvironment(Environment):
     
     def act(self, action):
         """Perform the actions in the ptx system for one 
-        step of the current iteration in the environment."""
+        step of the current episode in the environment."""
         self.step += 1
         state_change_info, exact_completion_info, success = self._apply_action(action)
         
         balance_difference = self.ptx_system.next_step()
         reward = self._calculate_reward(balance_difference)
         self.cumulative_reward += reward
-        self.current_iteration_reward += reward
-        truncated = self.step >= self.max_steps_per_episode
-        self.teminated = not success or truncated
+        self.current_episode_reward += reward
+        self.truncated = self.step >= self.max_steps_per_episode
+        self.teminated = not success
         
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}
         info["Step revenue"] = round(balance_difference, 4)
         
         # logging below
-        reward_msg = (f"Reward: {reward:.4f}, Current iteration reward: "
-                      f"{self.current_iteration_reward:.4f}, "
+        reward_msg = (f"Reward: {reward:.4f}, Current episode reward: "
+                      f"{self.current_episode_reward:.4f}, "
                       f"Cumulative reward: {self.cumulative_reward:.4f}")
         log(str(self.ptx_system) + "\n\t" + str(exact_completion_info) + "\n\t" + reward_msg)
         log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
         log(reward_msg, loggername="reward")
-        if self.terminated:
-            if truncated:
+        if self.terminated or self.truncated:
+            if self.truncated:
                 msg = "ENVIRONMENT TRUNCATED"
             else:
                 msg = "ENVIRONMENT TERMINATED"
             log(msg, level=Level.WARNING)
             log(msg, level=Level.WARNING, loggername="status")
             log(msg, level=Level.WARNING, loggername="reward")
-        return observation, reward, self.terminated, truncated, info
+        return observation, reward, self.terminated, self.truncated, info
     
     def _calculate_reward(self, revenue):
         """Calculate the reward for the current step based on the increase of balance of 
