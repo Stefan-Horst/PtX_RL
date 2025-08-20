@@ -5,14 +5,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from rlptx.rl.network import Actor, Critic, LEARNING_RATE
+from rlptx.rl.network import Actor, Critic
 
 
 # hyperparameters taken from sac paper
 DISCOUNT_FACTOR = 0.99 # (/gamma) used in calculating critic loss
 POLYAK_COEFFICIENT = 0.995 # (/tau) for polyak averaging in target
 # hyperparameters not used in paper
-INITIAL_ENTROPY_COEFFICIENT = 0.01 # (/alpha) for calculating actor loss
+INITIAL_ENTROPY_COEFFICIENT = 1.0 # (/alpha) for calculating actor loss
 
 
 class Agent(ABC):
@@ -24,10 +24,10 @@ class Agent(ABC):
         pass
     
     @abstractmethod
-    def update(self, observation: Any, action: Any, next_observation: Any, 
-               reward: float, terminated: bool) -> None:
+    def update(self, observation: Any, action: Any, reward: float, 
+               next_observation: Any, terminated: bool) -> None:
         """Update the agent's networks based on the given observation, action, 
-        next observation, reward, and whether the itertaion is terminated."""
+        reward, next observation, and whether the itertaion is terminated."""
         pass
 
 
@@ -55,6 +55,8 @@ class SacAgent(Agent):
         # Separate target critic to improve stability.
         # Its networks are slowly updated to match the critic networks.
         self.target_critic = deepcopy(self.critic)
+        for parameter in self.target_critic.parameters():
+            parameter.requires_grad = False
         self.polyak = polyak # coefficient for soft target network updates
     
     def act(self, observation):
@@ -62,7 +64,7 @@ class SacAgent(Agent):
             action, _ = self.actor(observation) # log_probs not needed
         return action.numpy() # return numpy array instead of tensor
     
-    def update(self, observation, action, next_observation, reward, terminated):
+    def update(self, observation, action, reward, next_observation, terminated):
         # Perform pytorch gradient descent steps for actor.
         self.critic.optimizer.zero_grad()
         loss_critic = self._calculate_critic_loss(
