@@ -20,7 +20,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1):
     _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer)
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
-                     max_steps_per_episode=100000, weather_forecast_days=7):
+                     max_steps_per_episode=None, weather_forecast_days=7):
     """Train the SAC agent on the PtX environment.
 
     :param episodes: [int] 
@@ -31,12 +31,15 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
         - The number of steps between agent updates. The agent is updated the same 
         amount of times so that the amount of steps and updates is equal.
     :param max_steps_per_episode: [int] 
-        - The maximum number of steps per episode after which the environment is truncated.
+        - The maximum number of steps per episode after which the environment is truncated. 
+        With the default value of None, the value is set to the amount of available weather data.
     :param weather_forecast_days: [int] 
         - The amount of days for which the weather forecast is provided in each observation.
     """
     ptx_system = load_project()
-    weather_data_provider = WeatherDataProvider()    
+    weather_data_provider = WeatherDataProvider()
+    if max_steps_per_episode is None: # episode cannot be longer than available weather data
+        max_steps_per_episode = len(weather_data_provider.weather_data_joined)
     env = PtxEnvironment(
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode

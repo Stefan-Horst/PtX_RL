@@ -136,7 +136,7 @@ class PtxEnvironment(Environment):
         relevant attributes and actions for the agent."""
         self.weather_provider = weather_provider
         self.weather_forecast_days = weather_forecast_days
-        self.max_steps_per_episode = max_steps_per_episode
+        self.max_steps_per_episode = max_steps_per_episode - weather_forecast_days
         self.commodity_attributes = commodity_attributes
         self.conversion_attributes = conversion_attributes
         self.storage_attributes = storage_attributes
