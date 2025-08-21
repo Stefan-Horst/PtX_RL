@@ -15,14 +15,19 @@ class Environment(ABC):
     """Abstract base class for all environments."""
     
     def __init__(self, observation_space_size: int, observation_space_spec: Any, 
-                 action_space_size: int, action_space_spec: Any, reward_spec: Any):
+                 observation_space_info: Any, action_space_size: int, 
+                 action_space_spec: Any, action_space_info: Any, 
+                 reward_spec: Any, reward_info: Any):
         """Create the environment with given specifications and sizes of the 
         observation and action spaces as well as specs of the reward."""
         self.observation_space_size = observation_space_size
         self.observation_space_spec = observation_space_spec
+        self.observation_space_info = observation_space_info
         self.action_space_size = action_space_size
         self.action_space_spec = action_space_spec
+        self.action_space_info = action_space_info
         self.reward_spec = reward_spec
+        self.reward_info = reward_info
         self.terminated = False
         self.truncated = False
         self.seed = None
@@ -51,8 +56,10 @@ class GymEnvironment(Environment):
     
     def __init__(self, env="HalfCheetah-v5"):
         self.env = gym.make(env)
-        super().__init__(self.env.observation_space.shape[0], self.env.observation_space, 
-                         self.env.action_space.shape[0], self.env.action_space, None)
+        observation_space_spec = {"low": self.env.observation_space.low, "high": self.env.observation_space.high}
+        action_space_spec = {"low": self.env.action_space.low, "high": self.env.action_space.high}
+        super().__init__(self.env.observation_space.shape[0], observation_space_spec, self.env.observation_space,
+                         self.env.action_space.shape[0], action_space_spec, self.env.action_space, None, None)
     
     def initialize(self, seed=None):
         self.seed = seed
@@ -72,9 +79,9 @@ class GymEnvironment(Environment):
         return observation, reward, terminated, truncated, info
 
 
-# only include attributes which are variable during the simulation
-# there are not enough different system configurations to properly train on those attributes
-# attributes which are not simple values are marked with their type in square brackets
+# Only include attributes which are variable during the simulation as there are not 
+# enough different system configurations to properly train on those attributes.
+# Attributes which are not simple values are marked with their type in square brackets.
 COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quantity", 
                          "emitted_quantity", "demanded_quantity", "charged_quantity", 
                          "discharged_quantity", "consumed_quantity", "produced_quantity", 
@@ -86,10 +93,10 @@ STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs",
                          "charged_quantity", "discharged_quantity", "charge_state"]
 GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
                          "generated_quantity", "potential_generation_quantity", "curtailment"]
-# actual possible actions of each element depend on what the configuration allows
-# e.g. selling commodity is only possible if it's set to saleable
-# the numbers are the order of the actions in the order they are executed, starting from 0
-# actions can be executed multiple times in different phases
+# Actual possible actions of each element depend on what the configuration allows
+# e.g. selling commodity is only possible if it's set to saleable.
+# The numbers are the order of the actions in the order they are executed, starting from 0.
+# Actions can be executed multiple times in different phases.
 COMMODITY_ACTIONS = [
     (Commodity.purchase_commodity, [2]), 
     (Commodity.sell_commodity, [4]), 
@@ -145,16 +152,19 @@ class PtxEnvironment(Environment):
         self.truncated = False
         self.cumulative_reward = 0.
         self.current_episode_reward = 0.
-        observation_space_spec = self._get_observation_space_spec()
+        observation_space_info = self._get_observation_space_info()
         observation_space_size = len(self._get_current_observation())
-        action_space_spec = self._get_action_space_spec()
+        observation_space_spec = None # implement if needed
+        action_space_info, action_space_spec = self._get_action_space_info_and_spec()
         self._action_space = self._get_action_space()
         action_space_size = len(self._action_space)
         reward_spec = {}
-        super().__init__(observation_space_size, observation_space_spec, action_space_size, 
-                         action_space_spec, reward_spec)
-        log(f"Observation space: {observation_space_spec}")
-        log(f"Action space: {action_space_spec}")
+        reward_info = (-100., float("inf")) # reward range
+        super().__init__(observation_space_size, observation_space_spec, observation_space_info, 
+                         action_space_size, action_space_spec, action_space_info, reward_spec, reward_info)
+                         
+        log(f"Observation space: {observation_space_info}")
+        log(f"Action space: {action_space_info}")
         
     def initialize(self, seed=None):
         """Initialize the environment after its creation or again after 
@@ -256,8 +266,8 @@ class PtxEnvironment(Environment):
         pre_conversion_eavs, conversion_eavs, post_conversion_eavs = \
             self._create_action_execution_stages(element_action_values)
         
-        # execute methods of elements with values and current state as parameters
-        # handle the action methods of the three stages separately one after another
+        # Execute methods of elements with values and current state as parameters.
+        # Handle the action methods of the three stages separately one after another.
         state_change_infos = []
         exact_completion_info = {}
         total_success = True
@@ -300,7 +310,7 @@ class PtxEnvironment(Environment):
             lowest_quantity_deviation = float("inf")
             lowest_quantity_deviation_item = None
             last_return_value = None
-            # execute all conversions that can be exactly completed and return if all could be completed
+            # Execute all conversions that can be exactly completed and return if all could be completed.
             while True: # repeat until no more exact completions of conversions are possible
                 progress_made = False
                 for item in conversion_eavs:
@@ -322,8 +332,8 @@ class PtxEnvironment(Environment):
                         conversion_eavs.remove(item)
                         progress_made = True
                     else:
-                        # calculate deviation between specified quantity and actually possible 
-                        # quantity and update the item with the lowest deviation
+                        # Calculate deviation between specified quantity and actually possible 
+                        # quantity and update the item with the lowest deviation.
                         deviation = abs(values[0] - value)
                         if deviation < lowest_quantity_deviation:
                             lowest_quantity_deviation = deviation
@@ -334,8 +344,8 @@ class PtxEnvironment(Environment):
             if len(conversion_eavs) == 0:
                 return state_change_infos, total_success
             
-            # if not all conversions could be exactly completed, execute the conversion with 
-            # the lowest deviation between specified quantity and actually possible quantity
+            # If not all conversions could be exactly completed, execute the conversion with 
+            # the lowest deviation between specified quantity and actually possible quantity.
             element, action_method_tuple, value = lowest_quantity_deviation_item
             action_method, _ = action_method_tuple
             values, status, success = last_return_value
@@ -356,8 +366,8 @@ class PtxEnvironment(Environment):
         element_action_values = []
         for element_action_method_tuple, value in zip(self._action_space, action):
             element, action_method_tuple = element_action_method_tuple
-            # set phase in which the action is executed based on if 
-            # the value is positive (charge) or negative (discharge)
+            # Set phase in which the action is executed based on if 
+            # the value is positive (charge) or negative (discharge).
             action_method = action_method_tuple[0]
             phase = action_method_tuple[1]
             if action_method == StorageComponent.charge_or_discharge_quantity:
@@ -454,7 +464,25 @@ class PtxEnvironment(Environment):
                     action_space.append((element, action))
         return action_space
     
-    def _get_observation_space_spec(self):
+    def _get_action_space_info_and_spec(self):
+        """Create dict with each element of the ptx system (commodities, components) as key and 
+        possible actions (methods) as values and a dict with min and max values of each action."""
+        action_space_info = {}
+        action_space_spec = {"low": [], "high": []}
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, _, action_tuples in element_categories:
+            for element in category:
+                element_actions = []
+                possible_action_tuples = element.get_possible_action_methods(action_tuples)
+                possible_actions = [action_tuple[0] for action_tuple in possible_action_tuples]
+                for action in possible_actions:
+                    element_actions.append(action.__name__)
+                    action_space_spec["low"].append(element.action_spec[action][1])
+                    action_space_spec["high"].append(element.action_spec[action][2])
+                action_space_info[element.name] = element_actions
+        return action_space_info, action_space_spec
+
+    def _get_observation_space_info(self):
         """Create dict with each element of the ptx system (commodities, components) as key and 
         possible observations (attributes) as values, as well as environment data with data for 
         each step as values. Attributes that are dicts are added with their keys as list."""
@@ -468,15 +496,15 @@ class PtxEnvironment(Environment):
         for i in range(self.weather_forecast_days):
             for generator in generators:
                 environment_data.append(f"step{i+1}_{generator.name}")
-        observation_space_spec = {"environment": environment_data}
+        observation_space_info = {"environment": environment_data}
         
         for category, attributes, _ in element_categories:
             for element in category:
                 element_attributes = []
                 possible_attributes = element.get_possible_observation_attributes(attributes)
                 for attribute in possible_attributes:
-                    # add all keys of attributes that are dictionaries as 
-                    # new dict with name as key and keys as values
+                    # Add all keys of attributes that are dictionaries as 
+                    # new dict with name as key and keys as values.
                     if attribute.startswith("[dict]"):
                         attribute = attribute[6:]
                         element_attributes.append(
@@ -484,24 +512,9 @@ class PtxEnvironment(Environment):
                         )
                     else:
                         element_attributes.append(attribute)
-                observation_space_spec[element.name] = element_attributes
-        return observation_space_spec
+                observation_space_info[element.name] = element_attributes
+        return observation_space_info
     
-    def _get_action_space_spec(self):
-        """Create dict with each element of the ptx system (commodities, components) 
-        as key and possible actions (methods) as values."""
-        action_space_spec = {}
-        element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, action_tuples in element_categories:
-            for element in category:
-                element_actions = []
-                possible_action_tuples = element.get_possible_action_methods(action_tuples)
-                possible_actions = [action_tuple[0] for action_tuple in possible_action_tuples]
-                for action in possible_actions:
-                    element_actions.append(action.__name__)
-                action_space_spec[element.name] = element_actions
-        return action_space_spec
-
     ##### UTILITY #####
 
     def _get_element_categories_with_attributes_and_actions(self):
