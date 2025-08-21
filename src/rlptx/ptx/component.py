@@ -70,6 +70,13 @@ class ConversionComponent(BaseComponent):
         self.load = load
         self.consumed_commodities = consumed_commodities
         self.produced_commodities = produced_commodities
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {}
+        # action methods of this class with their enabled flags and min/max input values
+        self.action_spec = {
+            ConversionComponent.ramp_up_or_down: (None, -self.ramp_down, self.ramp_up)
+        }
+        self.assert_specs_match_class()
         
         self._initialize_result_dictionaries()
     
@@ -335,14 +342,6 @@ class ConversionComponent(BaseComponent):
         else:
             return self.produced_commodities[commodity]
 
-    def get_possible_observation_attributes(self, relevant_attributes):
-        # all attributes are possible for every conversion component
-        return relevant_attributes
-
-    def get_possible_action_methods(self, relevant_method_tuples):
-        # all methods are possible for every conversion component
-        return relevant_method_tuples
-
     def _initialize_result_dictionaries(self):
         if self.consumed_commodities is None:
             self.consumed_commodities = {}
@@ -426,6 +425,16 @@ class StorageComponent(BaseComponent):
             self.charge_state = charge_state
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {}
+        # action methods of this class with their enabled flags and min/max input values
+        max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
+        self.action_spec = {
+            StorageComponent.charge_or_discharge_quantity: (
+                None, -max_possible_quantity, max_possible_quantity
+            )
+        }
+        self.assert_specs_match_class()
     
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
@@ -602,14 +611,6 @@ class StorageComponent(BaseComponent):
             exact_completion = False
             discharge_quantity = dischargeable_quantity
         return discharge_quantity, actual_quantity, exact_completion, status
-    
-    def get_possible_observation_attributes(self, relevant_attributes):
-        # all attributes are possible for every conversion component
-        return relevant_attributes
-
-    def get_possible_action_methods(self, relevant_method_tuples):
-        # all methods are possible for every conversion component
-        return relevant_method_tuples
 
     def __str__(self):
         return (f"--{self.name}--(total_variable_costs={self.total_variable_costs:.4f}, charge_state={self.charge_state:.4f}, "
@@ -657,6 +658,17 @@ class GenerationComponent(BaseComponent):
         self.potential_generation_quantity = potential_generation_quantity
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {
+            "curtailment": ("curtailment_possible",)
+        }
+        # action methods of this class with their enabled flags and min/max input values
+        self.action_spec = {
+            GenerationComponent.apply_or_strip_curtailment: (
+                "curtailment_possible", -self.fixed_capacity, self.fixed_capacity
+            )
+        }
+        self.assert_specs_match_class()
 
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
@@ -769,23 +781,6 @@ class GenerationComponent(BaseComponent):
             cost = new_cost
             generated = new_generated
         return quantity, generated, cost, exact_completion, status
-
-    def get_possible_observation_attributes(self, relevant_attributes):
-        possible_attributes = []
-        for attribute in relevant_attributes:
-            if attribute == "curtailment" and self.curtailment_possible:
-                possible_attributes.append(attribute)
-        return possible_attributes
-
-    def get_possible_action_methods(self, relevant_method_tuples):
-        possible_methods = []
-        for method_tuple in relevant_method_tuples:
-            if (
-                method_tuple[0] == GenerationComponent.apply_or_strip_curtailment 
-                and self.curtailment_possible
-            ):
-                possible_methods.append(method_tuple)
-        return possible_methods
 
     def __str__(self):
         return (f"--{self.name}--(total_variable_costs={self.total_variable_costs:.4f}, "

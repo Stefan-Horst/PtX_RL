@@ -55,6 +55,23 @@ class Commodity(Element):
         self.total_production_costs = total_production_costs
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {
+            "purchased_quantity": ("purchasable",),
+            "sold_quantity": ("saleable",),
+            "selling_revenue": ("saleable",),
+            "demanded_quantity": ("demanded",),
+            "emitted_quantity": ("emittable",)
+        }
+        # action methods of this class with their enabled flags and min/max input values
+        self.action_spec = {
+            # arbitrary upper bounds because no fixed ceiling, just use values higher than probably possible
+            # cannot use inf because sac agent actually uses values to scale actions
+            Commodity.purchase_commodity: ("purchasable", 0, 10),
+            Commodity.sell_commodity: ("saleable", 0, 10),
+            Commodity.emit_commodity: ("emittable", 0, 10)
+        }
+        self.assert_specs_match_class()
 
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
@@ -155,30 +172,6 @@ class Commodity(Element):
         
         values = (quantity,)
         return values, status, True, exact_completion
-
-    def get_possible_observation_attributes(self, relevant_attributes):
-        possible_attributes = []
-        for attribute in relevant_attributes:
-            if (
-                attribute == "purchased_quantity" and self.purchasable or 
-                attribute == "sold_quantity" and self.saleable or 
-                attribute == "selling_revenue" and self.saleable or 
-                attribute == "demanded_quantity" and self.demanded or 
-                attribute == "emitted_quantity" and self.emittable
-            ):
-                possible_attributes.append(attribute)
-        return possible_attributes
-
-    def get_possible_action_methods(self, relevant_method_tuples):
-        possible_methods = []
-        for method_tuple in relevant_method_tuples:
-            if (
-                method_tuple[0] == Commodity.purchase_commodity and self.purchasable or 
-                method_tuple[0] == Commodity.sell_commodity and self.saleable or 
-                method_tuple[0] == Commodity.emit_commodity and self.emittable
-            ):
-                possible_methods.append(method_tuple)
-        return possible_methods
 
     def __str__(self):
         return (f"--{self.name}--(purchased_quantity={self.purchased_quantity:.4f}, "
