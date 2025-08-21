@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import copy
 from typing import Any
+import numpy as np
 import gymnasium as gym
 
 from rlptx.ptx.commodity import Commodity
@@ -47,6 +48,11 @@ class Environment(ABC):
         """Take an action running one timestep and return the new observed state, 
         the reward, whether the environment has been terminated or truncated (and info)."""
         pass
+    
+    @abstractmethod
+    def sample_action(self) -> list[float]:
+        """Randomly sample action uniformly from the action space."""
+        pass
 
 
 class GymEnvironment(Environment):
@@ -77,6 +83,9 @@ class GymEnvironment(Environment):
         self.terminated = terminated
         self.truncated = truncated
         return observation, reward, terminated, truncated, info
+    
+    def sample_action(self):
+        return self.action_space_info.sample()
 
 
 # Only include attributes which are variable during the simulation as there are not 
@@ -118,7 +127,7 @@ class PtxEnvironment(Environment):
     and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
-                 weather_forecast_days=1, max_steps_per_episode=100000,
+                 weather_forecast_days=7, max_steps_per_episode=100000, seed=None, 
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
@@ -145,7 +154,8 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
-        self.seed = None
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
         self.episode = 1
         self.step = 0
         self.terminated = False
@@ -197,6 +207,12 @@ class PtxEnvironment(Environment):
         log(msg)
         log(msg, loggername="status")
         log(msg, loggername="reward")
+    
+    def sample_action(self):
+        """Sample an action from the action space from a uniform distribution."""
+        actions = [self.rng.uniform(lower, upper) for lower, upper in 
+                   zip(self.action_space_info["low"].values(), self.action_space_info["high"].values())]
+        return actions
     
     ##### ACT FUNCTIONALITY #####
     

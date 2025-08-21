@@ -12,7 +12,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing."""
     env = GymEnvironment("HalfCheetah-v5")
     agent = SacAgent(
-        env.observation_space_size, env.action_space_size, env.action_space_spec.high
+        env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
     )
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
@@ -42,7 +42,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
         max_steps_per_episode=max_steps_per_episode
     )
     agent = SacAgent(
-        env.observation_space_size, env.action_space_size, env.action_space_spec.high
+        env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
     )
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
@@ -61,7 +61,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             # Randomly sample actions for more thorough exploration in the beginning 
             # and only then switch to the agent's policy to determine actions.
             if env.step < warmup_steps:
-                action = env.action_space_spec.sample()
+                action = env.sample_action()
             else:
                 action = agent.act(observation)
             # Apply the chosen action the environment and add the transition data 
