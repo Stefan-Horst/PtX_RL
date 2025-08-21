@@ -1,6 +1,8 @@
-from rlptx.environment.environment import GymEnvironment
+from rlptx.environment.environment import GymEnvironment, PtxEnvironment
+from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.agent import SacAgent
 from rlptx.rl.core import ReplayBuffer
+from rlptx.ptx import load_project
 
 
 REPLAY_BUFFER_SIZE = 10**6
@@ -16,6 +18,36 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1):
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer)
+
+def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
+                     max_steps_per_episode=100000, weather_forecast_days=7):
+    """Train the SAC agent on the PtX environment.
+
+    :param episodes: [int] 
+        - The number of episodes to train the agent on.
+    :param warmup_steps: [int] 
+        - The number of steps before training where actions are sampled to the replay buffer.
+    :param update_interval: [int] 
+        - The number of steps between agent updates. The agent is updated the same 
+        amount of times so that the amount of steps and updates is equal.
+    :param max_steps_per_episode: [int] 
+        - The maximum number of steps per episode after which the environment is truncated.
+    :param weather_forecast_days: [int] 
+        - The amount of days for which the weather forecast is provided in each observation.
+    """
+    ptx_system = load_project()
+    weather_data_provider = WeatherDataProvider()    
+    env = PtxEnvironment(
+        ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
+        max_steps_per_episode=max_steps_per_episode
+    )
+    agent = SacAgent(
+        env.observation_space_size, env.action_space_size, env.action_space_spec.high
+    )
+    replay_buffer = ReplayBuffer(
+        REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
+    )
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer) 
 
 def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer):
     """Execute the main SAC training loop."""
