@@ -1,6 +1,11 @@
 from rlptx.ptx.core import Element
 
 
+# Upper bound for actions can theoretically be infinite, but sac needs concrete values. Use arbitrary 
+# value not smaller than realistic possible quantities, but also not too large to scale properly.
+ACTIONS_UPPER_BOUND = 100
+
+
 class Commodity(Element):
     
     def __init__(self, name, commodity_unit,
@@ -67,9 +72,9 @@ class Commodity(Element):
         self.action_spec = {
             # arbitrary upper bounds because no fixed ceiling, just use values higher than probably possible
             # cannot use inf because sac agent actually uses values to scale actions
-            Commodity.purchase_commodity: ("purchasable", 0, 10),
-            Commodity.sell_commodity: ("saleable", 0, 10),
-            Commodity.emit_commodity: ("emittable", 0, 10)
+            Commodity.purchase_commodity: ("purchasable", 0, ACTIONS_UPPER_BOUND),
+            Commodity.sell_commodity: ("saleable", 0, ACTIONS_UPPER_BOUND),
+            Commodity.emit_commodity: ("emittable", 0, ACTIONS_UPPER_BOUND)
         }
         self.assert_specs_match_class()
 
