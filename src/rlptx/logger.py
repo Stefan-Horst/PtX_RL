@@ -56,6 +56,8 @@ loggers = {LOGGER_NAME: configure_logger(LOGGER_NAME)}
 def log(message, loggername=LOGGER_NAME, level=logging.INFO):
     """Log a message to the given loggername at the given log level. 
     A new logger is created and used if the loggername does not exist yet."""
+    # handle enum from this class vs int from logging module
+    level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
         loggers[loggername] = configure_logger(loggername)
     loggers[loggername].log(level, message) 
