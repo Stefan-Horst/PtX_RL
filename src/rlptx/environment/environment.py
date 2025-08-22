@@ -211,7 +211,7 @@ class PtxEnvironment(Environment):
     def sample_action(self):
         """Sample an action from the action space from a uniform distribution."""
         actions = [self.rng.uniform(lower, upper) for lower, upper in 
-                   zip(self.action_space_info["low"].values(), self.action_space_info["high"].values())]
+                   zip(self.action_space_spec["low"], self.action_space_spec["high"])]
         return actions
     
     ##### ACT FUNCTIONALITY #####
@@ -358,7 +358,12 @@ class PtxEnvironment(Environment):
                 if not progress_made:
                     break
             if len(conversion_eavs) == 0:
-                return state_change_infos, total_success
+                return state_change_infos, conversion_exact_completion_info, total_success
+            
+            # Handle edge case that previously determined conversion could be completed exactly after 
+            # another conversion could be completed exactly and thus has been removed from the list.
+            if lowest_quantity_deviation_item not in conversion_eavs:
+                continue
             
             # If not all conversions could be exactly completed, execute the conversion with 
             # the lowest deviation between specified quantity and actually possible quantity.
