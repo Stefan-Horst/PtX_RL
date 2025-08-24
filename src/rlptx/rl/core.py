@@ -11,10 +11,10 @@ class ReplayBuffer:
     def __init__(self, capacity, observations_shape, actions_shape, seed=None):
         """Create a replay buffer with the given capacity of transitions that can be stored. 
         A seed to control the random sampling can be specified."""
-        self.observations = np.empty((capacity, observations_shape), dtype=list)
-        self.actions = np.empty((capacity, actions_shape), dtype=list)
+        self.observations = np.empty((capacity, observations_shape), dtype=np.float32)
+        self.actions = np.empty((capacity, actions_shape), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
-        self.next_observations = np.empty((capacity, observations_shape), dtype=list)
+        self.next_observations = np.empty((capacity, observations_shape), dtype=np.float32)
         self.terminateds = np.empty((capacity, 1), dtype=bool)
         self.capacity = capacity
         self.index = 0
@@ -39,9 +39,9 @@ class ReplayBuffer:
         length = self.capacity if self.full else self.index
         indices = self.rng.integers(0, length, size=batch_size)
         return (
-            torch.as_tensor(self.observations[indices]),
-            torch.as_tensor(self.actions[indices]),
-            torch.as_tensor(self.rewards[indices]),
-            torch.as_tensor(self.next_observations[indices]),
-            torch.as_tensor(self.terminateds[indices])
+            torch.as_tensor(self.observations[indices], dtype=torch.float32),
+            torch.as_tensor(self.actions[indices], dtype=torch.float32),
+            torch.as_tensor(self.rewards[indices], dtype=torch.float32),
+            torch.as_tensor(self.next_observations[indices], dtype=torch.float32),
+            torch.as_tensor(self.terminateds[indices], dtype=torch.float32)
         )

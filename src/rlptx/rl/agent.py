@@ -46,9 +46,9 @@ class SacAgent(Agent):
         # enforce an entropy constraint. It is trained together with the actor and 
         # critic. The target entropy is determined heuristically and used in the loss.
         self.entropy_regularization = torch.tensor(
-            np.log(initial_entropy), requires_grad=True
+            np.log(initial_entropy), requires_grad=True, dtype=torch.float32
         )
-        self.target_entropy = torch.tensor(-action_size) # heuristic value
+        self.target_entropy = torch.tensor(-action_size, dtype=torch.float32)
         self.entropy_optimizer = torch.optim.Adam(
             [self.entropy_regularization], lr=self.actor.learning_rate, weight_decay=0
         )

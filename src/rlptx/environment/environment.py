@@ -273,9 +273,7 @@ class PtxEnvironment(Environment):
     def _apply_action(self, action):
         """Call the specified action methods of the elements of the 
         ptx system with the provided values for the action space"""
-        assert (all(isinstance(x, (int, float)) for x in action) and 
-            len(action) == self.action_space_size), \
-            "Action must have correct shape and values correct types."
+        assert len(action) == self.action_space_size, "Action must have correct shape."
         
         element_action_values = self._set_action_execution_order(action)
         

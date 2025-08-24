@@ -26,34 +26,34 @@ class Actor(nn.Module):
         self.learning_rate = learning_rate
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
-    def forward(self, observation, action):
-        """Combines observation and action into a single input tensor which is 
-        fed into the network. The network outputs mean and standard deviation values 
-        which are used to create normal distributions from which actions are sampled.
-        Returns the actions and their log probabilities (entropy values)."""
-        inputs = torch.cat([observation, action], dim=1)
-        policy_output = self.policy_net(inputs)
+    def forward(self, observation):
+        """The observation is fed into the network which generates an action. The network outputs mean 
+        and standard deviation values which are used to create normal distributions from which actions 
+        are sampled. Returns the actions and their total log probability (entropy value)."""
+        observation = (torch.tensor(observation, dtype=torch.float32) 
+                       if not isinstance(observation, torch.Tensor) else observation)
+        policy_output = self.policy_net(observation)
         
-        mean = self.mean_layer(policy_output)
+        means = self.mean_layer(policy_output)
         # The network outputs the log of the standard deviation, meaning the actual 
         # standard deviation needs to be calculated. The log values have the advantage 
         # that they are more numerically stable by having a wider range of values with 
         # negative values being legal. They are clamped before being exponentiated so that 
         # the resulting actual standard deviation is not too small to computationally handle.
-        log_standard_deviation = self.standard_deviation_layer(policy_output)
-        log_standard_deviation = torch.clamp(log_standard_deviation, *STANDARD_DEVIATION_BOUNDS)
-        standard_deviation = torch.exp(log_standard_deviation)
-        probability_distributions = torch.distributions.Normal(mean, standard_deviation)
+        log_standard_deviations = self.standard_deviation_layer(policy_output)
+        log_standard_deviations = torch.clamp(log_standard_deviations, *STANDARD_DEVIATION_BOUNDS)
+        standard_deviations = torch.exp(log_standard_deviations)
+        probability_distributions = torch.distributions.Normal(means, standard_deviations)
         
         # Apply reparameterization trick to address problem of backpropagation through 
         # a node with a source of randomness (sampling from distribution). 
         # This is done by splitting the distribution to train into two parts: one that 
         # takes the trainable parameters as inputs and is trained during backpropagation 
-        # and another consisting of a static standard normal distribution which 
-        # can therefore be ignored during backpropagation.
+        # and another consisting of a static standard normal distribution as the source of 
+        # randomness which can therefore be ignored during backpropagation.
         actions = probability_distributions.rsample()
         # Squash actions to [-1, 1] with tanh and scale them to their environment bounds.
-        squashed_actions = torch.tanh(action) * self.action_upper_bounds
+        squashed_actions = torch.tanh(actions) * torch.tensor(self.action_upper_bounds, dtype=torch.float32)
         
         # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
         # They are added and used as the entropy term in the loss function with a lower 
@@ -75,15 +75,15 @@ class Critic(nn.Module):
     def __init__(self, observation_size, action_size, 
                  hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
-        # fixed output layer of size one for returning a single value
-        self.q1_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
-        self.q2_net = create_mlp([observation_size + action_size, [*hidden_sizes, 1]])
+        # fixed output layer of size one for returning a single q value
+        self.q1_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])
+        self.q2_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation, action):
         """Combines observation and action into a single input tensor which 
         is fed into the two networks. Returns output values of both networks."""
-        inputs = torch.cat([observation, action], dim=1)
+        inputs = torch.cat([observation, action], dim=-1).to(torch.float32)
         q1 = self.q1_net(inputs)
         q2 = self.q2_net(inputs)
         return q1, q2
