@@ -32,6 +32,7 @@ class Environment(ABC):
         self.terminated = False
         self.truncated = False
         self.seed = None
+        self.step = 0
     
     @abstractmethod
     def initialize(self, seed: int | None = None) -> tuple[Any, dict[str, Any]]:
@@ -68,17 +69,20 @@ class GymEnvironment(Environment):
                          self.env.action_space.shape[0], action_space_spec, self.env.action_space, None, None)
     
     def initialize(self, seed=None):
+        self.step = 0
         self.seed = seed
         observation, info = self.env.reset(seed=seed)
         return observation, info
     
     def reset(self):
+        self.step = 0
         observation, info = self.env.reset()
         self.terminated = False
         self.truncated = False
         return observation, info
     
     def act(self, action):
+        self.step += 1
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated
         self.truncated = truncated
