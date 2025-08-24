@@ -78,7 +78,7 @@ class SacAgent(Agent):
         for parameter in self.critic.parameters():
             parameter.requires_grad = False
         self.actor.optimizer.zero_grad()
-        loss_actor, log_probs_actor = self._calculate_actor_loss(observation)
+        loss_actor, log_prob_actor = self._calculate_actor_loss(observation)
         loss_actor.backward()
         self.actor.optimizer.step()
         for parameter in self.critic.parameters():
@@ -102,9 +102,8 @@ class SacAgent(Agent):
         # (always negative) heuristic target entropy value (action dimension). 
         # This trains the coefficient to converge to the target entropy value.
         self.entropy_optimizer.zero_grad()
-        loss_entropy = (
-            -self.entropy_regularization * (log_probs_actor.detach() + self.target_entropy)
-        ).mean()
+        loss_entropy = (-self.entropy_regularization 
+                        * (log_prob_actor.detach() + self.target_entropy))
         loss_entropy.backward()
         self.entropy_optimizer.step()
     
@@ -118,14 +117,14 @@ class SacAgent(Agent):
         rewarding overvaluing of more unlikely next actions, encouraging exploration."""
         q1, q2 = self.critic(observation, action)
         with torch.no_grad():
-            next_action, next_log_probs = self.actor(next_observation)
+            next_action, next_log_probability = self.actor(next_observation)
             next_q1, next_q2 = self.target_critic(next_observation, next_action)
             next_q = torch.min(next_q1, next_q2)
             # Calculate bellman backup of bellman equation: this target value is 
             # the reward of the current state plus the value of the next state.
             # The value of the next state is 0 if the iteration is terminated.
             target_q = (reward + self.discount * (1 - terminated) 
-                        * (next_q - self.entropy_regularization * next_log_probs))
+                        * (next_q - self.entropy_regularization * next_log_probability))
         loss_q1 = F.mse_loss(q1, target_q)
         loss_q2 = F.mse_loss(q2, target_q)
         loss = loss_q1 + loss_q2
@@ -136,12 +135,12 @@ class SacAgent(Agent):
         unlikely it is) balanced by the quality value of the action. This 
         trains the actor to choose actions with high quality while also 
         rewarding unlikely actions, encouraging exploration."""
-        action, log_probabilities = self.actor(observation)
+        action, log_probability = self.actor(observation)
         # Clipped double q trick: use two q networks and take the minimum value.
         # This improves the q value because it counteracts overestimation.
         q1, q2 = self.critic(observation, action)
         q = torch.min(q1, q2)
         # Calculate mean just to get scalar value from tensor.
-        loss = (self.entropy_regularization * log_probabilities - q).mean()
-        return loss, log_probabilities
+        loss = self.entropy_regularization * log_probability - q
+        return loss, log_probability
     

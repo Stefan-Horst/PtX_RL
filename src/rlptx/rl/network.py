@@ -56,14 +56,14 @@ class Actor(nn.Module):
         squashed_actions = torch.tanh(action) * self.action_upper_bounds
         
         # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
-        # They are used as the entropy term in the loss function with lower  
-        # values meaning higher entropy as they are less probable.
+        # They are added and used as the entropy term in the loss function with a lower 
+        # value meaning higher entropy as the action tuple is less likely to occur.
         # Lower values of higher entropy are rewarded because they encourage exploration.
-        log_probs = probability_distributions.log_prob(actions)
+        log_probability = probability_distributions.log_prob(actions).sum(dim=-1)
         # Correction for tanh squashing, using alternative formula from spinningup.
-        # Original formula: log_probs -= torch.log(1 - action.pow(2) + noise)
-        log_probs -= (2*(np.log(2) - log_probs - F.softplus(-2*log_probs))).sum(axis=1)
-        return squashed_actions, log_probs
+        # Original formula: log_probability -= torch.log(1 - squashed_action.pow(2) + noise)
+        log_probability -= (2*(np.log(2) - actions - F.softplus(-2*actions))).sum(dim=-1)
+        return squashed_actions, log_probability
 
 
 class Critic(nn.Module):
