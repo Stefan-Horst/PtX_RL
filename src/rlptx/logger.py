@@ -60,4 +60,14 @@ def log(message, loggername=LOGGER_NAME, level=logging.INFO):
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
         loggers[loggername] = configure_logger(loggername)
-    loggers[loggername].log(level, message) 
+    loggers[loggername].log(level, message)
+
+def reset_loggers():
+    """Remove all created loggers."""
+    global loggers
+    for logger in loggers.values():
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+            handler.close()
+        logging.root.manager.loggerDict.pop(logger.name)
+    loggers.clear()
