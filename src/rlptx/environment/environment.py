@@ -32,7 +32,9 @@ class Environment(ABC):
         self.terminated = False
         self.truncated = False
         self.seed = None
+        self.episode = 1
         self.step = 0
+        self.current_episode_reward = 0.
     
     @abstractmethod
     def initialize(self, seed: int | None = None) -> tuple[Any, dict[str, Any]]:
@@ -69,23 +71,40 @@ class GymEnvironment(Environment):
                          self.env.action_space.shape[0], action_space_spec, self.env.action_space, None, None)
     
     def initialize(self, seed=None):
-        self.step = 0
+        self.episode = 1
         self.seed = seed
         observation, info = self.env.reset(seed=seed)
+        self._init_new_episode("ENVIRONMENT INITIALIZED")
         return observation, info
     
     def reset(self):
-        self.step = 0
+        self.episode += 1
         observation, info = self.env.reset()
+        self._init_new_episode(f"ENVIRONMENT RESET, EPISODE {self.episode}")
+        return observation, info
+    
+    def _init_new_episode(self, msg):
         self.terminated = False
         self.truncated = False
-        return observation, info
+        self.step = 0
+        self.current_episode_reward = 0
+        log(msg)
     
     def act(self, action):
         self.step += 1
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated
         self.truncated = truncated
+        self.current_episode_reward += reward
+        
+        info_str = f" - {info}" if len(info) > 0 else ""
+        log(f"Episode {self.episode} - Step {self.step}, Reward {reward:.4f}{info_str}")
+        if self.terminated or self.truncated:
+            msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
+            log(msg, level=Level.WARNING)
+            log(f"Total episode reward: {self.current_episode_reward:.4f}")
+            log(f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f}", 
+                loggername="reward")
         return observation, reward, terminated, truncated, info
     
     def sample_action(self):
@@ -245,10 +264,7 @@ class PtxEnvironment(Environment):
         log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
         log(reward_msg, loggername="reward")
         if self.terminated or self.truncated:
-            if self.truncated:
-                msg = "ENVIRONMENT TRUNCATED"
-            else:
-                msg = "ENVIRONMENT TERMINATED"
+            msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
             log(msg, level=Level.WARNING)
             log(msg, level=Level.WARNING, loggername="status")
             log(msg, level=Level.WARNING, loggername="reward")

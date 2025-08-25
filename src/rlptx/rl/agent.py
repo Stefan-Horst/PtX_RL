@@ -140,7 +140,6 @@ class SacAgent(Agent):
         # This improves the q value because it counteracts overestimation.
         q1, q2 = self.critic(observation, action)
         q = torch.min(q1, q2)
-        # Calculate mean just to get scalar value from tensor.
         loss = self.entropy_regularization * log_probability - q
         return loss, log_probability
     
