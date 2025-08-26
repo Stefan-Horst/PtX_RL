@@ -13,6 +13,8 @@ LOGFILE_NAME = 'log.txt'
 LOGGER_NAME = 'main'
 
 loggers = {}
+disabled_loggers = []
+
 
 # for easy use in log function
 class Level(Enum):
@@ -27,6 +29,9 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
     """Configure and return a new logger. Initially, the default logger is created from 
     this function's default parameters. Every logger is configured  to write levels DEBUG 
     and higher to console and levels INFO and higher also to file."""
+    if loggername in disabled_loggers:
+        return
+    
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
 
@@ -54,10 +59,14 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
 
 # provide simple logging utility from inside this module
 def log(message, loggername=LOGGER_NAME, level=logging.INFO):
-    """Log a message to the given loggername at the given log level. 
+    """Log a message to the given logger at the given log level if the logger is enabled. 
     A new logger is created and used if the loggername does not exist yet."""
+    if loggername in disabled_loggers:
+        return
+    
     if len(loggers) == 0: # create default logger
         loggers[LOGGER_NAME] = configure_logger(LOGGER_NAME)
+        
     # handle enum from this class vs int from logging module
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
@@ -73,3 +82,20 @@ def reset_loggers():
             handler.close()
         logging.root.manager.loggerDict.pop(logger.name)
     loggers.clear()
+
+def disable_logger(loggername=None):
+    """Disable logging to the given logger. If no loggername 
+    is given, disable logging to all loggers."""
+    if loggername is None:
+        global disabled_loggers
+        disabled_loggers = list(loggers.keys())
+    elif loggername not in disabled_loggers:
+        disabled_loggers.append(loggername)
+
+def enable_logger(loggername=None):
+    """Enable logging to the given logger. If no loggername 
+    is given, enable logging to all loggers."""
+    if loggername is None:
+        disabled_loggers.clear()
+    elif loggername in disabled_loggers:
+        disabled_loggers.remove(loggername)

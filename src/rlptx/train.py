@@ -3,6 +3,7 @@ from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.agent import SacAgent
 from rlptx.rl.core import ReplayBuffer
 from rlptx.ptx import load_project
+from rlptx.logger import disable_logger
 
 
 REPLAY_BUFFER_SIZE = 10**6
@@ -10,6 +11,7 @@ REPLAY_BUFFER_SIZE = 10**6
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing."""
+    disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5")
     agent = SacAgent(
         env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
@@ -36,6 +38,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
     :param weather_forecast_days: [int] 
         - The amount of days for which the weather forecast is provided in each observation.
     """
+    disable_logger("main")
+    disable_logger("status")
     ptx_system = load_project()
     weather_data_provider = WeatherDataProvider()
     if max_steps_per_episode is None: # episode cannot be longer than available weather data
