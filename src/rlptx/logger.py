@@ -12,6 +12,7 @@ util.mkdir(LOGFILE_PATH)
 LOGFILE_NAME = 'log.txt'
 LOGGER_NAME = 'main'
 
+loggers = {}
 
 # for easy use in log function
 class Level(Enum):
@@ -50,12 +51,13 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
     logger.addHandler(file_handler)
     return logger
 
-loggers = {LOGGER_NAME: configure_logger(LOGGER_NAME)}
 
 # provide simple logging utility from inside this module
 def log(message, loggername=LOGGER_NAME, level=logging.INFO):
     """Log a message to the given loggername at the given log level. 
     A new logger is created and used if the loggername does not exist yet."""
+    if len(loggers) == 0: # create default logger
+        loggers[LOGGER_NAME] = configure_logger(LOGGER_NAME)
     # handle enum from this class vs int from logging module
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
