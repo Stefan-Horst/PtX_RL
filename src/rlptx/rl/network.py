@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from rlptx.rl.core import DEVICE
+
 
 # hyperparameters taken from sac paper (as well as activation function and optimizer)
 HIDDEN_SIZES = (256, 256)
@@ -20,8 +22,8 @@ class Actor(nn.Module):
                  hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
         self.policy_net = create_mlp([observation_size, *hidden_sizes])
-        self.mean_layer = nn.Linear(hidden_sizes[-1], action_size)
-        self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size)
+        self.mean_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
+        self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
         self.action_upper_bounds = action_upper_bounds
         self.learning_rate = learning_rate
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
@@ -30,7 +32,7 @@ class Actor(nn.Module):
         """The observation is fed into the network which generates an action. The network outputs mean 
         and standard deviation values which are used to create normal distributions from which actions 
         are sampled. Returns the actions and their total log probability (entropy value)."""
-        observation = (torch.tensor(observation, dtype=torch.float32) 
+        observation = (torch.tensor(observation, dtype=torch.float32, device=DEVICE) 
                        if not isinstance(observation, torch.Tensor) else observation)
         policy_output = self.policy_net(observation)
         
@@ -53,7 +55,8 @@ class Actor(nn.Module):
         # randomness which can therefore be ignored during backpropagation.
         actions = probability_distributions.rsample()
         # Squash actions to [-1, 1] with tanh and scale them to their environment bounds.
-        squashed_actions = torch.tanh(actions) * torch.tensor(self.action_upper_bounds, dtype=torch.float32)
+        squashed_actions = (torch.tanh(actions) 
+                            * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=DEVICE))
         
         # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
         # They are added and used as the entropy term in the loss function with a lower 
@@ -83,7 +86,7 @@ class Critic(nn.Module):
     def forward(self, observation, action):
         """Combines observation and action into a single input tensor which 
         is fed into the two networks. Returns output values of both networks."""
-        inputs = torch.cat([observation, action], dim=-1).to(torch.float32)
+        inputs = torch.cat([observation, action], dim=-1).to(dtype=torch.float32, device=DEVICE)
         q1 = self.q1_net(inputs)
         q2 = self.q2_net(inputs)
         return q1, q2
@@ -99,4 +102,4 @@ def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.ReLU()):
         else:
             layers.append(output_activation)
     model = nn.Sequential(*layers)
-    return model
+    return model.to(DEVICE)

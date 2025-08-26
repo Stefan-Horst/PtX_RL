@@ -2,6 +2,10 @@ import numpy as np
 import torch
 
 
+# use gpu for network training in actor and critic if available
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class ReplayBuffer:
     """Replay buffer for storing and sampling transitions from an environment. 
     Every environment step produces transition data that is stored in the replay buffer. 
@@ -39,9 +43,9 @@ class ReplayBuffer:
         length = self.capacity if self.full else self.index
         indices = self.rng.integers(0, length, size=batch_size)
         return (
-            torch.as_tensor(self.observations[indices], dtype=torch.float32),
-            torch.as_tensor(self.actions[indices], dtype=torch.float32),
-            torch.as_tensor(self.rewards[indices], dtype=torch.float32),
-            torch.as_tensor(self.next_observations[indices], dtype=torch.float32),
-            torch.as_tensor(self.terminateds[indices], dtype=torch.float32)
+            torch.as_tensor(self.observations[indices], dtype=torch.float32, device=DEVICE),
+            torch.as_tensor(self.actions[indices], dtype=torch.float32, device=DEVICE),
+            torch.as_tensor(self.rewards[indices], dtype=torch.float32, device=DEVICE),
+            torch.as_tensor(self.next_observations[indices], dtype=torch.float32, device=DEVICE),
+            torch.as_tensor(self.terminateds[indices], dtype=torch.float32, device=DEVICE)
         )
