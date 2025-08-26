@@ -85,3 +85,23 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             total_steps += 1
             observation = next_observation
         observation, info = env.reset()           
+
+
+# command line entry point
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("env", choices=["gym", "ptx"])
+    parser.add_argument("--eps", default=100, type=int)
+    parser.add_argument("--warmup", default=1000, type=int)
+    parser.add_argument("--update", default=1, type=int)
+    parser.add_argument("--maxsteps", default=-1, type=int)
+    parser.add_argument("--forecast", default=7, type=int)
+    args = parser.parse_args()
+    
+    if args.env == "gym":
+        train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update)
+    elif args.env == "ptx":
+        maxsteps = args.maxsteps if args.maxsteps != -1 else None
+        train_ptx_system(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
+                         max_steps_per_episode=maxsteps, weather_forecast_days=args.forecast)
