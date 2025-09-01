@@ -4,6 +4,7 @@ pandas
 matplotlib
 torch
 gymnasium
+gymnasium[mujoco]
 mujoco==3.2.5
 pytest
 pytest-mock
