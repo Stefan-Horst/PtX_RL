@@ -77,10 +77,13 @@ def reset_loggers():
     """Remove all created loggers."""
     global loggers
     for logger in loggers.values():
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
-        logging.root.manager.loggerDict.pop(logger.name)
+        try:
+            for handler in logger.handlers:
+                logger.removeHandler(handler)
+                handler.close()
+            logging.root.manager.loggerDict.pop(logger.name)
+        except Exception as e:
+            print(e)
     loggers.clear()
 
 def disable_logger(loggername=None):
