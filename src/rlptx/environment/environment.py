@@ -61,10 +61,11 @@ class Environment(ABC):
 class GymEnvironment(Environment):
     """Reference environment for gymnasium environments, acting as a wrapper. 
     The default environment is HalfCheetah-v5, as it is relatively simple and 
-    has comparable action and observation spaces to the PtX environment."""
+    has comparable action and observation spaces to the PtX environment. 
+    If no max_steps_per_episode is provided, the environment will use gym's default."""
     
-    def __init__(self, env="HalfCheetah-v5"):
-        self.env = gym.make(env)
+    def __init__(self, env="HalfCheetah-v5", max_steps_per_episode=None):
+        self.env = gym.make(env, max_episode_steps=max_steps_per_episode)
         observation_space_spec = {"low": self.env.observation_space.low, "high": self.env.observation_space.high}
         action_space_spec = {"low": self.env.action_space.low, "high": self.env.action_space.high}
         super().__init__(self.env.observation_space.shape[0], observation_space_spec, self.env.observation_space,
