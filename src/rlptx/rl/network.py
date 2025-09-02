@@ -20,11 +20,12 @@ class Actor(nn.Module):
     def __init__(self, observation_size, action_size, action_upper_bounds, 
                  hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
+        self.action_upper_bounds = action_upper_bounds
+        self.hidden_sizes = hidden_sizes
+        self.learning_rate = learning_rate
         self.policy_net = create_mlp([observation_size, *hidden_sizes])
         self.mean_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
         self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
-        self.action_upper_bounds = action_upper_bounds
-        self.learning_rate = learning_rate
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation):
@@ -77,6 +78,8 @@ class Critic(nn.Module):
     def __init__(self, observation_size, action_size, 
                  hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
         super().__init__()
+        self.hidden_sizes = hidden_sizes
+        self.learning_rate = learning_rate
         # fixed output layer of size one for returning a single q value
         self.q1_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])
         self.q2_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])

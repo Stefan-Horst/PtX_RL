@@ -13,7 +13,8 @@ from rlptx.rl import DEVICE
 DISCOUNT_FACTOR = 0.99 # (/gamma) used in calculating critic loss
 POLYAK_COEFFICIENT = 0.995 # (/tau) for polyak averaging in target
 # hyperparameters not used in paper
-INITIAL_ENTROPY_COEFFICIENT = 1.0 # (/alpha) for calculating actor loss
+INITIAL_ENTROPY_COEFFICIENT = 0.2 # (/alpha) for calculating actor loss
+ENTROPY_LEARNING_RATE = 1e-3
 
 
 class Agent(ABC):
@@ -37,21 +38,25 @@ class SacAgent(Agent):
     SAC papers by Haarnoja et al. (2018). This includes the actor and 
     critic classes from the network module."""
     
-    def __init__(self, observation_size, action_size, action_upper_bounds, 
-                 discount=DISCOUNT_FACTOR, polyak=POLYAK_COEFFICIENT, 
-                 initial_entropy=INITIAL_ENTROPY_COEFFICIENT):
-        self.actor = Actor(observation_size, action_size, action_upper_bounds)
-        self.critic = Critic(observation_size, action_size)
+    def __init__(self, observation_size, action_size, action_upper_bounds, discount=DISCOUNT_FACTOR, 
+                 polyak=POLYAK_COEFFICIENT, initial_entropy=INITIAL_ENTROPY_COEFFICIENT, 
+                 entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None):
+        self.observation_size = observation_size
+        self.action_size = action_size
+        self.actor = Actor(observation_size, action_size, action_upper_bounds) if actor is None else actor
+        self.critic = Critic(observation_size, action_size) if critic is None else critic
         self.discount = discount # factor for discounting future rewards
         # The entropy regularization coefficient is not fixed, but instead varies to 
         # enforce an entropy constraint. It is trained together with the actor and 
         # critic. The target entropy is determined heuristically and used in the loss.
+        self.inital_entropy = initial_entropy
+        self.entropy_learning_rate = entropy_learning_rate
         self.entropy_regularization = torch.tensor(
             np.log(initial_entropy), requires_grad=True, dtype=torch.float32, device=DEVICE
         )
         self.target_entropy = torch.tensor(-action_size, dtype=torch.float32, device=DEVICE)
         self.entropy_optimizer = torch.optim.Adam(
-            [self.entropy_regularization], lr=self.actor.learning_rate, weight_decay=0
+            [self.entropy_regularization], lr=entropy_learning_rate, weight_decay=0
         )
         # Separate target critic to improve stability.
         # Its networks are slowly updated to match the critic networks.
