@@ -10,20 +10,21 @@ REPLAY_BUFFER_SIZE = 10**6
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, 
-                           max_steps_per_episode=None):
+                           max_steps_per_episode=None, agent=None):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing."""
     disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
-    agent = SacAgent(
-        env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
-    )
+    if agent is None:
+        agent = SacAgent(
+            env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
+        )
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer)
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
-                     max_steps_per_episode=None, weather_forecast_days=7):
+                     max_steps_per_episode=None, weather_forecast_days=7, agent=None):
     """Train the SAC agent on the PtX environment.
 
     :param episodes: [int] 
@@ -49,9 +50,10 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode
     )
-    agent = SacAgent(
-        env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
-    )
+    if agent is None:
+        agent = SacAgent(
+            env.observation_space_size, env.action_space_size, env.action_space_spec["high"]
+        )
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )

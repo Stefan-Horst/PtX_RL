@@ -1,9 +1,14 @@
+from copy import deepcopy
 import numpy as np
 import torch
 
-
-
+from rlptx.rl.network import Actor, Critic
+from rlptx.rl.agent import SacAgent
+from rlptx.util import mkdir, PROJECT_DIR
 from rlptx.rl import DEVICE
+
+
+MODEL_SAVE_PATH = "models/"
 
 
 class ReplayBuffer:
@@ -49,3 +54,46 @@ class ReplayBuffer:
             torch.as_tensor(self.next_observations[indices], dtype=torch.float32, device=DEVICE),
             torch.as_tensor(self.terminateds[indices], dtype=torch.float32, device=DEVICE)
         )
+
+
+def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
+    """Save a SAC agent to a file including all its hyperparameters and its networks' parameters."""
+    actor = agent.actor
+    critic = agent.critic
+    target_critic = agent.target_critic
+    mkdir(path)
+    torch.save({
+        "actor": actor.state_dict(), 
+        "critic": critic.state_dict(), 
+        "target_critic": target_critic.state_dict(), 
+        "inital_entropy": agent.inital_entropy, 
+        "entropy_regularization": agent.entropy_regularization, 
+        "entropy_learning_rate": agent.entropy_learning_rate,
+        "target_entropy": agent.target_entropy, 
+        "discount": agent.discount, 
+        "polyak": agent.polyak, 
+        "action_upper_bounds": actor.action_upper_bounds, 
+        "actor_learning_rate": actor.learning_rate, 
+        "actor_hidden_sizes": actor.hidden_sizes,
+        "critic_learning_rate": critic.learning_rate, 
+        "critic_hidden_sizes": critic.hidden_sizes,
+        "observation_size": agent.observation_size, 
+        "action_size": agent.action_size
+    }, PROJECT_DIR / (path + filename + ".tar"))
+
+def load_sac_agent(filename, path=MODEL_SAVE_PATH):
+    """Load a SAC agent from a file. Returns the agent with all its networks and hyperparameters set."""
+    model = torch.load(PROJECT_DIR / (path + filename + ".tar"), weights_only=True)
+    actor = Actor(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
+                  hidden_sizes=model["actor_hidden_sizes"], learning_rate=model["actor_learning_rate"])
+    actor.load_state_dict(model["actor"])
+    critic = Critic(model["observation_size"], model["action_size"], hidden_sizes=model["critic_hidden_sizes"], 
+                    learning_rate=model["critic_learning_rate"])
+    critic.load_state_dict(model["critic"])
+    target_critic = deepcopy(critic)
+    target_critic.load_state_dict(model["target_critic"])
+    agent = SacAgent(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
+                     discount=model["discount"], polyak=model["polyak"], initial_entropy=model["inital_entropy"], 
+                     entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic)
+    agent.target_critic = target_critic
+    return agent
