@@ -7,9 +7,10 @@ from rlptx.util import DATA_DIR
 class WeatherDataProvider():
     """Wrapper for the weather data originally provided in multiple csv files."""
     
-    def __init__(self, dir_data="yearly_profiles/", offset=0):
+    def __init__(self, dir_data="yearly_profiles/", offset=0, ticks_per_day=24):
         """Offset adds a static time offset to each tick of the weather data."""
         self.offset = offset
+        self.ticks_per_day = ticks_per_day
         self.weather_data = self._load_data(dir_data)
         self.weather_data_joined = pd.concat(self.weather_data)
     
@@ -41,6 +42,8 @@ class WeatherDataProvider():
         for file_path in file_paths:
             yearly_data = pd.read_csv(file_path)
             yearly_data["time"] = pd.to_datetime(yearly_data["time"])
+            yearly_data["dayofyear"] = yearly_data.index // self.ticks_per_day
+            yearly_data["hour"] = yearly_data["time"].dt.hour
             data.append(yearly_data)
         return data
 

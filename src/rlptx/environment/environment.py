@@ -465,10 +465,11 @@ class PtxEnvironment(Environment):
     def _get_current_observation(self):
         """Get the current observation by iterating over all elements of the ptx 
         system and adding the values of their attributes, as well as the current 
-        step and weather data for each generator for the next specified steps."""
-        observation_space = [self.step]
-        element_categories = self._get_element_categories_with_attributes_and_actions()
+        day, time and weather data for each generator for the next specified steps."""
+        current_weather_data = self.weather_provider.get_weather_of_tick(self.step)
+        observation_space = [current_weather_data["dayofyear"], current_weather_data["hour"]]
         
+        element_categories = self._get_element_categories_with_attributes_and_actions()
         generators = element_categories[1][0]
         # append current weather and forecast weather
         for i in range(self.weather_forecast_days + 1):
@@ -528,7 +529,7 @@ class PtxEnvironment(Environment):
         each step as values. Attributes that are dicts are added with their keys as list."""
         element_categories = self._get_element_categories_with_attributes_and_actions()
         
-        environment_data = ["current_step"]
+        environment_data = ["current_day", "current_hour"]
         generators = element_categories[1][0]
         for generator in generators:
                 environment_data.append(f"current_{generator.name}")
