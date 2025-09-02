@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rlptx.rl.core import DEVICE
-
+from rlptx.rl import DEVICE
 
 # hyperparameters taken from sac paper (as well as activation function and optimizer)
 HIDDEN_SIZES = (256, 256)

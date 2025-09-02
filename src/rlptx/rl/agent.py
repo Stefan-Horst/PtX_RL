@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from rlptx.rl.network import Actor, Critic
-from rlptx.rl.core import DEVICE
+from rlptx.rl import DEVICE
 
 
 # hyperparameters taken from sac paper

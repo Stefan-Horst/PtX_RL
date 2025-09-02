@@ -2,8 +2,8 @@ import numpy as np
 import torch
 
 
-# use gpu for network training in actor and critic if available
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+from rlptx.rl import DEVICE
 
 
 class ReplayBuffer:
