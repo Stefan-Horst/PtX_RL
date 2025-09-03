@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import datetime
 import yaml
 
 
@@ -28,3 +29,6 @@ def open_yaml_file(path):
 
 def contains_only_unique_elements(list):
     return len(list) == len(set(list))
+
+def get_timestamp():
+    return str(datetime.datetime.now().replace(microsecond=0))

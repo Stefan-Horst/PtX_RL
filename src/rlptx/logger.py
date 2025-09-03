@@ -1,5 +1,4 @@
 import logging
-import datetime
 from enum import Enum
 
 import rlptx.util as util
@@ -35,8 +34,7 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
 
-    timestamp = datetime.datetime.now().replace(microsecond=0)
-    filename = (f"{str(timestamp)}_{loggername}_{filename}").replace(':', '-').replace(' ', '_')
+    filename = (f"{util.get_timestamp()}_{loggername}_{filename}").replace(':', '-').replace(' ', '_')
     file_handler = logging.FileHandler(util.PROJECT_DIR / path / filename, mode='a')
     file_handler.setLevel(logging.INFO)
 
