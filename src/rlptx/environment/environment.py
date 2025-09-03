@@ -104,8 +104,9 @@ class GymEnvironment(Environment):
             msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
             log(msg, level=Level.WARNING)
             log(f"Total episode reward: {self.current_episode_reward:.4f}")
-            log(f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f}", 
-                loggername="reward")
+            reward_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
+                          f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+            log(reward_msg, loggername="reward")
         return observation, reward, terminated, truncated, info
     
     def sample_action(self):
