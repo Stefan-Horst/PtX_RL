@@ -275,18 +275,19 @@ class PtxEnvironment(Environment):
     def _calculate_reward(self, revenue):
         """Calculate the reward for the current step based on the increase of balance of 
         the ptx system since the last step and if any conversion has failed."""
-        # negative reward if system fails (i.e. conversion with set load is not possible)
+        # Negative reward if system fails (i.e. conversion with set load is not possible).
         if self.terminated:
-            return -100.
+            return -1000000 # arbitrary number that should be larger than the commodity penalty
         
-        # negative reward if any "loose" commodities are left in the system at the end of a step
+        # Negative reward if any "loose" commodities are left in the system at the end of a step. 
+        # The negative reward is proportional to the amount of commodities left.
         total_available_commodities = sum(
             [commodity.available_quantity for commodity in self.ptx_system.get_all_commodities()]
         )
         if total_available_commodities >= 0:
-            return -10.
+            return -total_available_commodities
         
-        # if system has not failed, positive revenue value is the reward
+        # If the system has not failed, the positive revenue value is the reward.
         return revenue
     
     def _apply_action(self, action):
