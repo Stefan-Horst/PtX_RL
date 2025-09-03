@@ -99,8 +99,8 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             observation = next_observation
         observation, info = env.reset()
         
-        if epoch_save_interval not in (None, -1) and episode % epoch_save_interval == 0:
-            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode}")
+        if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
+            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
     if epoch_save_interval == -1:
             save_sac_agent(agent, f"{get_timestamp()}_sac_agent_final")
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     parser.add_argument("--eps", default=100, type=int)
     parser.add_argument("--warmup", default=1000, type=int)
     parser.add_argument("--update", default=1, type=int)
-    parser.add_argument("--maxsteps", default=-1, type=int)
+    parser.add_argument("--maxsteps", default=None, type=int)
     parser.add_argument("--forecast", default=7, type=int)
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
@@ -121,14 +121,15 @@ if __name__ == "__main__":
     
     if args.load is not None:
         agent = load_sac_agent(args.load)
+        print("Agent loaded successfully.")
     else:
         agent = None
     
+    print("Training agent...")
     if args.env == "gym":
         train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, 
                                max_steps_per_episode=args.maxsteps, epoch_save_interval=args.save, agent=agent)
     elif args.env == "ptx":
-        maxsteps = args.maxsteps if args.maxsteps != -1 else None
         train_ptx_system(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
-                         max_steps_per_episode=maxsteps, weather_forecast_days=args.forecast, 
+                         max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, 
                          epoch_save_interval=args.save, agent=agent)
