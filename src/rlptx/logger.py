@@ -34,7 +34,7 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
 
-    filename = (f"{util.get_timestamp()}_{loggername}_{filename}").replace(':', '-').replace(' ', '_')
+    filename = (f"{util.get_timestamp()}_{loggername}_{filename}")
     file_handler = logging.FileHandler(util.PROJECT_DIR / path / filename, mode='a')
     file_handler.setLevel(logging.INFO)
 
