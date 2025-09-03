@@ -12,7 +12,7 @@ REPLAY_BUFFER_SIZE = 10**6
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, 
                            max_steps_per_episode=None, epoch_save_interval=None, agent=None):
-    """Train the SAC agent on the gym HalfCheetah-v5 environment for testing."""
+    """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
     if agent is None:
@@ -23,10 +23,11 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1,
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval)
+    return agent # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
                      weather_forecast_days=7, epoch_save_interval=None, agent=None):
-    """Train the SAC agent on the PtX environment.
+    """Train the SAC agent on the PtX environment. Returns the trained agent.
 
     :param episodes: [int] 
         - The number of episodes to train the agent on.
@@ -63,7 +64,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval) 
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval)
+    return agent # for use in notebooks etc
 
 def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval):
     """Execute the main SAC training loop."""
