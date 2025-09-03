@@ -273,8 +273,7 @@ class PtxEnvironment(Environment):
     
     def _calculate_reward(self, revenue):
         """Calculate the reward for the current step based on the increase of balance of 
-        the ptx system since the last step and if any conversion has failed. Also take the 
-        amount of time taken into account by reducing the reward in later steps."""
+        the ptx system since the last step and if any conversion has failed."""
         # negative reward if system fails (i.e. conversion with set load is not possible)
         if self.terminated:
             return -100.
@@ -286,10 +285,8 @@ class PtxEnvironment(Environment):
         if total_available_commodities >= 0:
             return -10.
         
-        # encourage more efficient and early reward maximization
-        discount_factor = 1 - self.step / self.max_steps_per_episode
-        reward = revenue * discount_factor
-        return reward
+        # if system has not failed, positive revenue value is the reward
+        return revenue
     
     def _apply_action(self, action):
         """Call the specified action methods of the elements of the 
