@@ -1,16 +1,17 @@
 from rlptx.environment.environment import GymEnvironment, PtxEnvironment
 from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.agent import SacAgent
-from rlptx.rl.core import ReplayBuffer
+from rlptx.rl.core import ReplayBuffer, save_sac_agent, load_sac_agent
 from rlptx.ptx import load_project
 from rlptx.logger import disable_logger
+from rlptx.util import get_timestamp
 
 
 REPLAY_BUFFER_SIZE = 10**6
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, 
-                           max_steps_per_episode=None, agent=None):
+                           max_steps_per_episode=None, epoch_save_interval=None, agent=None):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing."""
     disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
@@ -21,10 +22,10 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1,
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval)
 
-def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
-                     max_steps_per_episode=None, weather_forecast_days=7, agent=None):
+def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
+                     weather_forecast_days=7, epoch_save_interval=None, agent=None):
     """Train the SAC agent on the PtX environment.
 
     :param episodes: [int] 
@@ -39,6 +40,11 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
         With the default value of None, the value is set to the amount of available weather data.
     :param weather_forecast_days: [int] 
         - The amount of days for which the weather forecast is provided in each observation.
+    :param epoch_save_interval: [int] 
+        - The interval at which the agent should be saved. If None, the agent is not saved. 
+        If -1, the agent is saved at the end of training.
+    :param agent: [SacAgent] 
+        - The agent to train. If None, a new one is created.
     """
     disable_logger("main")
     disable_logger("status")
@@ -57,9 +63,9 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1,
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer) 
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval) 
 
-def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer):
+def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval):
     """Execute the main SAC training loop."""
     observation, info = env.initialize()
     total_steps = 0
@@ -91,7 +97,12 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             
             total_steps += 1
             observation = next_observation
-        observation, info = env.reset()           
+        observation, info = env.reset()
+        
+        if epoch_save_interval not in (None, -1) and episode % epoch_save_interval == 0:
+            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode}")
+    if epoch_save_interval == -1:
+            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_final")
 
 
 # command line entry point
@@ -104,11 +115,20 @@ if __name__ == "__main__":
     parser.add_argument("--update", default=1, type=int)
     parser.add_argument("--maxsteps", default=-1, type=int)
     parser.add_argument("--forecast", default=7, type=int)
+    parser.add_argument("--save", default=None, type=int)
+    parser.add_argument("--load", default=None, type=str)
     args = parser.parse_args()
     
+    if args.load is not None:
+        agent = load_sac_agent(args.load)
+    else:
+        agent = None
+    
     if args.env == "gym":
-        train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update)
+        train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, 
+                               max_steps_per_episode=args.maxsteps, epoch_save_interval=args.save, agent=agent)
     elif args.env == "ptx":
         maxsteps = args.maxsteps if args.maxsteps != -1 else None
         train_ptx_system(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
-                         max_steps_per_episode=maxsteps, weather_forecast_days=args.forecast)
+                         max_steps_per_episode=maxsteps, weather_forecast_days=args.forecast, 
+                         epoch_save_interval=args.save, agent=agent)
