@@ -14,6 +14,8 @@ LOGGER_NAME = 'main'
 loggers = {}
 disabled_loggers = []
 
+deferred_logs = []
+
 
 # for easy use in log function
 class Level(Enum):
@@ -56,9 +58,11 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
 
 
 # provide simple logging utility from inside this module
-def log(message, loggername=LOGGER_NAME, level=logging.INFO):
+def log(message, loggername=LOGGER_NAME, level=logging.INFO, deferred=False):
     """Log a message to the given logger at the given log level if the logger is enabled. 
-    A new logger is created and used if the loggername does not exist yet."""
+    A new logger is created and used if the loggername does not exist yet. 
+    Deferring logs prevents immediately writing them to output; they will be written when 
+    flush_deferred_logs() is called. This prevents the interruption of progress bars."""
     if loggername in disabled_loggers:
         return
     
@@ -69,7 +73,19 @@ def log(message, loggername=LOGGER_NAME, level=logging.INFO):
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
         loggers[loggername] = configure_logger(loggername)
-    loggers[loggername].log(level, message)
+    
+    if not deferred:
+        # make sure all logs appear in the right order in the output by writing deferred ones first
+        flush_deferred_logs()
+        loggers[loggername].log(level, message)
+    else:
+        deferred_logs.append((loggername, level, message))
+
+def flush_deferred_logs():
+    """Write all deferred logs to output."""
+    for loggername, level, message in deferred_logs:
+        loggers[loggername].log(level, message)
+    deferred_logs.clear()
 
 def reset_loggers():
     """Remove all created loggers."""

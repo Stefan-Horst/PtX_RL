@@ -241,9 +241,9 @@ class PtxEnvironment(Environment):
     
     ##### ACT FUNCTIONALITY #####
     
-    def act(self, action):
-        """Perform the actions in the ptx system for one 
-        step of the current episode in the environment."""
+    def act(self, action, defer_logs=False):
+        """Perform the actions in the ptx system for one step of the current episode in the environment. 
+        Deferring logs is only relevant when this is called from a loop using a progress bar like tqdm."""
         self.step += 1
         state_change_info, exact_completion_info, success = self._apply_action(action)
         
@@ -272,7 +272,7 @@ class PtxEnvironment(Environment):
             log(msg, level=Level.WARNING, loggername="reward")
             episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
                            f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
-            log(episode_msg, loggername="episode")
+            log(episode_msg, loggername="episode", deferred=defer_logs)
         return observation, reward, self.terminated, self.truncated, info
     
     def _calculate_reward(self, revenue):
