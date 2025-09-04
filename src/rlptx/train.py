@@ -49,6 +49,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     """
     disable_logger("main")
     disable_logger("status")
+    disable_logger("reward")
     ptx_system = load_project()
     weather_data_provider = WeatherDataProvider()
     if max_steps_per_episode is None: # episode cannot be longer than available weather data
@@ -135,3 +136,4 @@ if __name__ == "__main__":
         train_ptx_system(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
                          max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, 
                          epoch_save_interval=args.save, agent=agent)
+    print("Training complete.")

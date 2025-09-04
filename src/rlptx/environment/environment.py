@@ -104,9 +104,9 @@ class GymEnvironment(Environment):
             msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
             log(msg, level=Level.WARNING)
             log(f"Total episode reward: {self.current_episode_reward:.4f}")
-            reward_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
-                          f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
-            log(reward_msg, loggername="reward")
+            episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
+                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+            log(episode_msg, loggername="episode")
         return observation, reward, terminated, truncated, info
     
     def sample_action(self):
@@ -270,6 +270,9 @@ class PtxEnvironment(Environment):
             log(msg, level=Level.WARNING)
             log(msg, level=Level.WARNING, loggername="status")
             log(msg, level=Level.WARNING, loggername="reward")
+            episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
+                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+            log(episode_msg, loggername="episode")
         return observation, reward, self.terminated, self.truncated, info
     
     def _calculate_reward(self, revenue):
