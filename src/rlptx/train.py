@@ -1,17 +1,19 @@
+from tqdm import tqdm
+
 from rlptx.environment.environment import GymEnvironment, PtxEnvironment
 from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.agent import SacAgent
 from rlptx.rl.core import ReplayBuffer, save_sac_agent, load_sac_agent
 from rlptx.ptx import load_project
-from rlptx.logger import disable_logger
+from rlptx.logger import disable_logger, flush_deferred_logs
 from rlptx.util import get_timestamp
 
 
 REPLAY_BUFFER_SIZE = 10**6
 
 
-def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, 
-                           max_steps_per_episode=None, epoch_save_interval=None, agent=None):
+def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None
+                           , epoch_save_interval=None, agent=None, progress_bar=False):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
@@ -22,11 +24,11 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1,
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval, progress_bar)
     return agent # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                     weather_forecast_days=7, epoch_save_interval=None, agent=None):
+                     weather_forecast_days=7, epoch_save_interval=None, agent=None, progress_bar=True):
     """Train the SAC agent on the PtX environment. Returns the trained agent.
 
     :param episodes: [int] 
@@ -46,6 +48,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         If -1, the agent is saved at the end of training.
     :param agent: [SacAgent] 
         - The agent to train. If None, a new one is created.
+    :param progress_bar: [bool] 
+        - Whether to show a progress bar for the steps of each episode.
     """
     disable_logger("main")
     disable_logger("status")
@@ -65,18 +69,25 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     replay_buffer = ReplayBuffer(
         REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size
     )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval, progress_bar)
     return agent # for use in notebooks etc
 
-def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval):
+def _train_sac(episodes, warmup_steps, update_interval, env, agent, 
+               replay_buffer, epoch_save_interval, use_progress_bar=True):
     """Execute the main SAC training loop."""
     observation, info = env.initialize()
     total_steps = 0
     for episode in range(episodes):
+        if use_progress_bar:
+            progress_bar = tqdm(
+                total=env.max_steps_per_episode, desc=f"Episode {episode+1} steps", ncols=100
+            )   
         # The current episode ends when the environment is truncated (meaning 
         # max_steps_per_episode is reached) or when it is terminated (meaning it has 
         # reached a failure state from which there is no recovery).
         while not env.truncated and not env.terminated:
+            if use_progress_bar:
+                progress_bar.update(1)
             # Randomly sample actions for more thorough exploration in the beginning 
             # and only then switch to the agent's policy to determine actions.
             if env.step < warmup_steps:
@@ -85,7 +96,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
                 action = agent.act(observation)
             # Apply the chosen action the environment and add the transition data 
             # to the replay buffer so the agent can be trained on it later.
-            next_observation, reward, terminated, truncated, info = env.act(action)
+            next_observation, reward, terminated, truncated, info = env.act(action, defer_logs=use_progress_bar)
             replay_buffer.add(observation, action, reward, next_observation, terminated)
             
             # Start training agent only after it is done with randomly sampling actions 
@@ -101,6 +112,10 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             total_steps += 1
             observation = next_observation
         observation, info = env.reset()
+        
+        if use_progress_bar:
+            progress_bar.close()
+            flush_deferred_logs() # only print logs after progress bar is finished
         
         if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
             save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
