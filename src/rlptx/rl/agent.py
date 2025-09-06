@@ -66,11 +66,16 @@ class SacAgent(Agent):
         self.polyak = polyak # coefficient for soft target network updates
     
     def act(self, observation):
+        """Return an action determined by the policy of the agent for the given observation. 
+        Calling this method does not update the agent's networks or change its state."""
         with torch.no_grad():
             action, _ = self.actor(observation) # log_probs not needed
         return action.numpy() # return numpy array instead of tensor
     
     def update(self, observation, action, reward, next_observation, terminated):
+        """Update the agent's networks by calculating their losses and applying gradient descent. 
+        This is also done for the entropy coefficient. The target critic network is updated 
+        separately using polyak averaging instead of gradient descent."""
         # Perform pytorch gradient descent steps for actor.
         self.critic.optimizer.zero_grad()
         loss_critic = self._calculate_critic_loss(
