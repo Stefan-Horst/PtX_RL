@@ -47,7 +47,7 @@ class Environment(ABC):
         pass
     
     @abstractmethod
-    def act(self, action: Any) -> tuple[Any, float, bool, bool, dict[str, Any]]:
+    def act(self, action: Any, **kwargs) -> tuple[Any, float, bool, bool, dict[str, Any]]:
         """Take an action running one timestep and return the new observed state, 
         the reward, whether the environment has been terminated or truncated (and info)."""
         pass
@@ -91,7 +91,7 @@ class GymEnvironment(Environment):
         self.current_episode_reward = 0
         log(msg)
     
-    def act(self, action):
+    def act(self, action, **kwargs):
         self.step += 1
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated
