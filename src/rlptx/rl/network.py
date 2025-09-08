@@ -23,7 +23,7 @@ class Actor(nn.Module):
         self.action_upper_bounds = action_upper_bounds
         self.hidden_sizes = hidden_sizes
         self.learning_rate = learning_rate
-        self.policy_net = create_mlp([observation_size, *hidden_sizes])
+        self.policy_net = create_mlp([observation_size, *hidden_sizes], output_activation=nn.ReLU())
         self.mean_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
         self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
@@ -94,7 +94,7 @@ class Critic(nn.Module):
         return q1, q2
 
 
-def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.ReLU()):
+def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.Identity()):
     """Create a multi-layer perceptron with the specified layer sizes and activation functions."""
     layers = []
     for i in range(len(layer_sizes) - 1):
