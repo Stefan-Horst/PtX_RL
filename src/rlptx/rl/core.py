@@ -66,7 +66,7 @@ def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
         "actor": actor.state_dict(), 
         "critic": critic.state_dict(), 
         "target_critic": target_critic.state_dict(), 
-        "inital_entropy": agent.inital_entropy, 
+        "initial_entropy": agent.initial_entropy, 
         "entropy_regularization": agent.entropy_regularization, 
         "entropy_learning_rate": agent.entropy_learning_rate,
         "target_entropy": agent.target_entropy, 
@@ -93,7 +93,7 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH):
     target_critic = deepcopy(critic)
     target_critic.load_state_dict(model["target_critic"])
     agent = SacAgent(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
-                     discount=model["discount"], polyak=model["polyak"], initial_entropy=model["inital_entropy"], 
+                     discount=model["discount"], polyak=model["polyak"], initial_entropy=model["initial_entropy"], 
                      entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic)
     agent.target_critic = target_critic
     return agent

@@ -46,17 +46,18 @@ class SacAgent(Agent):
         self.actor = Actor(observation_size, action_size, action_upper_bounds) if actor is None else actor
         self.critic = Critic(observation_size, action_size) if critic is None else critic
         self.discount = discount # factor for discounting future rewards
-        # The entropy regularization coefficient is not fixed, but instead varies to 
-        # enforce an entropy constraint. It is trained together with the actor and 
-        # critic. The target entropy is determined heuristically and used in the loss.
-        self.inital_entropy = initial_entropy
+        # The entropy regularization coefficient is not fixed, but instead varies to enforce 
+        # an entropy constraint. It is trained together with the actor and critic. The log 
+        # value is used to stabilize training by preventing negative values for the coefficient. 
+        # The target entropy is determined heuristically and used in the loss.
+        self.initial_entropy = initial_entropy
         self.entropy_learning_rate = entropy_learning_rate
-        self.entropy_regularization = torch.tensor(
+        self.log_entropy_regularization = torch.tensor(
             np.log(initial_entropy), requires_grad=True, dtype=torch.float32, device=DEVICE
         )
         self.target_entropy = torch.tensor(-action_size, dtype=torch.float32, device=DEVICE)
         self.entropy_optimizer = torch.optim.Adam(
-            [self.entropy_regularization], lr=entropy_learning_rate, weight_decay=0
+            [self.log_entropy_regularization], lr=entropy_learning_rate, weight_decay=0
         )
         # Separate target critic to improve stability.
         # Its networks are slowly updated to match the critic networks.
@@ -113,7 +114,7 @@ class SacAgent(Agent):
         # (always negative) heuristic target entropy value (action dimension). 
         # This trains the coefficient to converge to the target entropy value.
         self.entropy_optimizer.zero_grad()
-        loss_entropy = (-self.entropy_regularization 
+        loss_entropy = (-self.log_entropy_regularization 
                         * (log_prob_actor.detach() + self.target_entropy))
         loss_entropy.backward()
         self.entropy_optimizer.step()
@@ -131,11 +132,13 @@ class SacAgent(Agent):
             next_action, next_log_probability = self.actor(next_observation)
             next_q1, next_q2 = self.target_critic(next_observation, next_action)
             next_q = torch.min(next_q1, next_q2)
+            # entropy_regularization is converted from log value to value
+            entropy_regularization = torch.exp(self.log_entropy_regularization.detach())
             # Calculate bellman backup of bellman equation: this target value is 
             # the reward of the current state plus the value of the next state.
             # The value of the next state is 0 if the iteration is terminated.
             target_q = (reward + self.discount * (1 - terminated) 
-                        * (next_q - self.entropy_regularization * next_log_probability))
+                        * (next_q - entropy_regularization * next_log_probability))
         loss_q1 = F.mse_loss(q1, target_q)
         loss_q2 = F.mse_loss(q2, target_q)
         loss = loss_q1 + loss_q2
@@ -151,6 +154,8 @@ class SacAgent(Agent):
         # This improves the q value because it counteracts overestimation.
         q1, q2 = self.critic(observation, action)
         q = torch.min(q1, q2)
-        loss = self.entropy_regularization * log_probability - q
+        # entropy_regularization is converted from log value to value
+        entropy_regularization = torch.exp(self.log_entropy_regularization.detach())
+        loss = entropy_regularization * log_probability - q
         return loss, log_probability
     
