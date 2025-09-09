@@ -120,9 +120,11 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent,
             flush_deferred_logs() # only print logs after progress bar is finished
         
         if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
-            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
+            filename = save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
+            print(f"Saved agent from episode {episode+1} to file: {filename}")
     if epoch_save_interval == -1:
-            save_sac_agent(agent, f"{get_timestamp()}_sac_agent_final")
+            filename = save_sac_agent(agent, f"{get_timestamp()}_sac_agent_final")
+            print(f"Saved final agent to file: {filename}")
 
 def _log_episode_stats(episode, step, stats_log):
     """Log the stats of the last episode by taking the mean of all its steps' values."""

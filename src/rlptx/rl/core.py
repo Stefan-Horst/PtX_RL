@@ -62,6 +62,7 @@ def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
     critic = agent.critic
     target_critic = agent.target_critic
     mkdir(path)
+    file_path = PROJECT_DIR / (path + filename + ".tar")
     torch.save({
         "actor": actor.state_dict(), 
         "critic": critic.state_dict(), 
@@ -78,7 +79,8 @@ def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
         "critic_hidden_sizes": critic.hidden_sizes,
         "observation_size": agent.observation_size, 
         "action_size": agent.action_size
-    }, PROJECT_DIR / (path + filename + ".tar"))
+    }, file_path)
+    return file_path
 
 def load_sac_agent(filename, path=MODEL_SAVE_PATH):
     """Load a SAC agent from a file. Returns the agent with all its networks and hyperparameters set."""
