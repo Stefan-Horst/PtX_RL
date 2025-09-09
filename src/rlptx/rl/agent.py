@@ -65,6 +65,8 @@ class SacAgent(Agent):
         for parameter in self.target_critic.parameters():
             parameter.requires_grad = False
         self.polyak = polyak # coefficient for soft target network updates
+        self.stats_log = {"loss_critic": [], "loss_actor": [], "log_prob_actor": [], 
+                          "loss_entropy": [], "log_entropy_regularization": []}
     
     def act(self, observation):
         """Return an action determined by the policy of the agent for the given observation. 
@@ -84,6 +86,7 @@ class SacAgent(Agent):
         )
         loss_critic.backward()
         self.critic.optimizer.step()
+        self.stats_log["loss_critic"].append(loss_critic.item())
         
         # Perform pytorch gradient descent steps for actor.
         # Freeze critic parameters during this as they were already updated.
@@ -95,6 +98,8 @@ class SacAgent(Agent):
         self.actor.optimizer.step()
         for parameter in self.critic.parameters():
             parameter.requires_grad = True
+        self.stats_log["loss_actor"].append(loss_actor.item())
+        self.stats_log["log_prob_actor"].append(log_prob_actor.item())
         
         # Soft update target critic networks gradually using polyak averaging.
         # This enables not directly copying the critic networks into the target 
@@ -118,6 +123,8 @@ class SacAgent(Agent):
                         * (log_prob_actor.detach() + self.target_entropy))
         loss_entropy.backward()
         self.entropy_optimizer.step()
+        self.stats_log["loss_entropy"].append(loss_entropy.item())
+        self.stats_log["log_entropy_regularization"].append(self.log_entropy_regularization.item())
     
     def _calculate_critic_loss(self, observation, action, next_observation, 
                                reward, terminated):

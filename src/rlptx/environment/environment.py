@@ -105,7 +105,7 @@ class GymEnvironment(Environment):
             log(msg, level=Level.WARNING)
             log(f"Total episode reward: {self.current_episode_reward:.4f}")
             episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
-                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f} (Steps: {self.step})")
             log(episode_msg, loggername="episode")
         return observation, reward, terminated, truncated, info
     

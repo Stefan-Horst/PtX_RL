@@ -1,19 +1,20 @@
 from tqdm import tqdm
+import numpy as np
 
 from rlptx.environment.environment import GymEnvironment, PtxEnvironment
 from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.agent import SacAgent
 from rlptx.rl.core import ReplayBuffer, save_sac_agent, load_sac_agent
 from rlptx.ptx import load_project
-from rlptx.logger import disable_logger, flush_deferred_logs
+from rlptx.logger import log, disable_logger, flush_deferred_logs
 from rlptx.util import get_timestamp
 
 
 REPLAY_BUFFER_SIZE = 10**6
 
 
-def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None
-                           , epoch_save_interval=None, agent=None, progress_bar=False):
+def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
+                           epoch_save_interval=None, agent=None, progress_bar=False):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
@@ -111,6 +112,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent,
             
             total_steps += 1
             observation = next_observation
+        _log_episode_stats(episode, env.step, agent.stats_log)
         observation, info = env.reset()
         
         if use_progress_bar:
@@ -121,6 +123,15 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent,
             save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
     if epoch_save_interval == -1:
             save_sac_agent(agent, f"{get_timestamp()}_sac_agent_final")
+
+def _log_episode_stats(episode, step, stats_log):
+    """Log the stats of the last episode by taking the mean of all its steps' values."""
+    episode_stats = {}
+    for k, v in stats_log.items():
+        episode_stats[k] = np.mean(v[-step:])
+    log(f"Episode {episode+1} - Actor loss: {episode_stats['loss_actor']:.4f}, Critic loss: " 
+        f"{episode_stats['loss_critic']:.4f}, Entropy log coef: {episode_stats['log_entropy_regularization']:.4f}, " 
+        f"Entropy coef loss: {episode_stats['loss_entropy']:.4f}", "agent")
 
 
 # command line entry point
