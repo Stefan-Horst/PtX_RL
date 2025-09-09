@@ -73,7 +73,7 @@ class SacAgent(Agent):
         Calling this method does not update the agent's networks or change its state."""
         with torch.no_grad():
             action, _ = self.actor(observation) # log_probs not needed
-        return action.numpy() # return numpy array instead of tensor
+        return action.cpu().numpy() # return numpy array instead of tensor
     
     def update(self, observation, action, reward, next_observation, terminated):
         """Update the agent's networks by calculating their losses and applying gradient descent. 
