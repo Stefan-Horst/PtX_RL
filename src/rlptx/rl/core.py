@@ -67,9 +67,8 @@ def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
         "critic": critic.state_dict(), 
         "target_critic": target_critic.state_dict(), 
         "initial_entropy": agent.initial_entropy, 
-        "entropy_regularization": agent.entropy_regularization, 
+        "log_entropy_regularization": agent.log_entropy_regularization, 
         "entropy_learning_rate": agent.entropy_learning_rate,
-        "target_entropy": agent.target_entropy, 
         "discount": agent.discount, 
         "polyak": agent.polyak, 
         "action_upper_bounds": actor.action_upper_bounds, 
@@ -96,4 +95,6 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH):
                      discount=model["discount"], polyak=model["polyak"], initial_entropy=model["initial_entropy"], 
                      entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic)
     agent.target_critic = target_critic
+    with torch.no_grad(): # set value of tensor; no_grad necessary to avoid error
+        agent.log_entropy_regularization.fill_(model["log_entropy_regularization"])
     return agent
