@@ -120,12 +120,13 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent,
             
             total_steps += 1
             observation = next_observation
-        _log_episode_stats(episode, env.step, agent.stats_log)
+        current_episode_steps = env.step
         observation, info = env.reset()
         
         if use_progress_bar:
             progress_bar.close()
             flush_deferred_logs() # only print logs after progress bar is finished
+        _log_episode_stats(episode, current_episode_steps, agent.stats_log)
         
         if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
             filename = save_sac_agent(agent, f"{get_timestamp()}_sac_agent_e{episode+1}")
