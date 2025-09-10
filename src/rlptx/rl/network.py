@@ -18,21 +18,22 @@ class Actor(nn.Module):
     create normal distributions from which the actual output values are sampled."""
     
     def __init__(self, observation_size, action_size, action_upper_bounds, 
-                 hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
+                 hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE, device=DEVICE):
         super().__init__()
         self.action_upper_bounds = action_upper_bounds
         self.hidden_sizes = hidden_sizes
         self.learning_rate = learning_rate
-        self.policy_net = create_mlp([observation_size, *hidden_sizes], output_activation=nn.ReLU())
-        self.mean_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
-        self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=DEVICE)
+        self.device = device
+        self.policy_net = create_mlp([observation_size, *hidden_sizes], output_activation=nn.ReLU(), device=device)
+        self.mean_layer = nn.Linear(hidden_sizes[-1], action_size, device=device)
+        self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation):
         """The observation is fed into the network which generates an action. The network outputs mean 
         and standard deviation values which are used to create normal distributions from which actions 
         are sampled. Returns the actions and their total log probability (entropy value)."""
-        observation = (torch.tensor(observation, dtype=torch.float32, device=DEVICE) 
+        observation = (torch.tensor(observation, dtype=torch.float32, device=self.device) 
                        if not isinstance(observation, torch.Tensor) else observation)
         policy_output = self.policy_net(observation)
         
@@ -56,7 +57,7 @@ class Actor(nn.Module):
         actions = probability_distributions.rsample()
         # Squash actions to [-1, 1] with tanh and scale them to their environment bounds.
         squashed_actions = (torch.tanh(actions) 
-                            * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=DEVICE))
+                            * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=self.device))
         
         # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
         # They are added and used as the entropy term in the loss function with a lower 
@@ -75,26 +76,27 @@ class Critic(nn.Module):
     SAC uses two separate twin networks for the Q-value function. 
     Therefore, the forward method returns two single values for Q1 and Q2."""
     
-    def __init__(self, observation_size, action_size, 
-                 hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE):
+    def __init__(self, observation_size, action_size, hidden_sizes=HIDDEN_SIZES, 
+                 learning_rate=LEARNING_RATE, device=DEVICE):
         super().__init__()
         self.hidden_sizes = hidden_sizes
         self.learning_rate = learning_rate
+        self.device = device
         # fixed output layer of size one for returning a single q value
-        self.q1_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])
-        self.q2_net = create_mlp([observation_size + action_size, *hidden_sizes, 1])
+        self.q1_net = create_mlp([observation_size + action_size, *hidden_sizes, 1], device=device)
+        self.q2_net = create_mlp([observation_size + action_size, *hidden_sizes, 1], device=device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
     def forward(self, observation, action):
         """Combines observation and action into a single input tensor which 
         is fed into the two networks. Returns output values of both networks."""
-        inputs = torch.cat([observation, action], dim=-1).to(dtype=torch.float32, device=DEVICE)
+        inputs = torch.cat([observation, action], dim=-1).to(dtype=torch.float32, device=self.device)
         q1 = self.q1_net(inputs)
         q2 = self.q2_net(inputs)
         return q1, q2
 
 
-def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.Identity()):
+def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.Identity(), device=DEVICE):
     """Create a multi-layer perceptron with the specified layer sizes and activation functions."""
     layers = []
     for i in range(len(layer_sizes) - 1):
@@ -104,4 +106,4 @@ def create_mlp(layer_sizes, activation=nn.ReLU(), output_activation=nn.Identity(
         else:
             layers.append(output_activation)
     model = nn.Sequential(*layers)
-    return model.to(DEVICE)
+    return model.to(device)

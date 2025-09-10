@@ -40,11 +40,15 @@ class SacAgent(Agent):
     
     def __init__(self, observation_size, action_size, action_upper_bounds, discount=DISCOUNT_FACTOR, 
                  polyak=POLYAK_COEFFICIENT, initial_entropy=INITIAL_ENTROPY_COEFFICIENT, 
-                 entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None):
+                 entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None, device=DEVICE):
         self.observation_size = observation_size
         self.action_size = action_size
-        self.actor = Actor(observation_size, action_size, action_upper_bounds) if actor is None else actor
-        self.critic = Critic(observation_size, action_size) if critic is None else critic
+        self.actor = Actor(
+            observation_size, action_size, action_upper_bounds, device=device
+        ) if actor is None else actor
+        self.critic = Critic(
+            observation_size, action_size, device=device
+        ) if critic is None else critic
         self.discount = discount # factor for discounting future rewards
         # The entropy regularization coefficient is not fixed, but instead varies to enforce 
         # an entropy constraint. It is trained together with the actor and critic. The log 
@@ -53,9 +57,9 @@ class SacAgent(Agent):
         self.initial_entropy = initial_entropy
         self.entropy_learning_rate = entropy_learning_rate
         self.log_entropy_regularization = torch.tensor(
-            np.log(initial_entropy), requires_grad=True, dtype=torch.float32, device=DEVICE
+            np.log(initial_entropy), requires_grad=True, dtype=torch.float32, device=device
         )
-        self.target_entropy = torch.tensor(-action_size, dtype=torch.float32, device=DEVICE)
+        self.target_entropy = torch.tensor(-action_size, dtype=torch.float32, device=device)
         self.entropy_optimizer = torch.optim.Adam(
             [self.log_entropy_regularization], lr=entropy_learning_rate, weight_decay=0
         )
