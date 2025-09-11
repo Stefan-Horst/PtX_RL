@@ -55,9 +55,21 @@ class ReplayBuffer:
             torch.as_tensor(self.next_observations[indices], dtype=torch.float32, device=self.device),
             torch.as_tensor(self.terminateds[indices], dtype=torch.float32, device=self.device)
         )
+    
+    def get_data(self):
+        return {
+            "observations": self.observations,
+            "actions": self.actions,
+            "rewards": self.rewards,
+            "next_observations": self.next_observations,
+            "terminateds": self.terminateds,
+            "capacity": self.capacity,
+            "index": self.index,
+            "full": self.full
+        }
 
 
-def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
+def save_sac_agent(agent, replay_buffer, filename, path=MODEL_SAVE_PATH):
     """Save a SAC agent to a file including all its hyperparameters and its networks' parameters."""
     actor = agent.actor
     critic = agent.critic
@@ -79,12 +91,14 @@ def save_sac_agent(agent, filename, path=MODEL_SAVE_PATH):
         "critic_learning_rate": critic.learning_rate, 
         "critic_hidden_sizes": critic.hidden_sizes,
         "observation_size": agent.observation_size, 
-        "action_size": agent.action_size
+        "action_size": agent.action_size,
+        "replay_buffer": replay_buffer.get_data()
     }, file_path)
     return file_path
 
 def load_sac_agent(filename, path=MODEL_SAVE_PATH):
-    """Load a SAC agent from a file. Returns the agent with all its networks and hyperparameters set."""
+    """Load a SAC agent with replay buffer from a file. Returns the agent with 
+    all its networks and hyperparameters set and the buffer with its data."""
     model = torch.load(PROJECT_DIR / (path + filename + ".tar"), weights_only=True)
     actor = Actor(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
                   hidden_sizes=model["actor_hidden_sizes"], learning_rate=model["actor_learning_rate"])
@@ -100,4 +114,13 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH):
     agent.target_critic = target_critic
     with torch.no_grad(): # set value of tensor; no_grad necessary to avoid error
         agent.log_entropy_regularization.fill_(model["log_entropy_regularization"])
-    return agent
+    replay_buffer_data = model["replay_buffer"]
+    replay_buffer = ReplayBuffer(replay_buffer_data["capacity"], model["observation_size"], model["action_size"])
+    replay_buffer.observations = replay_buffer_data["observations"]
+    replay_buffer.actions = replay_buffer_data["actions"]
+    replay_buffer.rewards = replay_buffer_data["rewards"]
+    replay_buffer.next_observations = replay_buffer_data["next_observations"]
+    replay_buffer.terminateds = replay_buffer_data["terminateds"]
+    replay_buffer.index = replay_buffer_data["index"]
+    replay_buffer.full = replay_buffer_data["full"]
+    return agent, replay_buffer

@@ -6,7 +6,8 @@ import numpy
 # add these necessary numpy functionalities to the torch function allowlist used when loading 
 # models with torch.load(..., weights_only=True); relevant in rlptx.rl.core.load_sac_agent
 torch.serialization.add_safe_globals([
-    numpy.core.multiarray._reconstruct, numpy.ndarray, numpy.dtype, numpy.dtypes.Float32DType
+    numpy.core.multiarray._reconstruct, numpy.ndarray, numpy.dtype, 
+    numpy.dtypes.Float32DType, numpy.dtypes.BoolDType
 ])
 
 
