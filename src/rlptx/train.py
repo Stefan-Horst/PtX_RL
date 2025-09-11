@@ -139,7 +139,11 @@ def _log_episode_stats(episode, step, stats_log):
     """Log the stats of the last episode by taking the mean of all its steps' values."""
     episode_stats = {}
     for k, v in stats_log.items():
-        episode_stats[k] = np.mean(v[-step:])
+        values = v[-step:]
+        if len(values) != 0: # values empty if whole episode only consists of sampled warmup steps
+            episode_stats[k] = np.mean(values)
+        else:
+            episode_stats[k] = np.nan
     log(f"Episode {episode+1} - Actor loss: {episode_stats['loss_actor']:.4f}, Critic loss: " 
         f"{episode_stats['loss_critic']:.4f}, Entropy log coef: {episode_stats['log_entropy_regularization']:.4f}, " 
         f"Entropy coef loss: {episode_stats['loss_entropy']:.4f}", "agent")
@@ -160,13 +164,16 @@ if __name__ == "__main__":
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
     args = parser.parse_args()
     
+    log(f"Train with config: Environment: {args.env}, Episodes: {args.eps}, Warmup steps: {args.warmup}, " 
+        f"Update interval: {args.update}, Max steps per episode: {args.maxsteps}, Weather forecast " 
+        f"days: {args.forecast}, Epoch save interval: {args.save}, Device: {args.device}", "episode")
+    
     if args.load is not None:
         agent = load_sac_agent(args.load)
-        print("Agent loaded successfully.")
+        log(f"Agent {args.load} loaded successfully", "episode")
     else:
         agent = None
     
-    print("Training agent...")
     if args.env == "gym":
         train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, 
                                max_steps_per_episode=args.maxsteps, epoch_save_interval=args.save, 
