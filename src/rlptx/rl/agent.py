@@ -40,7 +40,8 @@ class SacAgent(Agent):
     
     def __init__(self, observation_size, action_size, action_upper_bounds, discount=DISCOUNT_FACTOR, 
                  polyak=POLYAK_COEFFICIENT, initial_entropy=INITIAL_ENTROPY_COEFFICIENT, 
-                 entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None, device=DEVICE):
+                 entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None, seed=None, device=DEVICE):
+        self.seed = seed
         self.observation_size = observation_size
         self.action_size = action_size
         self.actor = Actor(

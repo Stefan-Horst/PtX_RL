@@ -74,6 +74,7 @@ class GymEnvironment(Environment):
     def initialize(self, seed=None):
         self.episode = 1
         self.seed = seed
+        self.env.action_space.seed(seed)
         observation, info = self.env.reset(seed=seed)
         self._init_new_episode("ENVIRONMENT INITIALIZED")
         return observation, info
@@ -200,12 +201,11 @@ class PtxEnvironment(Environment):
                          
         log(f"Observation space: {observation_space_info}")
         log(f"Action space: {action_space_info}")
-        
-    def initialize(self, seed=None):
+    
+    def initialize(self, **kwargs):
         """Initialize the environment after its creation or again after 
         training is done and return the initial observation. This resets 
         all attributes of the environment including the episode."""
-        self.seed = seed # currently not used
         self.episode = 1
         self.cumulative_reward = 0.
         self._init_new_episode("ENVIRONMENT INITIALIZED")

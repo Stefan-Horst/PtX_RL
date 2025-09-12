@@ -32,3 +32,14 @@ def contains_only_unique_elements(list):
 
 def get_timestamp():
     return str(datetime.datetime.now().replace(microsecond=0)).replace(':', '-').replace(' ', '_')
+
+def set_seed(seed):
+    """Set seed for all relevant modules."""
+    import os
+    import random
+    import numpy as np
+    import torch
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)

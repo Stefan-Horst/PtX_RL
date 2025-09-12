@@ -4,7 +4,7 @@ import torch
 
 from rlptx.rl.network import Actor, Critic
 from rlptx.rl.agent import SacAgent
-from rlptx.util import mkdir, PROJECT_DIR
+from rlptx.util import mkdir, set_seed, PROJECT_DIR
 from rlptx.rl import DEVICE
 
 
@@ -92,14 +92,18 @@ def save_sac_agent(agent, replay_buffer, filename, path=MODEL_SAVE_PATH):
         "critic_hidden_sizes": critic.hidden_sizes,
         "observation_size": agent.observation_size, 
         "action_size": agent.action_size,
-        "replay_buffer": replay_buffer.get_data()
+        "replay_buffer": replay_buffer.get_data(),
+        "seed": agent.seed
     }, file_path)
     return file_path
 
-def load_sac_agent(filename, path=MODEL_SAVE_PATH):
+def load_sac_agent(filename, path=MODEL_SAVE_PATH, seed=None):
     """Load a SAC agent with replay buffer from a file. Returns the agent with 
     all its networks and hyperparameters set and the buffer with its data."""
     model = torch.load(PROJECT_DIR / (path + filename + ".tar"), weights_only=True)
+    if seed is None:
+        seed = model["seed"]
+    set_seed(seed)
     actor = Actor(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
                   hidden_sizes=model["actor_hidden_sizes"], learning_rate=model["actor_learning_rate"])
     actor.load_state_dict(model["actor"])
@@ -110,12 +114,12 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH):
     target_critic.load_state_dict(model["target_critic"])
     agent = SacAgent(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
                      discount=model["discount"], polyak=model["polyak"], initial_entropy=model["initial_entropy"], 
-                     entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic)
+                     entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic, seed=seed)
     agent.target_critic = target_critic
     with torch.no_grad(): # set value of tensor; no_grad necessary to avoid error
         agent.log_entropy_regularization.fill_(model["log_entropy_regularization"])
     replay_buffer_data = model["replay_buffer"]
-    replay_buffer = ReplayBuffer(replay_buffer_data["capacity"], model["observation_size"], model["action_size"])
+    replay_buffer = ReplayBuffer(replay_buffer_data["capacity"], model["observation_size"], model["action_size"], seed=seed)
     replay_buffer.observations = replay_buffer_data["observations"]
     replay_buffer.actions = replay_buffer_data["actions"]
     replay_buffer.rewards = replay_buffer_data["rewards"]
@@ -123,4 +127,4 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH):
     replay_buffer.terminateds = replay_buffer_data["terminateds"]
     replay_buffer.index = replay_buffer_data["index"]
     replay_buffer.full = replay_buffer_data["full"]
-    return agent, replay_buffer
+    return agent, replay_buffer, seed

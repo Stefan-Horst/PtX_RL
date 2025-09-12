@@ -8,33 +8,37 @@ from rlptx.rl.core import ReplayBuffer, save_sac_agent, load_sac_agent
 from rlptx.rl import DEVICE
 from rlptx.ptx import load_project
 from rlptx.logger import log, disable_logger, flush_deferred_logs
-from rlptx.util import get_timestamp
+from rlptx.util import get_timestamp, set_seed
 
 
 REPLAY_BUFFER_SIZE = 10**6
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                           epoch_save_interval=None, agent=None, replay_buffer=None, progress_bar=False, device="cpu"):
+                           epoch_save_interval=None, agent=None, replay_buffer=None, progress_bar=False, 
+                           seed=None, device="cpu"):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
     device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
     print(f"Training on device: {device}")
+    if seed is not None:
+        set_seed(seed)
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
     if agent is None:
         agent = SacAgent(
-            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device
+            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device, seed=seed
         )
     if replay_buffer is None:
         replay_buffer = ReplayBuffer(
-            REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device
+            REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, epoch_save_interval, progress_bar)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, 
+               replay_buffer, epoch_save_interval, progress_bar, seed)
     return agent # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
                      weather_forecast_days=7, epoch_save_interval=None, agent=None, replay_buffer=None, 
-                     progress_bar=True, device="cpu"):
+                     progress_bar=True, seed=None, device="cpu"):
     """Train the SAC agent on the PtX environment. Returns the trained agent.
 
     :param episodes: [int] 
@@ -58,6 +62,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         - The replay buffer to use. If None, a new one is created.
     :param progress_bar: [bool] 
         - Whether to show a progress bar for the steps of each episode.
+    :param seed: [int] 
+        - The seed to use for the random number generators of the used modules.
     :param device: [str] 
         - The device to train the agent on, "cpu" or "gpu". The default is "cpu" as it tends to be faster.
     """
@@ -66,30 +72,32 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     disable_logger("reward")
     device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
     print(f"Training on device: {device}")
+    if seed is not None:
+        set_seed(seed)
     ptx_system = load_project()
     weather_data_provider = WeatherDataProvider()
     if max_steps_per_episode is None: # episode cannot be longer than available weather data
         max_steps_per_episode = len(weather_data_provider.weather_data_joined)
     env = PtxEnvironment(
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
-        max_steps_per_episode=max_steps_per_episode
+        max_steps_per_episode=max_steps_per_episode, seed=seed
     )
     if agent is None:
         agent = SacAgent(
-            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device
+            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device, seed=seed
         )
     if replay_buffer is None:
         replay_buffer = ReplayBuffer(
-            REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device
+            REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, 
-               replay_buffer, epoch_save_interval, progress_bar)
+               replay_buffer, epoch_save_interval, progress_bar, seed)
     return agent # for use in notebooks etc
 
-def _train_sac(episodes, warmup_steps, update_interval, env, agent, 
-               replay_buffer, epoch_save_interval, use_progress_bar=True):
+def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, 
+               epoch_save_interval, use_progress_bar=True, seed=None):
     """Execute the main SAC training loop."""
-    observation, info = env.initialize()
+    observation, info = env.initialize(seed=seed)
     total_steps = 0
     for episode in range(episodes):
         if use_progress_bar:
@@ -167,26 +175,30 @@ if __name__ == "__main__":
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
+    parser.add_argument("--seed", default=None, type=int)
     args = parser.parse_args()
     
     disable_logger("main")
     log(f"Train with config: Environment: {args.env}, Episodes: {args.eps}, Warmup steps: {args.warmup}, " 
         f"Update interval: {args.update}, Max steps per episode: {args.maxsteps}, Weather forecast " 
-        f"days: {args.forecast}, Epoch save interval: {args.save}, Device: {args.device}", "episode")
+        f"days: {args.forecast}, Epoch save interval: {args.save}, Device: {args.device}, " 
+        f"Seed: {args.seed}", "episode")
     
     if args.load is not None:
-        agent, replay_buffer = load_sac_agent(args.load)
+        agent, replay_buffer, seed = load_sac_agent(args.load, seed=args.seed)
         log(f"Agent {args.load} loaded successfully", "episode")
     else:
         agent = None
         replay_buffer = None
+        seed = args.seed
     
     if args.env == "gym":
         train_gym_half_cheetah(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, 
                                max_steps_per_episode=args.maxsteps, epoch_save_interval=args.save, 
-                               device=args.device, agent=agent, replay_buffer=replay_buffer)
+                               device=args.device, agent=agent, replay_buffer=replay_buffer, seed=seed)
     elif args.env == "ptx":
         train_ptx_system(episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
                          max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, 
-                         epoch_save_interval=args.save, device=args.device, agent=agent, replay_buffer=replay_buffer)
+                         epoch_save_interval=args.save, device=args.device, agent=agent, 
+                         replay_buffer=replay_buffer, seed=seed)
     print("Training complete.")
