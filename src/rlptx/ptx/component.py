@@ -397,7 +397,7 @@ class StorageComponent(BaseComponent):
     
     def __init__(self, name, variable_om=0., charging_efficiency=1., discharging_efficiency=1., 
                  min_soc=0., max_soc=1., ratio_capacity_p=1., stored_commodity=None, 
-                 charge_state=-1., fixed_capacity=0., charged_quantity=0., discharged_quantity=0.):
+                 charge_state=-1, fixed_capacity=0., charged_quantity=0., discharged_quantity=0.):
         """
         Class of Storage component
 

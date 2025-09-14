@@ -246,13 +246,13 @@ class PtxEnvironment(Environment):
         Deferring logs is only relevant when this is called from a loop using a progress bar like tqdm."""
         self.step += 1
         state_change_info, exact_completion_info, success = self._apply_action(action)
+        self.terminated = not success
+        self.truncated = self.step >= self.max_steps_per_episode
         
         balance_difference = self.ptx_system.next_step()
         reward = self._calculate_reward(balance_difference)
         self.cumulative_reward += reward
         self.current_episode_reward += reward
-        self.truncated = self.step >= self.max_steps_per_episode
-        self.teminated = not success
         
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}
