@@ -98,36 +98,66 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
 def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, 
                epoch_save_interval, use_progress_bar=True, seed=None):
     """Execute the main SAC training loop."""
+    log_mode = "deferred" if use_progress_bar else "default"
     observation, info = env.initialize(seed=seed)
     total_steps = 0
+    
+    ### Warmup
+    # Randomly sample actions for more thorough exploration in the beginning and save them to 
+    # the replay buffer before switching to the agent's policy to determine actions. 
+    # This is done in one single pseudo-episode.
+    if warmup_steps > 0:
+        if use_progress_bar:
+            progress_bar = tqdm(
+                total=warmup_steps, desc="Warmup steps", ncols=100
+            )
+        reset_amount = 0
+        warmup_reward = 0
+        # The current episode ends when the environment is truncated (meaning 
+        # max_steps_per_episode is reached) or when it is terminated (meaning 
+        # it has reached a failure state from which there is no recovery).
+        while total_steps < warmup_steps:
+            while not env.truncated and not env.terminated:
+                if use_progress_bar:
+                    progress_bar.update(1)
+                # Sample an action from the environment.
+                action = env.sample_action()
+                # Apply the chosen action the environment and add the transition data 
+                # to the replay buffer so the agent can be trained on it later.
+                next_observation, reward, terminated, truncated, info = env.act(action, log_mode="silent")
+                replay_buffer.add(observation, action, reward, next_observation, terminated)
+                warmup_reward += reward
+                total_steps += 1
+                observation = next_observation
+            observation, info = env.reset()
+            reset_amount += 1
+        if use_progress_bar:
+            progress_bar.close()
+        log(f"Warmup - {warmup_steps} steps in {reset_amount} episode{'s' if reset_amount > 1 else ''} (Total "
+            f"Reward: {warmup_reward:.4f} - Reward/Step: {(warmup_reward / warmup_steps):.4f})", "episode")
+
+    ### Training
+    # Now use the agent to determine actions and save them to the replay buffer. 
+    # The agent is trained every update_interval steps on data from the replay buffer.
+    env.initialize(seed=seed) # start training with fresh environment
     for episode in range(episodes):
         if use_progress_bar:
             progress_bar = tqdm(
                 total=env.max_steps_per_episode, desc=f"Episode {episode+1} steps", ncols=100
-            )   
-        # The current episode ends when the environment is truncated (meaning 
-        # max_steps_per_episode is reached) or when it is terminated (meaning it has 
-        # reached a failure state from which there is no recovery).
+            )
         while not env.truncated and not env.terminated:
             if use_progress_bar:
                 progress_bar.update(1)
-            # Randomly sample actions for more thorough exploration in the beginning 
-            # and only then switch to the agent's policy to determine actions.
-            if env.step < warmup_steps:
-                action = env.sample_action()
-            else:
-                action = agent.act(observation)
-            # Apply the chosen action the environment and add the transition data 
-            # to the replay buffer so the agent can be trained on it later.
-            next_observation, reward, terminated, truncated, info = env.act(action, defer_logs=use_progress_bar)
+            # Select an action based on the current observation.
+            action = agent.act(observation)
+            next_observation, reward, terminated, truncated, info = env.act(action, log_mode=log_mode)
             replay_buffer.add(observation, action, reward, next_observation, terminated)
             
-            # Start training agent only after it is done with randomly sampling actions 
-            # and only every update_interval steps. The agent is updated an equal number 
+            # Train the agent every update_interval steps. The agent is updated an equal number 
             # of times so that the update amount is equal to the total number of steps.
             # As SAC is an off-policy algorithm, it is not trained on the data of the 
             # current step, but on random samples from the replay buffer.
-            if total_steps >= warmup_steps and total_steps % update_interval == 0:
+            if total_steps % update_interval == 0:
                 for _ in range(update_interval):
                     o, a, r, o2, t = replay_buffer.sample()
                     agent.update(o, a, r, o2, t)

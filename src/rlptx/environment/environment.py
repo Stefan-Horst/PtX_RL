@@ -92,22 +92,23 @@ class GymEnvironment(Environment):
         self.current_episode_reward = 0
         log(msg)
     
-    def act(self, action, **kwargs):
+    def act(self, action, log_mode="default", **kwargs):
         self.step += 1
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated
         self.truncated = truncated
         self.current_episode_reward += reward
         
-        info_str = f" - {info}" if len(info) > 0 else ""
-        log(f"Episode {self.episode} - Step {self.step}, Reward {reward:.4f}{info_str}")
-        if self.terminated or self.truncated:
-            msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
-            log(msg, level=Level.WARNING)
-            log(f"Total episode reward: {self.current_episode_reward:.4f}")
-            episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
-                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f} (Steps: {self.step})")
-            log(episode_msg, loggername="episode")
+        if log_mode != "silent":
+            info_str = f" - {info}" if len(info) > 0 else ""
+            log(f"Episode {self.episode} - Step {self.step}, Reward {reward:.4f}{info_str}")
+            if self.terminated or self.truncated:
+                msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
+                log(msg, level=Level.WARNING)
+                log(f"Total episode reward: {self.current_episode_reward:.4f}")
+                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
+                               f"- Reward/Step: {(self.current_episode_reward / self.step):.4f} (Steps: {self.step})")
+                log(episode_msg, loggername="episode")
         return observation, reward, terminated, truncated, info
     
     def sample_action(self):
@@ -241,7 +242,7 @@ class PtxEnvironment(Environment):
     
     ##### ACT FUNCTIONALITY #####
     
-    def act(self, action, defer_logs=False):
+    def act(self, action, log_mode="default"):
         """Perform the actions in the ptx system for one step of the current episode in the environment. 
         Deferring logs is only relevant when this is called from a loop using a progress bar like tqdm."""
         self.step += 1
@@ -259,20 +260,22 @@ class PtxEnvironment(Environment):
         info["Step revenue"] = round(balance_difference, 4)
         
         # logging below
-        reward_msg = (f"Reward: {reward:.4f}, Current episode reward: "
-                      f"{self.current_episode_reward:.4f}, "
-                      f"Cumulative reward: {self.cumulative_reward:.4f}")
-        log(str(self.ptx_system) + "\n\t" + str(exact_completion_info) + "\n\t" + reward_msg)
-        log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
-        log(reward_msg, loggername="reward")
-        if self.terminated or self.truncated:
-            msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
-            log(msg, level=Level.WARNING)
-            log(msg, level=Level.WARNING, loggername="status")
-            log(msg, level=Level.WARNING, loggername="reward")
-            episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
-                           f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
-            log(episode_msg, loggername="episode", deferred=defer_logs)
+        assert log_mode in ["default", "deferred", "silent"]
+        if log_mode != "silent":
+            reward_msg = (f"Reward: {reward:.4f}, Current episode reward: "
+                        f"{self.current_episode_reward:.4f}, "
+                        f"Cumulative reward: {self.cumulative_reward:.4f}")
+            log(str(self.ptx_system) + "\n\t" + str(exact_completion_info) + "\n\t" + reward_msg)
+            log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
+            log(reward_msg, loggername="reward")
+            if self.terminated or self.truncated:
+                msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
+                log(msg, level=Level.WARNING)
+                log(msg, level=Level.WARNING, loggername="status")
+                log(msg, level=Level.WARNING, loggername="reward")
+                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
+                               f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+                log(episode_msg, loggername="episode", deferred=(log_mode == "deferred"))
         return observation, reward, self.terminated, self.truncated, info
     
     def _calculate_reward(self, revenue):
