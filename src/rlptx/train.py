@@ -37,7 +37,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
     return agent # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                     weather_forecast_days=7, epoch_save_interval=None, agent=None, replay_buffer=None, 
+                     weather_forecast_days=2, epoch_save_interval=None, agent=None, replay_buffer=None, 
                      progress_bar=True, seed=None, device="cpu"):
     """Train the SAC agent on the PtX environment. Returns the trained agent.
 
@@ -52,7 +52,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         - The maximum number of steps per episode after which the environment is truncated. 
         With the default value of None, the value is set to the amount of available weather data.
     :param weather_forecast_days: [int] 
-        - The amount of days for which the weather forecast is provided in each observation.
+        - The amount of days for which the weather forecast is provided in each observation. 
+        For each day, there is one forecast per hour (24 total) per energy source.
     :param epoch_save_interval: [int] 
         - The interval at which the agent should be saved. If None, the agent is not saved. 
         If -1, the agent is saved at the end of training.
@@ -171,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("--warmup", default=1000, type=int)
     parser.add_argument("--update", default=1, type=int)
     parser.add_argument("--maxsteps", default=None, type=int)
-    parser.add_argument("--forecast", default=7, type=int)
+    parser.add_argument("--forecast", default=2, type=int)
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)

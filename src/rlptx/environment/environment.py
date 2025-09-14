@@ -153,7 +153,7 @@ class PtxEnvironment(Environment):
     and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
-                 weather_forecast_days=7, max_steps_per_episode=100000, seed=None, 
+                 weather_forecast_days=2, max_steps_per_episode=100000, seed=None, 
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
@@ -473,12 +473,15 @@ class PtxEnvironment(Environment):
         
         element_categories = self._get_element_categories_with_attributes_and_actions()
         generators = element_categories[1][0]
+        current_weather = self.weather_provider.get_weather_of_tick(self.step)
         # append current weather and forecast weather
-        for i in range(self.weather_forecast_days + 1):
-            for generator in generators:
-                observation_space.append(
-                    self.weather_provider.get_weather_of_tick(self.step + i)[generator.name]
-                )
+        for generator in generators:
+            observation_space.append(current_weather[generator.name])
+        for i in range(self.weather_forecast_days):
+            for h in range(24): # 24 hours per day
+                weather = self.weather_provider.get_weather_of_tick(self.step + i*24 + h)
+                for generator in generators:
+                    observation_space.append(weather[generator.name])
         
         for category, attributes, _ in element_categories:
             for element in category:
@@ -537,8 +540,9 @@ class PtxEnvironment(Environment):
                 environment_data.append(f"current_{generator.name}")
         
         for i in range(self.weather_forecast_days):
-            for generator in generators:
-                environment_data.append(f"step{i+1}_{generator.name}")
+            for h in range(24): # 24 hours per day
+                for generator in generators:
+                    environment_data.append(f"day{i+1}_hour{h}_{generator.name}")
         observation_space_info = {"environment": environment_data}
         
         for category, attributes, _ in element_categories:
