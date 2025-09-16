@@ -101,8 +101,7 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH, seed=None):
     """Load a SAC agent with replay buffer from a file. Returns the agent with 
     all its networks and hyperparameters set and the buffer with its data."""
     model = torch.load(PROJECT_DIR / (path + filename + ".tar"), weights_only=True)
-    if seed is None:
-        seed = model["seed"]
+    seed = model["seed"] if seed is None else seed
     set_seed(seed)
     actor = Actor(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
                   hidden_sizes=model["actor_hidden_sizes"], learning_rate=model["actor_learning_rate"])

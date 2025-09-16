@@ -35,6 +35,8 @@ def get_timestamp():
 
 def set_seed(seed):
     """Set seed for all relevant modules."""
+    if seed is None:
+        return
     import os
     import random
     import numpy as np

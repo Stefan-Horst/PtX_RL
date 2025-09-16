@@ -21,8 +21,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
     disable_logger("main")
     device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
     print(f"Training on device: {device}")
-    if seed is not None:
-        set_seed(seed)
+    set_seed(seed)
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
     if agent is None:
         agent = SacAgent(
@@ -73,8 +72,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     disable_logger("reward")
     device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
     print(f"Training on device: {device}")
-    if seed is not None:
-        set_seed(seed)
+    set_seed(seed)
     ptx_system = load_project()
     weather_data_provider = WeatherDataProvider()
     if max_steps_per_episode is None: # episode cannot be longer than available weather data
