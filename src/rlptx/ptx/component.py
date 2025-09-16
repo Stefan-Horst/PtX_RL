@@ -170,6 +170,7 @@ class ConversionComponent(BaseComponent):
             quantity, new_load, input_commodities, input_ratios, intermediate_status
         )
         exact_completion = exact_completion and completion
+        status += intermediate_status
         
         current_capacity = new_load * self.fixed_capacity
         # calculate and check cost (cost is based on main output)
