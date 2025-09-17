@@ -27,6 +27,13 @@ def open_yaml_file(path):
         yaml_object = yaml.load(file, Loader=yaml.FullLoader)
     return yaml_object
 
+def get_most_recent_file(path, search_string=""):
+    """Get the name of the most recent file in a directory. Optionally specify 
+    a search string so only files containing that string are considered."""
+    files = sorted(Path(PROJECT_DIR / path).iterdir(), key=os.path.getmtime, reverse=True)
+    filename = [f for f in files if search_string in f.name or search_string == ""][0].name
+    return filename.split(".")[0] # remove extension
+
 def contains_only_unique_elements(list):
     return len(list) == len(set(list))
 
