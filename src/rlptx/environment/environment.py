@@ -273,8 +273,8 @@ class PtxEnvironment(Environment):
                 log(msg, level=Level.WARNING)
                 log(msg, level=Level.WARNING, loggername="status")
                 log(msg, level=Level.WARNING, loggername="reward")
-                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} " + 
-                               f"- Reward/Step: {(self.current_episode_reward / self.step):.4f}")
+                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} - " + 
+                               f"Reward/Step: {(self.current_episode_reward / self.step):.4f} (Steps: {self.step})")
                 log(episode_msg, loggername="episode", deferred=(log_mode == "deferred"))
         return observation, reward, self.terminated, self.truncated, info
     

@@ -33,7 +33,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
         )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, 
                replay_buffer, epoch_save_interval, progress_bar, seed)
-    return agent # for use in notebooks etc
+    return agent, replay_buffer, env # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
                      weather_forecast_days=2, epoch_save_interval=None, agent=None, replay_buffer=None, 
@@ -91,7 +91,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         )
     _train_sac(episodes, warmup_steps, update_interval, env, agent, 
                replay_buffer, epoch_save_interval, progress_bar, seed)
-    return agent # for use in notebooks etc
+    return agent, replay_buffer, env # for use in notebooks etc
 
 def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, 
                epoch_save_interval, use_progress_bar=True, seed=None):
