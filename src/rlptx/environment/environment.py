@@ -486,6 +486,7 @@ class PtxEnvironment(Environment):
                 for generator in generators:
                     observation_space.append(weather[generator.name])
         
+        observation_space.append(self.ptx_system.balance)
         for category, attributes, _ in element_categories:
             for element in category:
                 possible_attributes = element.get_possible_observation_attributes(attributes)
@@ -546,7 +547,7 @@ class PtxEnvironment(Environment):
             for h in range(24): # 24 hours per day
                 for generator in generators:
                     environment_data.append(f"day{i+1}_hour{h}_{generator.name}")
-        observation_space_info = {"environment": environment_data}
+        observation_space_info = {"environment": environment_data, "ptx_system": ["balance"]}
         
         for category, attributes, _ in element_categories:
             for element in category:
