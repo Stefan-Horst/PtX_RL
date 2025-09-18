@@ -74,6 +74,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     print(f"Training on device: {device}")
     set_seed(seed)
     ptx_system = load_project()
+    ptx_system.set_initial_balance(100) # starting budget for purchasing commodities in early steps
     weather_data_provider = WeatherDataProvider()
     if max_steps_per_episode is None: # episode cannot be longer than available weather data
         max_steps_per_episode = len(weather_data_provider.weather_data_joined)

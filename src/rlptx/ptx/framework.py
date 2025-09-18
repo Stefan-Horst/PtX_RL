@@ -16,10 +16,9 @@ class PtxSystem:
         
         self.project_name = project_name
         
-        self.starting_budget = starting_budget
         # keep track of all costs and revenues here
-        self.balance = starting_budget
-        self.previous_balance = starting_budget
+        self.starting_budget = starting_budget
+        self.set_initial_balance(starting_budget)
 
         self.current_step = current_step
         
@@ -31,6 +30,10 @@ class PtxSystem:
             components = {}
         self.commodities = commodities
         self.components = components
+    
+    def set_initial_balance(self, balance):
+        self.balance = balance
+        self.starting_budget = balance
     
     def next_step(self):
         """Go to the next step and return the change in balance since the last step."""
