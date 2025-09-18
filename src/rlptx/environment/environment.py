@@ -482,7 +482,7 @@ class PtxEnvironment(Environment):
             observation_space.append(current_weather[generator.name])
         for i in range(self.weather_forecast_days):
             for h in range(24): # 24 hours per day
-                weather = self.weather_provider.get_weather_of_tick(self.step + i*24 + h)
+                weather = self.weather_provider.get_weather_of_tick(self.step + 1 + i*24 + h)
                 for generator in generators:
                     observation_space.append(weather[generator.name])
         
