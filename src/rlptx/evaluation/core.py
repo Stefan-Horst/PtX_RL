@@ -36,9 +36,15 @@ def load_episode_log(filename, path=LOGFILE_PATH):
                 continue # ignore log lines before first episode or not inlcuding stats
             elements = line.replace("\n", "").split(" - ")[4:]
             for element in elements:
-                name, value = element.split(":", maxsplit=1)
-                name = name.strip()
-                value = value.split("(", maxsplit=1)[0]
+                name, value = element.split(": ", maxsplit=1)
+                if "(" in value: # handle step in brackets
+                    values = value.split("(", maxsplit=1)
+                    value = values[0]
+                    n, v = values[1][:-1].split(": ", maxsplit=1)
+                    if n in episode_log.keys():
+                        episode_log[n].append(v)
+                    else:
+                        episode_log[n] = [v]
                 if name in episode_log.keys():
                     episode_log[name].append(value)
                 else:
