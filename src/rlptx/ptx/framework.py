@@ -18,7 +18,8 @@ class PtxSystem:
         
         # keep track of all costs and revenues here
         self.starting_budget = starting_budget
-        self.set_initial_balance(starting_budget)
+        self.balance = starting_budget
+        self.previous_balance = starting_budget
 
         self.current_step = current_step
         
@@ -33,7 +34,7 @@ class PtxSystem:
     
     def set_initial_balance(self, balance):
         self.balance = balance
-        self.starting_budget = balance
+        self.previous_balance = balance
     
     def next_step(self):
         """Go to the next step and return the change in balance since the last step."""
@@ -383,6 +384,8 @@ class PtxSystem:
         # deepcopy mutable objects
         components = copy.deepcopy(self.components)
         commodities = copy.deepcopy(self.commodities)
-        return PtxSystem(project_name=self.project_name, starting_budget=self.starting_budget, 
-                         weather_provider=self.weather_provider, current_step=self.current_step, 
-                         commodities=commodities, components=components)
+        ptx_system = PtxSystem(project_name=self.project_name, starting_budget=self.starting_budget, 
+                               weather_provider=self.weather_provider, current_step=self.current_step, 
+                               commodities=commodities, components=components)
+        ptx_system.set_initial_balance(self.balance)
+        return ptx_system
