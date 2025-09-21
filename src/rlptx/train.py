@@ -139,6 +139,8 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
     # Now use the agent to determine actions and save them to the replay buffer. 
     # The agent is trained every update_interval steps on data from the replay buffer.
     env.initialize(seed=seed) # start training with fresh environment
+    successful_steps = 0 # steps with positive reward
+    non_failed_episodes = 0 # episodes which don't terminate in the first step
     for episode in range(episodes):
         if use_progress_bar:
             progress_bar = tqdm(
@@ -151,6 +153,8 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             action = agent.act(observation)
             next_observation, reward, terminated, truncated, info = env.act(action, log_mode=log_mode)
             replay_buffer.add(observation, action, reward, next_observation, terminated)
+            if reward > 0:
+                successful_steps += 1
             
             # Train the agent every update_interval steps. The agent is updated an equal number 
             # of times so that the update amount is equal to the total number of steps.
@@ -164,6 +168,8 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             total_steps += 1
             observation = next_observation
         current_episode_steps = env.step
+        if current_episode_steps > 1:
+            non_failed_episodes += 1
         observation, info = env.reset()
         
         if use_progress_bar:
@@ -174,6 +180,8 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
         if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
             filename = save_sac_agent(agent, replay_buffer, f"{get_timestamp()}_sac_agent_e{episode+1}")
             print(f"Saved agent from episode {episode+1} to file: {filename}")
+    log(f"Number of successful steps: {successful_steps}, Total number of steps: "
+        f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
     if epoch_save_interval == -1:
             filename = save_sac_agent(agent, replay_buffer, f"{get_timestamp()}_sac_agent_final")
             print(f"Saved final agent to file: {filename}")

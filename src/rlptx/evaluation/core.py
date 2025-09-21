@@ -33,7 +33,7 @@ def load_episode_log(filename, path=LOGFILE_PATH):
         lines = f.readlines()
         for line in lines:
             if "reward" not in line:
-                continue # ignore log lines before first episode or not inlcuding stats
+                continue # ignore log lines before first or after last episode or not including stats
             elements = line.replace("\n", "").split(" - ")[4:]
             for element in elements:
                 name, value = element.split(": ", maxsplit=1)
