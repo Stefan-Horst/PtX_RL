@@ -189,6 +189,8 @@ class PtxEnvironment(Environment):
         self.truncated = False
         self.cumulative_reward = 0.
         self.current_episode_reward = 0.
+        self.cumulative_revenue = 0.
+        self.current_episode_revenue = 0.
         observation_space_info = self._get_observation_space_info()
         observation_space_size = len(self._get_current_observation())
         observation_space_spec = None # implement if needed
@@ -209,6 +211,7 @@ class PtxEnvironment(Environment):
         all attributes of the environment including the episode."""
         self.episode = 1
         self.cumulative_reward = 0.
+        self.cumulative_revenue = 0.
         self._init_new_episode("ENVIRONMENT INITIALIZED")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
@@ -227,7 +230,8 @@ class PtxEnvironment(Environment):
         self.terminated = False
         self.truncated = False
         self.step = 0
-        self.current_episode_reward = 0
+        self.current_episode_reward = 0.
+        self.current_episode_revenue = 0.
         self.ptx_system = copy(self._original_ptx_system)
         self._action_space = self._get_action_space()
         log(msg)
@@ -251,6 +255,8 @@ class PtxEnvironment(Environment):
         self.truncated = self.step >= self.max_steps_per_episode
         
         balance_difference = self.ptx_system.next_step()
+        self.cumulative_revenue += balance_difference
+        self.current_episode_revenue += balance_difference
         reward = self._calculate_reward(balance_difference)
         self.cumulative_reward += reward
         self.current_episode_reward += reward
@@ -273,8 +279,9 @@ class PtxEnvironment(Environment):
                 log(msg, level=Level.WARNING)
                 log(msg, level=Level.WARNING, loggername="status")
                 log(msg, level=Level.WARNING, loggername="reward")
-                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} - " + 
-                               f"Reward/Step: {(self.current_episode_reward / self.step):.4f} (Steps: {self.step})")
+                episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} "
+                               f"- Reward/Step: {(self.current_episode_reward / self.step):.4f} - "
+                               f"Steps: {self.step} - Total revenue: {self.current_episode_revenue:.4f}")
                 log(episode_msg, loggername="episode", deferred=(log_mode == "deferred"))
         return observation, reward, self.terminated, self.truncated, info
     
