@@ -14,7 +14,7 @@ DISCOUNT_FACTOR = 0.99 # (/gamma) used in calculating critic loss
 POLYAK_COEFFICIENT = 0.995 # (/tau) for polyak averaging in target
 # hyperparameters not used in paper
 INITIAL_ENTROPY_COEFFICIENT = 0.2 # (/alpha) for calculating actor loss
-ENTROPY_LEARNING_RATE = 1e-3
+ENTROPY_LEARNING_RATE = 3e-4
 
 
 class Agent(ABC):
