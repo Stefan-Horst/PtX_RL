@@ -154,7 +154,7 @@ class PtxEnvironment(Environment):
     and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
-                 weather_forecast_days=2, max_steps_per_episode=100000, seed=None, 
+                 weather_forecast_days=1, max_steps_per_episode=100000, seed=None, 
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 

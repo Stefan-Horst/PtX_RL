@@ -36,7 +36,7 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
     return agent, replay_buffer, env # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                     weather_forecast_days=2, epoch_save_interval=None, agent=None, replay_buffer=None, 
+                     weather_forecast_days=1, epoch_save_interval=None, agent=None, replay_buffer=None, 
                      progress_bar=True, seed=None, device="cpu"):
     """Train the SAC agent on the PtX environment. Returns the trained agent.
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     parser.add_argument("--warmup", default=1000, type=int)
     parser.add_argument("--update", default=1, type=int)
     parser.add_argument("--maxsteps", default=None, type=int)
-    parser.add_argument("--forecast", default=2, type=int)
+    parser.add_argument("--forecast", default=1, type=int)
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
