@@ -1,6 +1,7 @@
 /data/old
 /logs
 /models
+/model_archive
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
