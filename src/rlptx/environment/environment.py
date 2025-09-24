@@ -147,6 +147,18 @@ STORAGE_ACTIONS = [
 GENERATOR_ACTIONS = [
     (GenerationComponent.apply_or_strip_curtailment, [0]) # generation automatic depending on curtailment
 ]
+# Element attributes which are logged for each step.
+LOGGING_ATTRIBUTES_COMMODITY = [
+    "purchased_quantity", "sold_quantity", "emitted_quantity", "available_quantity", 
+    "charged_quantity", "discharged_quantity", "consumed_quantity", "produced_quantity", 
+    "generated_quantity", "total_storage_costs", "total_production_costs", 
+    "total_generation_costs", "purchase_costs"
+]
+LOGGING_ATTRIBUTES_COMPONENT = [
+    "total_variable_costs", "[dict]consumed_commodities", "[dict]produced_commodities", 
+    "load", "charged_quantity", "discharged_quantity", "charge_state", 
+    "generated_quantity", "potential_generation_quantity", "curtailment"
+]
 
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
@@ -191,6 +203,8 @@ class PtxEnvironment(Environment):
         self.current_episode_reward = 0.
         self.cumulative_revenue = 0.
         self.current_episode_revenue = 0.
+        self.stats_log = []
+        
         observation_space_info = self._get_observation_space_info()
         observation_space_size = len(self._get_current_observation())
         observation_space_spec = None # implement if needed
@@ -246,9 +260,10 @@ class PtxEnvironment(Environment):
     
     ##### ACT FUNCTIONALITY #####
     
-    def act(self, action, log_mode="default"):
-        """Perform the actions in the ptx system for one step of the current episode in the environment. 
-        Deferring logs is only relevant when this is called from a loop using a progress bar like tqdm."""
+    def act(self, action, evaluation_mode=False, log_mode="default"):
+        """Perform the actions in the ptx system for one step of the current episode in the 
+        environment. If in evaluation mode, stats for each step will be saved and logged. Deferring 
+        logs is only relevant when this is called from a loop using a progress bar like tqdm."""
         self.step += 1
         state_change_info, exact_completion_info, success = self._apply_action(action)
         self.terminated = not success
@@ -264,6 +279,14 @@ class PtxEnvironment(Environment):
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}
         info["Step revenue"] = round(balance_difference, 4)
+        
+        if evaluation_mode:
+            current_step_stats = self._get_step_stats()
+            current_step_stats["Reward"] = round(reward, 4)
+            current_step_stats["Episode reward"] = round(self.current_episode_reward, 4)
+            current_step_stats["Revenue"] = round(balance_difference, 4)
+            current_step_stats["Episode revenue"] = round(self.current_episode_revenue, 4)
+            self.stats_log.append(current_step_stats)
         
         # logging below
         assert log_mode in ["default", "deferred", "silent"]
@@ -574,6 +597,27 @@ class PtxEnvironment(Environment):
         return observation_space_info
     
     ##### UTILITY #####
+
+    def _get_step_stats(self):
+        """Create dict with all logging attributes of all elements of the ptx system with their values."""
+        step_stats = {}
+        for commodity in self.ptx_system.get_all_commodities():
+            possible_attributes = self.observation_space_info[commodity.name]
+            for attribute in LOGGING_ATTRIBUTES_COMMODITY:
+                if attribute.startswith("[dict]"): # handle dictionaries
+                    attribute = attribute[6:]
+                    if attribute not in str(possible_attributes):
+                        continue
+                    for name, value in getattr(commodity, attribute).items():
+                        step_stats[f"{commodity.name}_{attribute}_{name}"] = round(value, 4)
+                elif attribute in possible_attributes:
+                    step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
+        for component in self.ptx_system.get_all_components():
+            possible_attributes = self.observation_space_info[component.name]
+            for attribute in LOGGING_ATTRIBUTES_COMPONENT:
+                if attribute in possible_attributes:
+                    step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
+        return step_stats
 
     def _get_element_categories_with_attributes_and_actions(self):
         commodities = self.ptx_system.get_all_commodities()
