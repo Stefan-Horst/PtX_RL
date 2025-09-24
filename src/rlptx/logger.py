@@ -26,19 +26,19 @@ class Level(Enum):
     CRITICAL = logging.CRITICAL
 
 
-def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME):
-    """Configure and return a new logger. Initially, the default logger is created from 
-    this function's default parameters. Every logger is configured  to write levels DEBUG 
-    and higher to console and levels INFO and higher also to file."""
+def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME, 
+                     console_level=logging.DEBUG, file_level=logging.INFO):
+    """Configure and return a new logger. Every logger is by default configured to write levels 
+    DEBUG and higher to console and levels INFO and higher also to a file in the logs folder."""
     if loggername in disabled_loggers:
         return
     
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(console_level)
 
     filename = (f"{util.get_timestamp()}_{loggername}_{filename}")
     file_handler = logging.FileHandler(util.PROJECT_DIR / path / filename, mode='a')
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(file_level)
 
     console_formatter = logging.Formatter(
         '%(asctime)s - %(name)-8s - %(levelname)-5s - %(message)s', datefmt='%H:%M:%S'
