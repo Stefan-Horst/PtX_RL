@@ -29,15 +29,22 @@ class Actor(nn.Module):
         self.standard_deviation_layer = nn.Linear(hidden_sizes[-1], action_size, device=device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=0)
     
-    def forward(self, observation):
+    def forward(self, observation, evaluation_mode=False):
         """The observation is fed into the network which generates an action. The network outputs mean 
         and standard deviation values which are used to create normal distributions from which actions 
-        are sampled. Returns the actions and their total log probability (entropy value)."""
+        are sampled. Returns the actions and their total log probability (entropy value). If in evaluation 
+        mode, the actions are not sampled but instead only the deterministic mean values are returned."""
         observation = (torch.tensor(observation, dtype=torch.float32, device=self.device) 
                        if not isinstance(observation, torch.Tensor) else observation)
         policy_output = self.policy_net(observation)
         
         means = self.mean_layer(policy_output)
+        # In evaluation mode, only the deterministic mean values are returned 
+        # as actions instead of sampling actions from a normal distribution.
+        if evaluation_mode:
+            squashed_actions = self._squash_scale_actions(means)
+            return squashed_actions, None # no log probability needed in evaluation mode
+        
         # The network outputs the log of the standard deviation, meaning the actual 
         # standard deviation needs to be calculated. The log values have the advantage 
         # that they are more numerically stable by having a wider range of values with 
@@ -55,9 +62,7 @@ class Actor(nn.Module):
         # and another consisting of a static standard normal distribution as the source of 
         # randomness which can therefore be ignored during backpropagation.
         actions = probability_distributions.rsample()
-        # Squash actions to [-1, 1] with tanh and scale them to their environment bounds.
-        squashed_actions = (torch.tanh(actions) 
-                            * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=self.device))
+        squashed_actions = self._squash_scale_actions(actions)
         
         # Compute log probabilities, rescaling probabilities from [0, 1] to [-inf, 0].
         # They are added and used as the entropy term in the loss function with a lower 
@@ -68,6 +73,11 @@ class Actor(nn.Module):
         # Original formula: log_probability -= torch.log(1 - squashed_action.pow(2) + noise)
         log_probability -= (2*(np.log(2) - actions - F.softplus(-2*actions))).sum(dim=-1)
         return squashed_actions, log_probability
+    
+    def _squash_scale_actions(self, actions):
+        """Squash actions to [-1, 1] with tanh and scale them to their environment bounds."""
+        return (torch.tanh(actions) 
+                * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=self.device))
 
 
 class Critic(nn.Module):
