@@ -73,11 +73,12 @@ class SacAgent(Agent):
         self.stats_log = {"loss_critic": [], "loss_actor": [], "log_prob_actor": [], 
                           "loss_entropy": [], "log_entropy_regularization": []}
     
-    def act(self, observation):
-        """Return an action determined by the policy of the agent for the given observation. 
-        Calling this method does not update the agent's networks or change its state."""
+    def act(self, observation, evaluation_mode=False):
+        """Return an action determined by the policy of the agent for the given observation. Calling 
+        this method does not update the agent's networks or change its state. If in evaluation 
+        mode, the action is deterministic instead of being sampled from a normal distribution."""
         with torch.no_grad():
-            action, _ = self.actor(observation) # log_probs not needed
+            action, _ = self.actor(observation, evaluation_mode) # log_probs never needed here
         return action.cpu().numpy() # return numpy array instead of tensor
     
     def update(self, observation, action, reward, next_observation, terminated):
