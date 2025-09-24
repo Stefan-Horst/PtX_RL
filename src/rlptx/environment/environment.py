@@ -612,18 +612,18 @@ class PtxEnvironment(Environment):
         for commodity in self.ptx_system.get_all_commodities():
             possible_attributes = self.observation_space_info[commodity.name]
             for attribute in LOGGING_ATTRIBUTES_COMMODITY:
-                if attribute.startswith("[dict]"): # handle dictionaries
-                    attribute = attribute[6:]
-                    if attribute not in str(possible_attributes):
-                        continue
-                    for name, value in getattr(commodity, attribute).items():
-                        step_stats[f"{commodity.name}_{attribute}_{name}"] = round(value, 4)
-                elif attribute in possible_attributes:
+                if attribute in possible_attributes:
                     step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
         for component in self.ptx_system.get_all_components():
             possible_attributes = self.observation_space_info[component.name]
             for attribute in LOGGING_ATTRIBUTES_COMPONENT:
-                if attribute in possible_attributes:
+                if attribute.startswith("[dict]"): # handle dictionaries
+                    attribute = attribute[6:]
+                    if attribute not in str(possible_attributes):
+                        continue
+                    for name, value in getattr(component, attribute).items():
+                        step_stats[f"{component.name}_{attribute}_{name}"] = round(value, 4)
+                elif attribute in possible_attributes:
                     step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
         return step_stats
 
