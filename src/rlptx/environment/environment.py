@@ -291,12 +291,20 @@ class PtxEnvironment(Environment):
         # logging below
         assert log_mode in ["default", "deferred", "silent"]
         if log_mode != "silent":
+            # log reward (debugging)
             reward_msg = (f"Reward: {reward:.4f}, Current episode reward: "
                         f"{self.current_episode_reward:.4f}, "
                         f"Cumulative reward: {self.cumulative_reward:.4f}")
             log(str(self.ptx_system) + "\n\t" + str(exact_completion_info) + "\n\t" + reward_msg)
             log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
             log(reward_msg, loggername="reward")
+            # log stats
+            stats_msg = f"Episode {self.episode} Step {self.step} - "
+            for attribute, value in self.stats_log[-1].items():
+                stats_msg += f"{attribute}: {value:.4f}, "
+            stats_msg = stats_msg[:-2] # remove trailing comma
+            log(stats_msg, "evaluation", deferred=(log_mode == "deferred"))
+            # log episode
             if self.terminated or self.truncated:
                 msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
                 log(msg, level=Level.WARNING)
