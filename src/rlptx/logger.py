@@ -65,10 +65,7 @@ def log(message, loggername=LOGGER_NAME, level=logging.INFO, deferred=False):
     flush_deferred_logs() is called. This prevents the interruption of progress bars."""
     if loggername in disabled_loggers:
         return
-    
-    if len(loggers) == 0: # create default logger
-        loggers[LOGGER_NAME] = configure_logger(LOGGER_NAME)
-        
+
     # handle enum from this class vs int from logging module
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
