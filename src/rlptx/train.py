@@ -138,7 +138,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
     ### Training
     # Now use the agent to determine actions and save them to the replay buffer. 
     # The agent is trained every update_interval steps on data from the replay buffer.
-    env.initialize(seed=seed) # start training with fresh environment
+    observation, info = env.initialize(seed=seed) # start training with fresh environment
     successful_steps = 0 # steps with positive reward
     non_failed_episodes = 0 # episodes which don't terminate in the first step
     for episode in range(episodes):
