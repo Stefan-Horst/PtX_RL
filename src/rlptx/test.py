@@ -5,12 +5,12 @@ from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.core import load_sac_agent
 from rlptx.rl import DEVICE
 from rlptx.ptx import load_project
-from rlptx.logger import log, disable_logger, flush_deferred_logs
+from rlptx.logger import log, disable_logger, flush_deferred_logs, configure_logger, Level
 from rlptx.util import set_seed
 
 
 def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_forecast_days=1, 
-                   starting_budget=100, progress_bar=True, seed=None, device="cpu"):
+                   starting_budget=100, progress_bar=True, seed=None):
     """Test a trained SAC agent on the PtX environment.
     
     :param agent: [SacAgent, str] 
@@ -29,14 +29,12 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
         - Whether to show a progress bar for the steps of each episode.
     :param seed: [int] 
         - The seed to use for the random number generators of the used modules.
-    :param device: [str] 
-        - The device to test the agent on, "cpu" or "gpu". The default is "cpu" as it tends to be faster.
     """
     disable_logger("main")
     disable_logger("status")
     disable_logger("reward")
-    device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
-    print(f"Testing on device: {device}")
+    configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
+    print("Starting testing...")
     set_seed(seed)
     ptx_system = load_project()
     ptx_system.set_initial_balance(starting_budget) # starting budget for purchasing commodities in early steps
@@ -47,6 +45,11 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode, seed=seed
     )
+    _test_sac(episodes, env, agent, progress_bar, seed)
+
+def test_ptx_agent_from_train(agent, env, episodes=1, progress_bar=True, seed=None):
+    """Function to be used for testing after training in train.py."""
+    configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
     _test_sac(episodes, env, agent, progress_bar, seed)
 
 def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
@@ -92,17 +95,16 @@ if __name__ == "__main__":
     parser.add_argument("--eps", default=100, type=int)
     parser.add_argument("--maxsteps", default=None, type=int)
     parser.add_argument("--forecast", default=1, type=int)
-    parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
     parser.add_argument("--seed", default=None, type=int)
     args = parser.parse_args()
     
     disable_logger("main")
-    log(f"Test with config: Episodes: {args.eps}, Max steps per episode: {args.maxsteps}, Weather " 
-        f"forecast days: {args.forecast}, Device: {args.device}, Seed: {args.seed}", "episode")
+    log(f"Test with config: Episodes: {args.eps}, Max steps per episode: {args.maxsteps}, " 
+        f"Weather forecast days: {args.forecast}, Seed: {args.seed}", "episode")
     
     agent, _, seed = load_sac_agent(args.agent, seed=args.seed)
     log(f"Agent {args.agent} loaded successfully", "episode")
     
     test_ptx_agent(agent, episodes=args.eps, max_steps_per_episode=args.maxsteps, 
-                   weather_forecast_days=args.forecast, device=args.device, seed=seed)
+                   weather_forecast_days=args.forecast, seed=seed)
     print("Testing complete.")
