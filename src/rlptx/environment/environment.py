@@ -299,11 +299,12 @@ class PtxEnvironment(Environment):
             log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
             log(reward_msg, loggername="reward")
             # log stats
-            stats_msg = f"Episode {self.episode} Step {self.step} - "
-            for attribute, value in self.stats_log[-1].items():
-                stats_msg += f"{attribute}: {value:.4f}, "
-            stats_msg = stats_msg[:-2] # remove trailing comma
-            log(stats_msg, "evaluation", deferred=(log_mode == "deferred"))
+            if evaluation_mode:
+                stats_msg = f"Episode {self.episode} Step {self.step} - "
+                for attribute, value in self.stats_log[-1].items():
+                    stats_msg += f"{attribute}: {value:.4f}, "
+                stats_msg = stats_msg[:-2] # remove trailing comma
+                log(stats_msg, "evaluation", deferred=(log_mode == "deferred"))
             # log episode
             if self.terminated or self.truncated:
                 msg = "ENVIRONMENT TRUNCATED" if self.truncated else "ENVIRONMENT TERMINATED"
