@@ -21,7 +21,7 @@ class Element(ABC):
             for k, v in self.observation_spec.items():
                 if attribute == k:
                     enabled_flag = v[0]
-                    if enabled_flag == None or getattr(self, enabled_flag) == True:
+                    if enabled_flag is None or getattr(self, enabled_flag) == True:
                         possible_attributes.append(attribute)
         return possible_attributes
     
@@ -35,7 +35,7 @@ class Element(ABC):
             for k, v in self.action_spec.items():
                 if method_tuple[0] == k:
                     enabled_flag = v[0]
-                    if enabled_flag == None or getattr(self, enabled_flag) == True:
+                    if enabled_flag is None or getattr(self, enabled_flag) == True:
                         possible_methods.append(method_tuple)
         return possible_methods
     
@@ -50,7 +50,7 @@ class Element(ABC):
     def _check_observation_spec_matches_class_attributes(self):
         match = True
         for attr in [x[0] for x in self.observation_spec.values()] + list(self.observation_spec.keys()):
-            if attr != None and attr not in self.__dict__.keys():
+            if attr is not None and attr not in self.__dict__.keys():
                 match = False
                 break
         return match
@@ -58,7 +58,7 @@ class Element(ABC):
     def _check_action_spec_matches_class_methods_and_attributes(self):
         match = True
         for attr in [x[0] for x in self.action_spec.values()]:
-            if attr != None and attr not in self.__dict__.keys():
+            if attr is not None and attr not in self.__dict__.keys():
                 match = False
                 break
         return match

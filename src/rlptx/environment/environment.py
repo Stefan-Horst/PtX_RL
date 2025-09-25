@@ -192,7 +192,6 @@ class PtxEnvironment(Environment):
         ptx_system.weather_provider = weather_provider
         self._original_ptx_system = ptx_system
         self.ptx_system = copy(self._original_ptx_system)
-        
         assert contains_only_unique_elements(
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
@@ -216,8 +215,7 @@ class PtxEnvironment(Environment):
         reward_spec = {}
         reward_info = (-100., float("inf")) # reward range
         super().__init__(observation_space_size, observation_space_spec, observation_space_info, 
-                         action_space_size, action_space_spec, action_space_info, reward_spec, reward_info)
-                         
+                         action_space_size, action_space_spec, action_space_info, reward_spec, reward_info)        
         log(f"Observation space: {observation_space_info}")
         log(f"Action space: {action_space_info}")
     
@@ -228,6 +226,7 @@ class PtxEnvironment(Environment):
         self.episode = 1
         self.cumulative_reward = 0.
         self.cumulative_revenue = 0.
+        self.stats_log = []
         self._init_new_episode("ENVIRONMENT INITIALIZED")
         observation = self._get_current_observation()
         info = {} # useful info might be implemented later
@@ -250,6 +249,9 @@ class PtxEnvironment(Environment):
         self.current_episode_revenue = 0.
         self.ptx_system = copy(self._original_ptx_system)
         self._action_space = self._get_action_space()
+        self.weather_provider.set_random_offset(
+            min_available_data=self.max_steps_per_episode, mode=self.evaluation_mode
+        )
         log(msg)
         log(msg, loggername="status")
         log(msg, loggername="reward")
