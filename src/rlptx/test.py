@@ -42,13 +42,14 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
         max_steps_per_episode = len(weather_data_provider.weather_data_joined)
     env = PtxEnvironment(
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
-        max_steps_per_episode=max_steps_per_episode, seed=seed
+        max_steps_per_episode=max_steps_per_episode, seed=seed, evaluation_mode=True
     )
     _test_sac(episodes, env, agent, progress_bar, seed)
 
 def test_ptx_agent_from_train(agent, env, episodes=1, progress_bar=True, seed=None):
     """Function to be used for testing after training in train.py."""
     configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
+    assert env.evaluation_mode == True, "Environment must be in evaluation mode."
     _test_sac(episodes, env, agent, progress_bar, seed)
 
 def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
@@ -69,9 +70,7 @@ def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
             # Select an action based on the current observation. 
             # Make the agent do this deterministically in evaluation mode.
             action = agent.act(observation, evaluation_mode=True)
-            next_observation, reward, terminated, truncated, info = env.act(
-                action, evaluation_mode=True, log_mode=log_mode
-            )
+            next_observation, reward, terminated, truncated, info = env.act(action, log_mode=log_mode)
             if reward > 0:
                 successful_steps += 1
             total_steps += 1

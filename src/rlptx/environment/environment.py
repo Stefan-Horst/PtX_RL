@@ -166,16 +166,17 @@ class PtxEnvironment(Environment):
     and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
-                 weather_forecast_days=1, max_steps_per_episode=100000, seed=None, 
+                 weather_forecast_days=1, max_steps_per_episode=100000, seed=None, evaluation_mode=False,
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
                  storage_actions=STORAGE_ACTIONS, generator_actions=GENERATOR_ACTIONS):
-        """Create environment with PtX sytem to use and optionally specify 
-        relevant attributes and actions for the agent."""
+        """Create environment with PtX sytem to use and optionally specify relevant attributes 
+        and actions for the agent. If in evaluation mode, the weather data provider's test data 
+        will be used and relevant stats for evaluation will be logged."""
         self.weather_provider = weather_provider
         self.weather_forecast_days = weather_forecast_days
-        self.max_steps_per_episode = max_steps_per_episode - weather_forecast_days
+        self.evaluation_mode = evaluation_mode
         self.commodity_attributes = commodity_attributes
         self.conversion_attributes = conversion_attributes
         self.storage_attributes = storage_attributes
@@ -260,7 +261,7 @@ class PtxEnvironment(Environment):
     
     ##### ACT FUNCTIONALITY #####
     
-    def act(self, action, evaluation_mode=False, log_mode="default"):
+    def act(self, action, log_mode="default"):
         """Perform the actions in the ptx system for one step of the current episode in the 
         environment. If in evaluation mode, stats for each step will be saved and logged. Deferring 
         logs is only relevant when this is called from a loop using a progress bar like tqdm."""
@@ -280,7 +281,7 @@ class PtxEnvironment(Environment):
         info = {item[0]: item[1] for item in state_change_info}
         info["Step revenue"] = round(balance_difference, 4)
         
-        if evaluation_mode:
+        if self.evaluation_mode:
             current_step_stats = self._get_step_stats()
             current_step_stats["Reward"] = round(reward, 4)
             current_step_stats["Episode reward"] = round(self.current_episode_reward, 4)
@@ -299,7 +300,7 @@ class PtxEnvironment(Environment):
             log(f"Step {self.step}, Reward {reward:.4f} - {info}", loggername="status")
             log(reward_msg, loggername="reward")
             # log stats
-            if evaluation_mode:
+            if self.evaluation_mode:
                 stats_msg = f"Episode {self.episode} Step {self.step} - "
                 for attribute, value in self.stats_log[-1].items():
                     stats_msg += f"{attribute}: {value:.4f}, "
