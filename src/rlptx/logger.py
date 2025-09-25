@@ -28,16 +28,18 @@ class Level(Enum):
 
 def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME, 
                      console_level=logging.DEBUG, file_level=logging.INFO):
-    """Configure and return a new logger. Every logger is by default configured to write levels 
+    """Configure and save a new logger. Every logger is by default configured to write levels 
     DEBUG and higher to console and levels INFO and higher also to a file in the logs folder."""
     if loggername in disabled_loggers:
         return
     
     console_handler = logging.StreamHandler()
+    console_level = console_level.value if isinstance(console_level, Level) else console_level
     console_handler.setLevel(console_level)
 
     filename = (f"{util.get_timestamp()}_{loggername}_{filename}")
     file_handler = logging.FileHandler(util.PROJECT_DIR / path / filename, mode='a')
+    file_level = file_level.value if isinstance(file_level, Level) else file_level
     file_handler.setLevel(file_level)
 
     console_formatter = logging.Formatter(
@@ -54,7 +56,7 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME,
     logger.setLevel(logging.DEBUG)
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
-    return logger
+    loggers[loggername] = logger
 
 
 # provide simple logging utility from inside this module
@@ -69,7 +71,7 @@ def log(message, loggername=LOGGER_NAME, level=logging.INFO, deferred=False):
     # handle enum from this class vs int from logging module
     level = level.value if isinstance(level, Level) else level
     if loggername not in loggers:
-        loggers[loggername] = configure_logger(loggername)
+        configure_logger(loggername)
     
     if not deferred:
         # make sure all logs appear in the right order in the output by writing deferred ones first
