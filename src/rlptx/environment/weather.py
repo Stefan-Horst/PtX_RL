@@ -12,12 +12,13 @@ WEATHER_DATA_DIR = "yearly_profiles/"
 class WeatherDataProvider():
     """Wrapper for the weather data originally provided in multiple csv files."""
     
-    def __init__(self, dir_data=WEATHER_DATA_DIR, ticks_per_day=24, test_size=0.1, seed=None):
+    def __init__(self, dir_data=WEATHER_DATA_DIR, ticks_per_day=24, test_size=0.1, offset=0, seed=None):
         """This class directly provides the weather data in train and test sets. 
         The size of the test set is set to the last 20% of the total data by default."""
         self.dir_data = dir_data
         self.ticks_per_day = ticks_per_day
         self.test_size = test_size
+        self.offset = offset
         self.seed = seed
         self.weather_data = self._load_data(dir_data)
         self.weather_data_joined = pd.concat(self.weather_data, ignore_index=True)
@@ -27,25 +28,20 @@ class WeatherDataProvider():
         )
         self.rng = np.random.default_rng(seed)
     
-    def get_weather_from_random_plus_n(self, n, mode="train"):
-        """Returns n consecutive weather data points from a random starting point. 
-        The mode determines which data set is used."""
+    def set_random_offset(self, min_available_data, mode="train"):
+        """Set the offset to a random value between 0 and the length of the data minus min_available_data. 
+        Min_available_data is the minimal size of data that must be available after the offset."""
         assert mode in ["train", "test"], "Mode must be 'train' or 'test'."
-        if mode == "train":
-            weather_data = self.weather_data_train
-        elif mode == "test":
-            weather_data = self.weather_data_test
-        start = self.rng.integers(0, len(weather_data) - n)
-        return weather_data.iloc[start:start+n]
-        
+        data_length = len(self.weather_data_train if mode == "train" else self.weather_data_test)
+        self.offset = self.rng.integers(0, data_length - min_available_data, endpoint=True)
     
-    def get_weather_from_tick_plus_n(self, tick, n, offset=0):
-        """Returns n weather data points starting from tick"""
-        actual_tick = tick + offset
+    def get_weather_from_tick_plus_n(self, tick, n):
+        """Returns n weather data points starting from tick plus offset."""
+        actual_tick = tick + self.offset
         return self.weather_data_joined.iloc[actual_tick:actual_tick+n]
     
-    def get_weather_of_tick(self, tick, offset=0):
-        actual_tick = tick + offset
+    def get_weather_of_tick(self, tick):
+        actual_tick = tick + self.offset
         return self.weather_data_joined.iloc[actual_tick]
     
     def get_weather_between_datetimes(self, datetime1, datetime2):
