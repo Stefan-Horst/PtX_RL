@@ -30,7 +30,7 @@ def configure_logger(loggername, path=LOGFILE_PATH, filename=LOGFILE_NAME,
                      console_level=logging.DEBUG, file_level=logging.INFO):
     """Configure and save a new logger. Every logger is by default configured to write levels 
     DEBUG and higher to console and levels INFO and higher also to a file in the logs folder."""
-    if loggername in disabled_loggers:
+    if loggername in disabled_loggers or loggername in loggers:
         return
     
     console_handler = logging.StreamHandler()
