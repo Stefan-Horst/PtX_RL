@@ -166,7 +166,7 @@ class PtxEnvironment(Environment):
     and actions to be specified via the constructor."""
     
     def __init__(self, ptx_system: PtxSystem, weather_provider: WeatherDataProvider, 
-                 weather_forecast_days=1, max_steps_per_episode=100000, seed=None, evaluation_mode=False,
+                 weather_forecast_days=1, max_steps_per_episode=10000, seed=None, evaluation_mode=False,
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
@@ -185,6 +185,9 @@ class PtxEnvironment(Environment):
         self.conversion_actions = conversion_actions
         self.storage_actions = storage_actions
         self.generator_actions = generator_actions
+        self.max_steps_per_episode = self._determine_max_steps_per_episode(max_steps_per_episode)
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
         
         ptx_system.weather_provider = weather_provider
         self._original_ptx_system = ptx_system
@@ -194,8 +197,6 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
-        self.seed = seed
-        self.rng = np.random.default_rng(seed)
         self.episode = 1
         self.step = 0
         self.terminated = False
@@ -638,3 +639,11 @@ class PtxEnvironment(Environment):
                 (generators, self.generator_attributes, self.generator_actions), 
                 (conversions, self.conversion_attributes, self.conversion_actions), 
                 (storages, self.storage_attributes, self.storage_actions)]
+    
+    def _determine_max_steps_per_episode(self, max_steps_per_episode):
+        """Determine max steps per episode based on weather data size and weather forecast days."""
+        weather_data_length = len(self.weather_provider.weather_data_test if self.evaluation_mode 
+                                  else self.weather_provider.weather_data_train)
+        if (max_steps_per_episode + self.weather_forecast_days > weather_data_length):
+            max_steps_per_episode = weather_data_length - self.weather_forecast_days
+        return max_steps_per_episode
