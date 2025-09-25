@@ -3,7 +3,6 @@ from tqdm import tqdm
 from rlptx.environment.environment import PtxEnvironment
 from rlptx.environment.weather import WeatherDataProvider
 from rlptx.rl.core import load_sac_agent
-from rlptx.rl import DEVICE
 from rlptx.ptx import load_project
 from rlptx.logger import log, disable_logger, flush_deferred_logs, configure_logger, Level
 from rlptx.util import set_seed
