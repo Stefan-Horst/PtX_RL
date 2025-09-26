@@ -37,14 +37,13 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
     set_seed(seed)
     ptx_system = load_project()
     ptx_system.set_initial_balance(starting_budget) # starting budget for purchasing commodities in early steps
-    weather_data_provider = WeatherDataProvider()
-    if max_steps_per_episode is None: # episode cannot be longer than available weather data
-        max_steps_per_episode = len(weather_data_provider.weather_data_joined)
+    weather_data_provider = WeatherDataProvider(test_size=0.1, seed=seed)
     env = PtxEnvironment(
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode, seed=seed, evaluation_mode=True
     )
     _test_sac(episodes, env, agent, progress_bar, seed)
+    return agent, env # for use in notebooks etc
 
 def test_ptx_agent_from_train(agent, env, episodes=1, progress_bar=True, seed=None):
     """Function to be used for testing after training in train.py."""

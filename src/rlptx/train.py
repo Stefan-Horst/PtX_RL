@@ -83,8 +83,6 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     ptx_system = load_project()
     ptx_system.set_initial_balance(100) # starting budget for purchasing commodities in early steps
     weather_data_provider = WeatherDataProvider(test_size=0.1, seed=seed)
-    if max_steps_per_episode is None: # episode cannot be longer than available weather data
-        max_steps_per_episode = len(weather_data_provider.weather_data_joined)
     env = PtxEnvironment(
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode, seed=seed
@@ -192,7 +190,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             print(f"Saved agent from episode {episode+1} to file: {filename}")
         # Test the agent every test_interval episodes
         if test_interval not in (None, -1) and (episode + 1) % test_interval == 0:
-            test_ptx_agent_from_train(agent, env, test_episodes, progress_bar, seed)
+            test_ptx_agent_from_train(agent, testenv, test_episodes, progress_bar, seed)
     log(f"Number of successful steps: {successful_steps}, Total number of steps: "
         f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
     # Save the final agent
@@ -201,7 +199,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             print(f"Saved final agent to file: {filename}")
     # Final testing after training
     if test_interval == -1:
-        test_ptx_agent_from_train(agent, env, test_episodes, progress_bar, seed)
+        test_ptx_agent_from_train(agent, testenv, test_episodes, progress_bar, seed)
 
 def _log_episode_stats(episode, step, stats_log):
     """Log the stats of the last episode by taking the mean of all its steps' values."""
