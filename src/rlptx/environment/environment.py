@@ -294,7 +294,7 @@ class PtxEnvironment(Environment):
             self.stats_log.append(current_step_stats)
         
         # logging below
-        assert log_mode in ["default", "deferred", "silent"]
+        assert log_mode in ["default", "deferred", "silent"], "Log mode must be one of ['default', 'deferred', 'silent']."
         if log_mode != "silent":
             # log reward (debugging)
             reward_msg = (f"Reward: {reward:.4f}, Current episode reward: "
@@ -319,7 +319,8 @@ class PtxEnvironment(Environment):
                 episode_msg = (f"Episode {self.episode} - Total reward: {self.current_episode_reward:.4f} "
                                f"- Reward/Step: {(self.current_episode_reward / self.step):.4f} - "
                                f"Steps: {self.step} - Total revenue: {self.current_episode_revenue:.4f}")
-                log(episode_msg, loggername="episode", deferred=(log_mode == "deferred"))
+                loggername = "test" if self.evaluation_mode else "episode"
+                log(episode_msg, loggername=loggername, deferred=(log_mode == "deferred"))
         return observation, reward, self.terminated, self.truncated, info
     
     def _calculate_reward(self, revenue):

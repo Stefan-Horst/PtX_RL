@@ -191,7 +191,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
         # Test the agent every test_interval episodes
         if test_interval not in (None, -1) and (episode + 1) % test_interval == 0:
             test_ptx_agent_from_train(agent, testenv, test_episodes, progress_bar, seed)
-    log(f"Number of successful steps: {successful_steps}, Total number of steps: "
+    log(f"Training Review - Number of successful steps: {successful_steps}, Total number of steps: "
         f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
     # Save the final agent
     if epoch_save_interval == -1:

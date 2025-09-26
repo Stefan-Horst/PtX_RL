@@ -9,7 +9,7 @@ from rlptx.util import set_seed
 
 
 def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_forecast_days=1, 
-                   starting_budget=100, progress_bar=True, seed=None):
+                   starting_budget=100, progress_bar=False, seed=None):
     """Test a trained SAC agent on the PtX environment.
     
     :param agent: [SacAgent, str] 
@@ -49,39 +49,29 @@ def test_ptx_agent_from_train(agent, env, episodes=1, progress_bar=True, seed=No
     """Function to be used for testing after training in train.py."""
     configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
     assert env.evaluation_mode == True, "Environment must be in evaluation mode."
+    print("Starting testing...")
     _test_sac(episodes, env, agent, progress_bar, seed)
+    print("Testing complete.")
 
 def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
     """Execute the SAC testing loop."""
     log_mode = "deferred" if use_progress_bar else "default"
     observation, info = env.initialize(seed=seed)
-    total_steps = 0
-    successful_steps = 0 # steps with positive reward
-    non_failed_episodes = 0 # episodes which don't terminate in the first step
+    if use_progress_bar:
+        progress_bar = tqdm(total=episodes, desc="Test Episodes", ncols=100)
     for episode in range(episodes):
-        if use_progress_bar:
-            progress_bar = tqdm(
-                total=env.max_steps_per_episode, desc=f"Episode {episode+1} steps", ncols=100
-            )
         while not env.truncated and not env.terminated:
-            if use_progress_bar:
-                progress_bar.update(1)
             # Select an action based on the current observation. 
             # Make the agent do this deterministically in evaluation mode.
             action = agent.act(observation, evaluation_mode=True)
             next_observation, reward, terminated, truncated, info = env.act(action, log_mode=log_mode)
-            if reward > 0:
-                successful_steps += 1
-            total_steps += 1
             observation = next_observation
-        if env.step > 1:
-            non_failed_episodes += 1
         observation, info = env.reset()
         if use_progress_bar:
-            progress_bar.close()
-            flush_deferred_logs() # only print logs after progress bar is finished
-    log(f"Number of successful steps: {successful_steps}, Total number of steps: "
-        f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
+                progress_bar.update(1)
+    if use_progress_bar:
+        progress_bar.close()
+        flush_deferred_logs() # only print logs after progress bar is finished
 
 
 # command line entry point
