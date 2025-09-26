@@ -18,11 +18,26 @@ To run the script, simply use `python src/rlptx/train.py ptx` (or "gym" for agen
 Available additional parameters are: 
 | Parameter | Description |
 | --- | --- |
-| `--eps` | Number of training episodes, default 100 |
+| `--eps` | Amount of training episodes, default 100 |
 | `--warmup` | Sampling steps before actual training, default 1000 |
-| `--update` | Number of steps between agent updates, default 1 |
-| `--maxsteps` | Max number of steps per episode, default set by environment |
-| `--forecast` | Days of weather forecast included in each observation, default 7, only for ptx |
+| `--update` | Amount of steps between agent updates, default 1 |
+| `--maxsteps` | Max amount of steps per episode, default none (set by environment) |
+| `--forecast` | Days of weather forecast included in each observation, default 1, only for ptx |
+| `--test` | Testing interval, -1 for testing of final model, default 10000 |
+| `--testeps` | Amount of testing episodes, default 100 |
 | `--save` | Model save interval, -1 for saving of final model, default none |
 | `--load` | Name of save file to load from models dir, default none |
 | `--device` | Device to run pytorch on, cpu or gpu, default cpu |
+| `--seed` | Seed to guarantee reproducibility, default none |
+
+
+Trained models can also be directly tested via the _test.py_ script which can also be directly run from the command line. Testing only works for the PtX environment.
+
+To run the script, simply use `python src/rlptx/test.py [model file]`. 
+Available additional parameters are: 
+| Parameter | Description |
+| --- | --- |
+| `--eps` | Amount of testing episodes, default 100 |
+| `--maxsteps` | Max amount of steps per episode, default none (set by environment) |
+| `--forecast` | Days of weather forecast included in each observation, default 1 |
+| `--seed` | Seed to guarantee reproducibility, default none |
