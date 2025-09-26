@@ -18,7 +18,7 @@ class Environment(ABC):
     def __init__(self, observation_space_size: int, observation_space_spec: Any, 
                  observation_space_info: Any, action_space_size: int, 
                  action_space_spec: Any, action_space_info: Any, 
-                 reward_spec: Any, reward_info: Any):
+                 reward_spec: Any, reward_info: Any, seed: int | None = None):
         """Create the environment with given specifications and sizes of the 
         observation and action spaces as well as specs of the reward."""
         self.observation_space_size = observation_space_size
@@ -29,9 +29,9 @@ class Environment(ABC):
         self.action_space_info = action_space_info
         self.reward_spec = reward_spec
         self.reward_info = reward_info
+        self.seed = seed
         self.terminated = False
         self.truncated = False
-        self.seed = None
         self.episode = 1
         self.step = 0
         self.current_episode_reward = 0.
@@ -214,8 +214,8 @@ class PtxEnvironment(Environment):
         action_space_size = len(self._action_space)
         reward_spec = {}
         reward_info = (-100., float("inf")) # reward range
-        super().__init__(observation_space_size, observation_space_spec, observation_space_info, 
-                         action_space_size, action_space_spec, action_space_info, reward_spec, reward_info)        
+        super().__init__(observation_space_size, observation_space_spec, observation_space_info, action_space_size, 
+                         action_space_spec, action_space_info, reward_spec, reward_info, seed)        
         log(f"Observation space: {observation_space_info}")
         log(f"Action space: {action_space_info}")
     
@@ -250,7 +250,8 @@ class PtxEnvironment(Environment):
         self.ptx_system = copy(self._original_ptx_system)
         self._action_space = self._get_action_space()
         self.weather_provider.set_random_offset(
-            min_available_data=self.max_steps_per_episode, mode=self.evaluation_mode
+            min_available_data=self.max_steps_per_episode, 
+            mode=("test" if self.evaluation_mode else "train")
         )
         log(msg)
         log(msg, loggername="status")
