@@ -47,6 +47,6 @@ def _line_agent(line):
 def _line_evaluation(line):
     episode, elements = line.replace("\n", "").split(" - ")[-2:]
     episode = episode.split(" ")
-    episode = [f"{episode[0]}: {episode[1]}", f"{episode[2]}: {episode[3]}"]
+    episode = [f"{episode[i]}: {episode[i+1]}" for i in range(0, len(episode)-1, 2)]
     episode.extend(elements.split(", "))
     return episode

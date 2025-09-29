@@ -196,6 +196,7 @@ class PtxEnvironment(Environment):
             self.ptx_system.get_all_commodity_names() + self.ptx_system.get_all_component_names()
         ), "All elements of the ptx system must have a unique name."
         
+        self.initializations = 0
         self.episode = 1
         self.step = 0
         self.terminated = False
@@ -223,6 +224,7 @@ class PtxEnvironment(Environment):
         """Initialize the environment after its creation or again after 
         training is done and return the initial observation. This resets 
         all attributes of the environment including the episode."""
+        self.initializations += 1
         self.episode = 1
         self.cumulative_reward = 0.
         self.cumulative_revenue = 0.
@@ -305,7 +307,7 @@ class PtxEnvironment(Environment):
             log(reward_msg, loggername="reward")
             # log stats
             if self.evaluation_mode:
-                stats_msg = f"Episode {self.episode} Step {self.step} - "
+                stats_msg = f"Cycle {self.initializations} Episode {self.episode} Step {self.step} - "
                 for attribute, value in self.stats_log[-1].items():
                     stats_msg += f"{attribute}: {value:.4f}, "
                 stats_msg = stats_msg[:-2] # remove trailing comma
