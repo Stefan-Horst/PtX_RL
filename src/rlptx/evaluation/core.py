@@ -48,5 +48,5 @@ def _line_evaluation(line):
     episode, elements = line.replace("\n", "").split(" - ")[-2:]
     episode = episode.split(" ")
     episode = [f"{episode[i]}: {episode[i+1]}" for i in range(0, len(episode)-1, 2)]
-    episode.extend(elements.split(", "))
+    episode.extend(elements.replace("_", " ").split(", "))
     return episode
