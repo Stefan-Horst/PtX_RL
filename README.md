@@ -25,7 +25,8 @@ Available additional parameters are:
 | `--forecast` | Days of weather forecast included in each observation, default 1, only for ptx |
 | `--test` | Testing interval, -1 for testing of final model, default 10000 |
 | `--testeps` | Amount of testing episodes, default 100 |
-| `--save` | Model save interval, -1 for saving of final model, default none |
+| `--savethresh` | Conditional model saving based on performance metric during testing, default none |
+| `--save` | Automatic model saving interval, -1 for saving of final model, default none |
 | `--load` | Name of save file to load from models dir, default none |
 | `--device` | Device to run pytorch on, cpu or gpu, default cpu |
 | `--seed` | Seed to guarantee reproducibility, default none |

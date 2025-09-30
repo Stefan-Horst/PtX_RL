@@ -17,7 +17,7 @@ REPLAY_BUFFER_SIZE = 10**6
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                           test_interval=10, test_episodes=10, save_threshold=0, epoch_save_interval=None, 
+                           test_interval=10, test_episodes=10, save_threshold=None, epoch_save_interval=None, 
                            agent=None, replay_buffer=None, progress_bar=False, seed=None, device="cpu"):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
@@ -63,7 +63,7 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         - The number of episodes to test the agent on during each test.
     :param save_threshold: [int] 
         - Average episode revenue during testing that triggers the agent to be saved. 
-        If 0, the agent is not saved. This controls conditional saving based on agent performance.
+        If None, the agent is not saved. This controls conditional saving based on agent performance.
     :param epoch_save_interval: [int] 
         - The interval at which the agent should be saved. If None, the agent is not saved. 
         If -1, the agent is saved at the end of training. This controls automatically saving checkpoints.
@@ -194,7 +194,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             average_episode_revenue = test_ptx_agent_from_train(
                 agent, testenv, episode+1, test_episodes, progress_bar, seed
             )
-            save_flag = average_episode_revenue >= save_threshold
+            save_flag = save_threshold is not None and average_episode_revenue >= save_threshold
         # Save the agent every epoch_save_interval episodes and/or based on performance
         if (epoch_save_interval not in (None, -1) and (episode+1) % epoch_save_interval == 0 or save_flag):
             name_appendix = "_TOP" if save_flag else "" # mark agents saved due to good performance
@@ -210,7 +210,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
         average_episode_revenue = test_ptx_agent_from_train(
             agent, testenv, episode+1, test_episodes, progress_bar, seed
         )
-        save_flag = average_episode_revenue >= save_threshold
+        save_flag = save_threshold is not None and average_episode_revenue >= save_threshold
     # Save the final agent
     if epoch_save_interval == -1 or save_flag:
             name_appendix = "_TOP" if save_flag else "" # mark agent saved due to good performance
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--forecast", default=1, type=int)
     parser.add_argument("--test", default=10000, type=int)
     parser.add_argument("--testeps", default=100, type=int)
-    parser.add_argument("--savethresh", default=0, type=int)
+    parser.add_argument("--savethresh", default=None, type=int)
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
