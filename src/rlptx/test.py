@@ -45,11 +45,11 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
     _test_sac(episodes, env, agent, progress_bar, seed)
     return agent, env # for use in notebooks etc
 
-def test_ptx_agent_from_train(agent, env, episodes=1, progress_bar=True, seed=None):
+def test_ptx_agent_from_train(agent, env, current_episode, episodes=10, progress_bar=True, seed=None):
     """Function to be used for testing after training in train.py."""
     configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
     assert env.evaluation_mode == True, "Environment must be in evaluation mode."
-    print("Starting testing...")
+    log(f"Tests after {current_episode} episodes:", "test")
     _test_sac(episodes, env, agent, progress_bar, seed)
     print("Testing complete.")
 

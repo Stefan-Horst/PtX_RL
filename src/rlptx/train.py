@@ -190,7 +190,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             print(f"Saved agent from episode {episode+1} to file: {filename}")
         # Test the agent every test_interval episodes
         if test_interval not in (None, -1) and (episode + 1) % test_interval == 0:
-            test_ptx_agent_from_train(agent, testenv, test_episodes, progress_bar, seed)
+            test_ptx_agent_from_train(agent, testenv, episode+1, test_episodes, progress_bar, seed)
     log(f"Training Review - Number of successful steps: {successful_steps}, Total number of steps: "
         f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
     # Save the final agent
@@ -199,7 +199,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             print(f"Saved final agent to file: {filename}")
     # Final testing after training
     if test_interval == -1:
-        test_ptx_agent_from_train(agent, testenv, test_episodes, progress_bar, seed)
+        test_ptx_agent_from_train(agent, testenv, episode+1, test_episodes, progress_bar, seed)
 
 def _log_episode_stats(episode, step, stats_log):
     """Log the stats of the last episode by taking the mean of all its steps' values."""
