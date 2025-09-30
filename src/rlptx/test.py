@@ -42,21 +42,23 @@ def test_ptx_agent(agent, episodes=100, max_steps_per_episode=None, weather_fore
         ptx_system, weather_data_provider, weather_forecast_days=weather_forecast_days, 
         max_steps_per_episode=max_steps_per_episode, seed=seed, evaluation_mode=True
     )
-    _test_sac(episodes, env, agent, progress_bar, seed)
-    return agent, env # for use in notebooks etc
+    average_episode_revenue = _test_sac(episodes, env, agent, progress_bar, seed)
+    return average_episode_revenue, agent, env # for use in notebooks etc
 
 def test_ptx_agent_from_train(agent, env, current_episode, episodes=10, progress_bar=True, seed=None):
     """Function to be used for testing after training in train.py."""
     configure_logger("evaluation", console_level=Level.WARNING) # don't write normal logs to console
     assert env.evaluation_mode == True, "Environment must be in evaluation mode."
     log(f"Tests after {current_episode} episodes:", "test")
-    _test_sac(episodes, env, agent, progress_bar, seed)
+    average_episode_revenue = _test_sac(episodes, env, agent, progress_bar, seed)
     print("Testing complete.")
+    return average_episode_revenue
 
 def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
-    """Execute the SAC testing loop."""
+    """Execute the SAC testing loop. Returns the average episode revenue as the success metric."""
     log_mode = "deferred" if use_progress_bar else "default"
     observation, info = env.initialize(seed=seed)
+    episode_revenues = []
     if use_progress_bar:
         progress_bar = tqdm(total=episodes, desc="Test Episodes", ncols=100)
     for episode in range(episodes):
@@ -66,12 +68,16 @@ def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
             action = agent.act(observation, evaluation_mode=True)
             next_observation, reward, terminated, truncated, info = env.act(action, log_mode=log_mode)
             observation = next_observation
+        episode_revenues.append(env.stats_log[-1]["Episode revenue"])
         observation, info = env.reset()
         if use_progress_bar:
                 progress_bar.update(1)
     if use_progress_bar:
         progress_bar.close()
         flush_deferred_logs() # only print logs after progress bar is finished
+    average_episode_revenue = sum(episode_revenues) / len(episode_revenues)
+    log(f"Average episode revenue: {average_episode_revenue}", "test")
+    return average_episode_revenue
 
 
 # command line entry point
