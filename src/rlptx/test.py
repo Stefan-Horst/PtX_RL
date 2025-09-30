@@ -76,7 +76,7 @@ def _test_sac(episodes, env, agent, use_progress_bar=True, seed=None):
         progress_bar.close()
         flush_deferred_logs() # only print logs after progress bar is finished
     average_episode_revenue = sum(episode_revenues) / len(episode_revenues)
-    log(f"Average episode revenue: {average_episode_revenue}", "test")
+    log(f"Average episode revenue: {average_episode_revenue:.4f}", "test")
     return average_episode_revenue
 
 

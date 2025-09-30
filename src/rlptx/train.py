@@ -17,8 +17,8 @@ REPLAY_BUFFER_SIZE = 10**6
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                           test_interval=10, test_episodes=10, epoch_save_interval=None, agent=None, 
-                           replay_buffer=None, progress_bar=False, seed=None, device="cpu"):
+                           test_interval=10, test_episodes=10, save_threshold=0, epoch_save_interval=None, 
+                           agent=None, replay_buffer=None, progress_bar=False, seed=None, device="cpu"):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
     disable_logger("main")
     device = DEVICE if device == "gpu" else "cpu" # default to cpu if no gpu available
@@ -33,13 +33,14 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
         replay_buffer = ReplayBuffer(
             REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, 
-               test_interval, test_episodes, epoch_save_interval, progress_bar, seed)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
+               test_episodes, save_threshold, epoch_save_interval, progress_bar, seed)
     return agent, replay_buffer, env # for use in notebooks etc
 
 def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
-                     weather_forecast_days=1, test_interval=10000, test_episodes=10, epoch_save_interval=None, 
-                     agent=None, replay_buffer=None, progress_bar=True, seed=None, device="cpu"):
+                     weather_forecast_days=1, test_interval=10000, test_episodes=10, 
+                     save_threshold=1000, epoch_save_interval=None, agent=None, replay_buffer=None, 
+                     progress_bar=True, seed=None, device="cpu"):
     """Train the SAC agent on the PtX environment. Returns the trained agent.
 
     :param episodes: [int] 
@@ -60,9 +61,12 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         If None, the agent is not tested. If -1, the agent is tested at the end of training.
     :param test_episodes: [int] 
         - The number of episodes to test the agent on during each test.
+    :param save_threshold: [int] 
+        - Average episode revenue during testing that triggers the agent to be saved. 
+        If 0, the agent is not saved. This controls conditional saving based on agent performance.
     :param epoch_save_interval: [int] 
         - The interval at which the agent should be saved. If None, the agent is not saved. 
-        If -1, the agent is saved at the end of training.
+        If -1, the agent is saved at the end of training. This controls automatically saving checkpoints.
     :param agent: [SacAgent] 
         - The agent to train. If None, a new one is created.
     :param replay_buffer: [ReplayBuffer] 
@@ -95,12 +99,12 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         replay_buffer = ReplayBuffer(
             REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, 
-               test_interval, test_episodes, epoch_save_interval, progress_bar, seed)
+    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
+               test_episodes, save_threshold, epoch_save_interval, progress_bar, seed)
     return agent, replay_buffer, env # for use in notebooks etc
 
 def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
-               test_episodes, epoch_save_interval, use_progress_bar=True, seed=None):
+               test_episodes, save_threshold, epoch_save_interval, use_progress_bar=True, seed=None):
     """Execute the main SAC training loop."""
     log_mode = "deferred" if use_progress_bar else "default"
     if test_interval is not None:
@@ -149,6 +153,7 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
     observation, info = env.initialize(seed=seed) # start training with fresh environment
     successful_steps = 0 # steps with positive reward
     non_failed_episodes = 0 # episodes which don't terminate in the first step
+    save_flag = False # determine whether the agent should be saved (based on performance)
     for episode in range(episodes):
         if use_progress_bar:
             progress_bar = tqdm(
@@ -184,22 +189,34 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             flush_deferred_logs() # only print logs after progress bar is finished
         _log_episode_stats(episode, current_episode_steps, agent.stats_log)
         
-        # Save the agent every epoch_save_interval episodes
-        if epoch_save_interval not in (None, -1) and (episode + 1) % epoch_save_interval == 0:
-            filename = save_sac_agent(agent, replay_buffer, f"{get_timestamp()}_sac_agent_e{episode+1}")
-            print(f"Saved agent from episode {episode+1} to file: {filename}")
         # Test the agent every test_interval episodes
-        if test_interval not in (None, -1) and (episode + 1) % test_interval == 0:
-            test_ptx_agent_from_train(agent, testenv, episode+1, test_episodes, progress_bar, seed)
+        if test_interval not in (None, -1) and (episode+1) % test_interval == 0:
+            average_episode_revenue = test_ptx_agent_from_train(
+                agent, testenv, episode+1, test_episodes, progress_bar, seed
+            )
+            save_flag = average_episode_revenue >= save_threshold
+        # Save the agent every epoch_save_interval episodes and/or based on performance
+        if (epoch_save_interval not in (None, -1) and (episode+1) % epoch_save_interval == 0 or save_flag):
+            name_appendix = "_TOP" if save_flag else "" # mark agents saved due to good performance
+            filename = save_sac_agent(
+                agent, replay_buffer, f"{get_timestamp()}_sac_agent_e{episode+1}{name_appendix}"
+            )
+            print(f"Saved agent from episode {episode+1} to file: {filename}")
+            save_flag = False
     log(f"Training Review - Number of successful steps: {successful_steps}, Total number of steps: "
         f"{total_steps}, Number of non-failed episodes: {non_failed_episodes}", "episode")
-    # Save the final agent
-    if epoch_save_interval == -1:
-            filename = save_sac_agent(agent, replay_buffer, f"{get_timestamp()}_sac_agent_final")
-            print(f"Saved final agent to file: {filename}")
     # Final testing after training
     if test_interval == -1:
-        test_ptx_agent_from_train(agent, testenv, episode+1, test_episodes, progress_bar, seed)
+        average_episode_revenue = test_ptx_agent_from_train(
+            agent, testenv, episode+1, test_episodes, progress_bar, seed
+        )
+        save_flag = average_episode_revenue >= save_threshold
+    # Save the final agent
+    if epoch_save_interval == -1 or save_flag:
+            name_appendix = "_TOP" if save_flag else "" # mark agent saved due to good performance
+            filename = save_sac_agent(agent, replay_buffer, f"{get_timestamp()}_sac_agent_final{name_appendix}")
+            print(f"Saved final agent to file: {filename}")
+    
 
 def _log_episode_stats(episode, step, stats_log):
     """Log the stats of the last episode by taking the mean of all its steps' values."""
@@ -227,6 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--forecast", default=1, type=int)
     parser.add_argument("--test", default=10000, type=int)
     parser.add_argument("--testeps", default=100, type=int)
+    parser.add_argument("--savethresh", default=0, type=int)
     parser.add_argument("--save", default=None, type=int)
     parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu", type=str)
@@ -236,8 +254,8 @@ if __name__ == "__main__":
     disable_logger("main")
     log(f"Train with config: Environment: {args.env}, Episodes: {args.eps}, Warmup steps: {args.warmup}, " 
         f"Update interval: {args.update}, Max steps per episode: {args.maxsteps}, Weather forecast " 
-        f"days: {args.forecast}, Test interval: {args.test}, Test episodes: {args.testeps}, " 
-        f"Epoch save interval: {args.save}, Device: {args.device}, Seed: {args.seed}", "episode")
+        f"days: {args.forecast}, Test interval: {args.test}, Test episodes: {args.testeps}, Save threshold: " 
+        f"{args.savethresh}, Epoch save interval: {args.save}, Device: {args.device}, Seed: {args.seed}", "episode")
     
     if args.load is not None:
         agent, replay_buffer, seed = load_sac_agent(args.load, seed=args.seed)
@@ -249,15 +267,15 @@ if __name__ == "__main__":
     
     if args.env == "gym":
         train_gym_half_cheetah(
-            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, 
-            max_steps_per_episode=args.maxsteps, test_interval=args.test, test_episodes=args.testeps, 
+            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, max_steps_per_episode=args.maxsteps, 
+            test_interval=args.test, test_episodes=args.testeps, save_threshold=args.savethresh, 
             epoch_save_interval=args.save, device=args.device, agent=agent, replay_buffer=replay_buffer, seed=seed
         )
     elif args.env == "ptx":
         train_ptx_system(
             episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
-            max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, 
-            test_interval=args.test, test_episodes=args.testeps, epoch_save_interval=args.save, 
+            max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, test_interval=args.test, 
+            test_episodes=args.testeps, save_threshold=args.savethresh, epoch_save_interval=args.save, 
             device=args.device, agent=agent, replay_buffer=replay_buffer, seed=seed
         )
     print("Training complete.")
