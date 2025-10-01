@@ -276,7 +276,13 @@ class PtxEnvironment(Environment):
         self.terminated = not success
         self.truncated = self.step >= self.max_steps_per_episode
         
-        balance_difference = self.ptx_system.next_step()
+        category_attributes = {
+            "commodity": self.commodity_attributes,
+            "generator": self.generator_attributes,
+            "conversion": self.conversion_attributes,
+            "storage": self.storage_attributes
+        }
+        balance_difference = self.ptx_system.next_step(category_attributes)
         self.cumulative_revenue += balance_difference
         self.current_episode_revenue += balance_difference
         reward = self._calculate_reward(balance_difference)
@@ -515,9 +521,9 @@ class PtxEnvironment(Environment):
     ##### OBSERVATION #####
     
     def _get_current_observation(self):
-        """Get the current observation by iterating over all elements of the ptx 
-        system and adding the values of their attributes, as well as the current 
-        day, time and weather data for each generator for the next specified steps."""
+        """Get the current observation by iterating over all elements of the ptx system and adding 
+        the values of their attributes (or the changes in these values since the last step), as well 
+        as the current day, time and weather data for each generator for the next specified steps."""
         current_weather_data = self.weather_provider.get_weather_of_tick(self.step)
         observation_space = [current_weather_data["dayofyear"], current_weather_data["hour"]]
         
@@ -533,19 +539,32 @@ class PtxEnvironment(Environment):
                 for generator in generators:
                     observation_space.append(weather[generator.name])
         
+        # append attributes of ptx system and its elements
         observation_space.append(self.ptx_system.balance)
         for category, attributes, _ in element_categories:
             for element in category:
                 possible_attributes = element.get_possible_observation_attributes(attributes)
                 for attribute in possible_attributes:
-                    # add all values of attributes that are dictionaries
-                    if attribute.startswith("[dict]"):
-                        attribute = attribute[6:]
-                        observation_space.extend(
-                            list(getattr(element, attribute).values())
-                        )
-                    else:
-                        observation_space.append(getattr(element, attribute))
+                    # add the values of all attributes whose value itself should be added 
+                    # instead of the change since the last step
+                    if attribute.startswith("[total]"):
+                        attribute = attribute[7:]
+                        # add all values of attributes that are dictionaries
+                        if attribute.startswith("[dict]"):
+                            attribute = attribute[6:]
+                            observation_space.extend(
+                                list(getattr(element, attribute).values())
+                            )
+                        else:
+                            observation_space.append(getattr(element, attribute))
+                    else: # add the attribute's change since the last step
+                        if attribute.startswith("[dict]"):
+                            attribute = attribute[6:]
+                            observation_space.extend(
+                                list(element.tracked_attributes[attribute].values())
+                            )
+                        else:
+                            observation_space.append(element.tracked_attributes[attribute])
         return observation_space
     
     ##### INITIALIZATION #####
