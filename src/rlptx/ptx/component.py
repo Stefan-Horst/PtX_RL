@@ -13,6 +13,7 @@ class BaseComponent(Element):
         :param name: [string] - abbreviation of component
         :param variable_om: [float] - variable operation and maintenance
         """
+        super().__init__()
         self.name = str(name)
         self.component_type = None
         self.variable_om = float(variable_om)
@@ -70,15 +71,13 @@ class ConversionComponent(BaseComponent):
         self.load = load
         self.consumed_commodities = consumed_commodities
         self.produced_commodities = produced_commodities
-        # observation attributes of this class with their enabled flags, ones without flag not included
-        self.observation_spec = {}
+        self._initialize_result_dictionaries()
+        
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {
             ConversionComponent.ramp_up_or_down: (None, -self.ramp_down, self.ramp_up)
         }
         self.assert_specs_match_class()
-        
-        self._initialize_result_dictionaries()
     
     def apply_action_method(self, method, ptx_system, values):
         """Actually apply the values returned by the action method to this component."""
@@ -426,8 +425,7 @@ class StorageComponent(BaseComponent):
             self.charge_state = charge_state
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
-        # observation attributes of this class with their enabled flags, ones without flag not included
-        self.observation_spec = {}
+        
         # action methods of this class with their enabled flags and min/max input values
         max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
         self.action_spec = {
@@ -659,6 +657,7 @@ class GenerationComponent(BaseComponent):
         self.potential_generation_quantity = potential_generation_quantity
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
+        
         # observation attributes of this class with their enabled flags, ones without flag not included
         self.observation_spec = {
             "curtailment": ("curtailment_possible",)

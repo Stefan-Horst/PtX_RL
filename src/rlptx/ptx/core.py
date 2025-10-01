@@ -6,10 +6,35 @@ from rlptx.ptx.framework import PtxSystem
 class Element(ABC):
     """Base class for all classes (commodities, components) of the PtX system."""
     
+    def __init__(self):
+        self.observation_spec = {}
+        self.action_spec = {}
+        self.tracked_attributes = {}
+    
     @abstractmethod
     def apply_action_method(self, method: Callable, ptx_system: PtxSystem, values: tuple) -> bool:
         """Apply the values returned by a specific action method to the element and the ptx system."""
         pass
+    
+    def update_tracked_attributes(self, attributes):
+        """Track class attributes in a dict and set their values to the 
+        difference between the current value and the last tracked value 
+        or to the current value if the attribute has not been tracked yet."""
+        for attribute in attributes:
+            if attribute in self.tracked_attributes:
+                # track dictionary value changes in a sub-dict
+                if attribute.startswith("[dict]"):
+                    attribute = attribute[6:]
+                    for name, value in getattr(self, attribute).items():
+                        self.tracked_attributes[attribute][name] = \
+                            value - self.tracked_attributes[attribute][name]
+                else:
+                    self.tracked_attributes[attribute] = (getattr(self, attribute) 
+                                                          - self.tracked_attributes[attribute])
+            else: # start tracking new attribute with current value
+                if attribute.startswith("[dict]"):
+                    attribute = attribute[6:]
+                self.tracked_attributes[attribute] = getattr(self, attribute)
     
     def get_possible_observation_attributes(self, relevant_attributes):
         """Out of a given list return all strings whose corresponding attributes 

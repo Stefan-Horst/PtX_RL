@@ -33,6 +33,7 @@ class Commodity(Element):
         :param demand: [float] - Demand
         :param is_total_demand: [boolean] - Demand over all time steps or for each time step
         """
+        super().__init__()
         self.name = name
         self.commodity_unit = commodity_unit
         self.emittable = bool(emittable)
@@ -60,6 +61,7 @@ class Commodity(Element):
         self.total_production_costs = total_production_costs
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
+        
         # observation attributes of this class with their enabled flags, ones without flag not included
         self.observation_spec = {
             "purchased_quantity": ("purchasable",),

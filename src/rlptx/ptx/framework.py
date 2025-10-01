@@ -36,12 +36,26 @@ class PtxSystem:
         self.balance = balance
         self.previous_balance = balance
     
-    def next_step(self):
+    def next_step(self, category_attributes):
         """Go to the next step and return the change in balance since the last step."""
         self.current_step += 1
+        self.update_all_tracking_attributes(category_attributes)
         old_balance = self.previous_balance
         self.previous_balance = self.balance
         return self.balance - old_balance
+    
+    def update_all_tracking_attributes(self, category_attributes):
+        """Set all elements' to be tracked attributes to the difference between the current value 
+        and the last tracked value or to the current value if the attribute has not been tracked yet. 
+        This is used to track the system state between steps."""
+        for commodity in self.get_all_commodities():
+            commodity.update_tracking_attributes(category_attributes["commodity"])
+        for generator in self.get_generator_components_objects():
+            generator.update_tracking_attributes(category_attributes["generator"])
+        for conversion in self.get_conversion_components_objects():
+            conversion.update_tracking_attributes(category_attributes["conversion"])
+        for storage in self.get_storage_components_objects():
+            storage.update_tracking_attributes(category_attributes["storage"]) 
     
     def get_current_weather_coefficient(self, source_name):
         weather_data = self.weather_provider.get_weather_of_tick(self.current_step)
