@@ -118,17 +118,17 @@ class GymEnvironment(Environment):
 # Only include attributes which are variable during the simulation as there are not 
 # enough different system configurations to properly train on those attributes.
 # Attributes which are not simple values are marked with their type in square brackets.
-COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "available_quantity", 
-                         "emitted_quantity", "demanded_quantity", "charged_quantity", 
-                         "discharged_quantity", "consumed_quantity", "produced_quantity", 
-                         "generated_quantity", "selling_revenue", "total_storage_costs", 
-                         "total_production_costs", "total_generation_costs", "purchase_costs"]
-CONVERSION_ATTRIBUTES = ["variable_om", "total_variable_costs", 
-                         "[dict]consumed_commodities", "[dict]produced_commodities", "load"]
-STORAGE_ATTRIBUTES =    ["variable_om", "total_variable_costs", 
-                         "charged_quantity", "discharged_quantity", "charge_state"]
-GENERATOR_ATTRIBUTES =  ["variable_om", "total_variable_costs", 
-                         "generated_quantity", "potential_generation_quantity", "curtailment"]
+COMMODITY_ATTRIBUTES =  ["[total]purchased_quantity", "[total]sold_quantity", "[total]available_quantity", 
+                         "[total]emitted_quantity", "[total]demanded_quantity", "[total]charged_quantity", 
+                         "[total]discharged_quantity", "[total]consumed_quantity", "[total]produced_quantity", 
+                         "[total]generated_quantity", "[total]selling_revenue", "[total]total_storage_costs", 
+                         "[total]total_production_costs", "[total]total_generation_costs", "[total]purchase_costs"]
+CONVERSION_ATTRIBUTES = ["[total]total_variable_costs", "[total][dict]consumed_commodities", 
+                         "[total][dict]produced_commodities", "[total]load"]
+STORAGE_ATTRIBUTES =    ["[total]total_variable_costs", "[total]charged_quantity", 
+                         "[total]discharged_quantity", "[total]charge_state"]
+GENERATOR_ATTRIBUTES =  ["[total]total_variable_costs", "[total]generated_quantity", 
+                         "[total]potential_generation_quantity", "[total]curtailment"]
 # Actual possible actions of each element depend on what the configuration allows
 # e.g. selling commodity is only possible if it's set to saleable.
 # The numbers are the order of the actions in the order they are executed, starting from 0.
@@ -188,8 +188,15 @@ class PtxEnvironment(Environment):
         self.max_steps_per_episode = self._determine_max_steps_per_episode(max_steps_per_episode)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
+        self.tracking_attributes = {
+            "commodity": [attr for attr in self.commodity_attributes if not attr.startswith("[total]")],
+            "generator": [attr for attr in self.generator_attributes if not attr.startswith("[total]")],
+            "conversion": [attr for attr in self.conversion_attributes if not attr.startswith("[total]")],
+            "storage": [attr for attr in self.storage_attributes if not attr.startswith("[total]")]
+        }
         
         ptx_system.weather_provider = weather_provider
+        ptx_system.update_all_tracked_attributes(self.tracking_attributes)
         self._original_ptx_system = ptx_system
         self.ptx_system = copy(self._original_ptx_system)
         assert contains_only_unique_elements(
@@ -276,13 +283,7 @@ class PtxEnvironment(Environment):
         self.terminated = not success
         self.truncated = self.step >= self.max_steps_per_episode
         
-        category_attributes = {
-            "commodity": self.commodity_attributes,
-            "generator": self.generator_attributes,
-            "conversion": self.conversion_attributes,
-            "storage": self.storage_attributes
-        }
-        balance_difference = self.ptx_system.next_step(category_attributes)
+        balance_difference = self.ptx_system.next_step(self.tracking_attributes)
         self.cumulative_revenue += balance_difference
         self.current_episode_revenue += balance_difference
         reward = self._calculate_reward(balance_difference)
