@@ -289,6 +289,8 @@ class PtxEnvironment(Environment):
         reward = self._calculate_reward(balance_difference)
         self.cumulative_reward += reward
         self.current_episode_reward += reward
+        # set available quantities of commodities to 0 as the episode does not terminate due to leftovers
+        self.ptx_system.flush_commodities_available_quantity()
         
         observation = self._get_current_observation()
         info = {item[0]: item[1] for item in state_change_info}

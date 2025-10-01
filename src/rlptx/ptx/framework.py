@@ -62,6 +62,10 @@ class PtxSystem:
         weather_of_source = weather_data[source_name]
         return weather_of_source
     
+    def flush_commodities_available_quantity(self):
+        for commodity in self.get_all_commodities():
+            commodity.available_quantity = 0
+    
     def get_component_variable_om_parameters(self):
         variable_om = {}
         for component_object in self.get_all_components():
