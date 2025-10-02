@@ -118,6 +118,7 @@ class GymEnvironment(Environment):
 # Only include attributes which are variable during the simulation as there are not 
 # enough different system configurations to properly train on those attributes.
 # Attributes which are not simple values are marked with their type in square brackets.
+# [dict] indicates a dictionary value, [total] using the attribute value instead of the change per step.
 COMMODITY_ATTRIBUTES =  ["[total]purchased_quantity", "[total]sold_quantity", "[total]available_quantity", 
                          "[total]emitted_quantity", "[total]demanded_quantity", "[total]charged_quantity", 
                          "[total]discharged_quantity", "[total]consumed_quantity", "[total]produced_quantity", 
@@ -150,14 +151,11 @@ GENERATOR_ACTIONS = [
 # Element attributes which are logged for each step.
 LOGGING_ATTRIBUTES_COMMODITY = [
     "purchased_quantity", "sold_quantity", "emitted_quantity", "available_quantity", 
-    "charged_quantity", "discharged_quantity", "consumed_quantity", "produced_quantity", 
-    "generated_quantity", "total_storage_costs", "total_production_costs", 
-    "total_generation_costs", "purchase_costs"
+    "consumed_quantity", "produced_quantity", "generated_quantity", "total_storage_costs", 
+    "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
 LOGGING_ATTRIBUTES_COMPONENT = [
-    "total_variable_costs", "[dict]consumed_commodities", "[dict]produced_commodities", 
-    "load", "charged_quantity", "discharged_quantity", "charge_state", 
-    "generated_quantity", "potential_generation_quantity", "curtailment"
+    "total_variable_costs", "load", "charge_state", "curtailment"
 ]
 
 class PtxEnvironment(Environment):
@@ -286,6 +284,9 @@ class PtxEnvironment(Environment):
         balance_difference = self.ptx_system.next_step(self.tracking_attributes)
         self.cumulative_revenue += balance_difference
         self.current_episode_revenue += balance_difference
+        total_leftover_available_commodities = sum(
+            [commodity.available_quantity for commodity in self.ptx_system.get_all_commodities()]
+        )
         reward = self._calculate_reward(balance_difference)
         self.cumulative_reward += reward
         self.current_episode_reward += reward
@@ -298,6 +299,7 @@ class PtxEnvironment(Environment):
         
         if self.evaluation_mode:
             current_step_stats = self._get_step_stats()
+            current_step_stats["Leftover commodities"] = round(total_leftover_available_commodities, 4)
             current_step_stats["Reward"] = round(reward, 4)
             current_step_stats["Episode reward"] = round(self.current_episode_reward, 4)
             current_step_stats["Revenue"] = round(balance_difference, 4)
