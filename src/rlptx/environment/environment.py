@@ -155,7 +155,7 @@ LOGGING_ATTRIBUTES_COMMODITY = [
     "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
 LOGGING_ATTRIBUTES_COMPONENT = [
-    "total_variable_costs", "load", "charge_state", "curtailment"
+    "total_variable_costs", "[total]load", "[total]charge_state", "[total]curtailment"
 ]
 
 class PtxEnvironment(Environment):
@@ -645,19 +645,36 @@ class PtxEnvironment(Environment):
         for commodity in self.ptx_system.get_all_commodities():
             possible_attributes = self.observation_space_info[commodity.name]
             for attribute in LOGGING_ATTRIBUTES_COMMODITY:
-                if attribute in possible_attributes:
-                    step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
+                if attribute.startswith("[total]"): # handle attributes
+                    attribute = attribute[7:]
+                    if attribute in possible_attributes:
+                        step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
+                elif attribute in possible_attributes: # handle attribute changes per step
+                    step_stats[f"{commodity.name}_{attribute}_change_per_step"] = round(
+                        commodity.tracked_attributes[attribute], 4
+                    )
         for component in self.ptx_system.get_all_components():
             possible_attributes = self.observation_space_info[component.name]
             for attribute in LOGGING_ATTRIBUTES_COMPONENT:
-                if attribute.startswith("[dict]"): # handle dictionaries
-                    attribute = attribute[6:]
-                    if attribute not in str(possible_attributes):
-                        continue
-                    for name, value in getattr(component, attribute).items():
-                        step_stats[f"{component.name}_{attribute}_{name}"] = round(value, 4)
-                elif attribute in possible_attributes:
-                    step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
+                if attribute.startswith("[total]"): # handle attributes
+                    attribute = attribute[7:]
+                    if attribute.startswith("[dict]"): # handle dictionaries
+                        attribute = attribute[6:]
+                        if attribute in str(possible_attributes):
+                            for name, value in getattr(component, attribute).items():
+                                step_stats[f"{component.name}_{attribute}_{name}"] = round(value, 4)
+                    elif attribute in possible_attributes: # handle normal values
+                        step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
+                else: # handle attribute changes per step
+                    if attribute.startswith("[dict]"): # handle dictionaries
+                        attribute = attribute[6:]
+                        if attribute in str(possible_attributes):
+                            for name, value in component.tracked_attributes[attribute].items():
+                                step_stats[f"{component.name}_{attribute}_{name}_change_per_step"] = round(value, 4)
+                    elif attribute in possible_attributes: # handle normal values
+                        step_stats[f"{component.name}_{attribute}_change_per_step"] = round(
+                            component.tracked_attributes[attribute], 4
+                        )
         return step_stats
 
     def _get_element_categories_with_attributes_and_actions(self):
