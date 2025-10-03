@@ -656,7 +656,8 @@ class PtxEnvironment(Environment):
         """Create dict with all logging attributes of all elements of the ptx system with their values."""
         step_stats = {}
         for commodity in self.ptx_system.get_all_commodities():
-            for attribute in self.commodity_logging_attributes:
+            attributes = commodity.get_possible_observation_attributes(self.commodity_logging_attributes)
+            for attribute in attributes:
                 if attribute.startswith("[total]"): # handle attributes
                     attribute = attribute[7:]
                     if hasattr(commodity, attribute):
@@ -666,7 +667,10 @@ class PtxEnvironment(Environment):
                         commodity.tracked_attributes[attribute], 4
                     )
         for component in self.ptx_system.get_all_components():
-            for attribute in getattr(self, f"{component.component_type}_logging_attributes"):
+            attributes = component.get_possible_observation_attributes(
+                getattr(self, f"{component.component_type}_logging_attributes")
+            )
+            for attribute in attributes:
                 if attribute.startswith("[total]"): # handle attributes
                     attribute = attribute[7:]
                     if attribute.startswith("[dict]"): # handle dictionaries
