@@ -120,8 +120,7 @@ class GymEnvironment(Environment):
 # Attributes which are not simple values are marked with their type in square brackets.
 # [dict] indicates a dictionary value, [total] using the attribute value instead of the change per step.
 COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "emitted_quantity", 
-                         "selling_revenue", "total_storage_costs", "total_production_costs", 
-                         "total_generation_costs", "purchase_costs"]
+                         "selling_revenue", "purchase_costs"]
 CONVERSION_ATTRIBUTES = ["total_variable_costs", "[dict]consumed_commodities", 
                          "[dict]produced_commodities", "[total]load", "load"]
 STORAGE_ATTRIBUTES =    ["total_variable_costs", "charged_quantity", "discharged_quantity", 
@@ -152,15 +151,9 @@ COMMODITY_LOGGING_ATTRIBUTES = [
     "produced_quantity", "generated_quantity", "total_storage_costs", 
     "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
-CONVERSION_LOGGING_ATTRIBUTES = [
-    "total_variable_costs", "[total]load",
-]
-STORAGE_LOGGING_ATTRIBUTES = [
-    "total_variable_costs", "[total]charge_state"
-]
-GENERATOR_LOGGING_ATTRIBUTES = [
-    "total_variable_costs", "[total]curtailment"
-]
+CONVERSION_LOGGING_ATTRIBUTES = ["total_variable_costs", "[total]load",]
+STORAGE_LOGGING_ATTRIBUTES =    ["total_variable_costs", "[total]charge_state"]
+GENERATOR_LOGGING_ATTRIBUTES =  ["total_variable_costs", "[total]curtailment"]
 
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
