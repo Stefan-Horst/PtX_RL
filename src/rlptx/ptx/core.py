@@ -37,17 +37,20 @@ class Element(ABC):
                 self.tracked_attributes[attribute] = getattr(self, attribute)
     
     def get_possible_observation_attributes(self, relevant_attributes):
-        """Out of a given list return all strings whose corresponding attributes 
-        of the class specified in the observation spec are true."""
-        if self.observation_spec == {}:
-            return relevant_attributes
+        """Out of a given list return all strings whose corresponding attributes of the class 
+        specified in the observation spec are true or which are not included but exist in the class."""
         possible_attributes = []
-        for attribute in relevant_attributes:
+        for attribute_name in relevant_attributes:
+            attribute = attribute_name.split("]")[-1] # remove prefixes
+            handled = False
             for k, v in self.observation_spec.items():
                 if attribute == k:
                     enabled_flag = v[0]
                     if enabled_flag is None or getattr(self, enabled_flag) == True:
-                        possible_attributes.append(attribute)
+                        possible_attributes.append(attribute_name)
+                    handled = True
+            if not handled and hasattr(self, attribute):
+                possible_attributes.append(attribute_name)
         return possible_attributes
     
     def get_possible_action_methods(self, relevant_method_tuples):
