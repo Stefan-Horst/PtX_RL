@@ -119,17 +119,15 @@ class GymEnvironment(Environment):
 # enough different system configurations to properly train on those attributes.
 # Attributes which are not simple values are marked with their type in square brackets.
 # [dict] indicates a dictionary value, [total] using the attribute value instead of the change per step.
-COMMODITY_ATTRIBUTES =  ["[total]purchased_quantity", "[total]sold_quantity", "[total]available_quantity", 
-                         "[total]emitted_quantity", "[total]demanded_quantity", "[total]charged_quantity", 
-                         "[total]discharged_quantity", "[total]consumed_quantity", "[total]produced_quantity", 
-                         "[total]generated_quantity", "[total]selling_revenue", "[total]total_storage_costs", 
-                         "[total]total_production_costs", "[total]total_generation_costs", "[total]purchase_costs"]
-CONVERSION_ATTRIBUTES = ["[total]total_variable_costs", "[total][dict]consumed_commodities", 
-                         "[total][dict]produced_commodities", "[total]load"]
-STORAGE_ATTRIBUTES =    ["[total]total_variable_costs", "[total]charged_quantity", 
-                         "[total]discharged_quantity", "[total]charge_state"]
-GENERATOR_ATTRIBUTES =  ["[total]total_variable_costs", "[total]generated_quantity", 
-                         "[total]potential_generation_quantity", "[total]curtailment"]
+COMMODITY_ATTRIBUTES =  ["purchased_quantity", "sold_quantity", "emitted_quantity", 
+                         "selling_revenue", "total_storage_costs", "total_production_costs", 
+                         "total_generation_costs", "purchase_costs"]
+CONVERSION_ATTRIBUTES = ["total_variable_costs", "[dict]consumed_commodities", 
+                         "[dict]produced_commodities", "[total]load", "load"]
+STORAGE_ATTRIBUTES =    ["total_variable_costs", "charged_quantity", "discharged_quantity", 
+                         "[total]charge_state", "charge_state"]
+GENERATOR_ATTRIBUTES =  ["total_variable_costs", "generated_quantity", 
+                         "potential_generation_quantity", "[total]curtailment", "curtailment"]
 # Actual possible actions of each element depend on what the configuration allows
 # e.g. selling commodity is only possible if it's set to saleable.
 # The numbers are the order of the actions in the order they are executed, starting from 0.
