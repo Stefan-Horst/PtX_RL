@@ -147,13 +147,19 @@ GENERATOR_ACTIONS = [
     (GenerationComponent.apply_or_strip_curtailment, [0]) # generation automatic depending on curtailment
 ]
 # Element attributes which are logged for each step.
-LOGGING_ATTRIBUTES_COMMODITY = [
-    "purchased_quantity", "sold_quantity", "emitted_quantity", "available_quantity", 
-    "consumed_quantity", "produced_quantity", "generated_quantity", "total_storage_costs", 
+COMMODITY_LOGGING_ATTRIBUTES = [
+    "purchased_quantity", "sold_quantity", "emitted_quantity", "consumed_quantity", 
+    "produced_quantity", "generated_quantity", "total_storage_costs", 
     "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
-LOGGING_ATTRIBUTES_COMPONENT = [
-    "total_variable_costs", "[total]load", "[total]charge_state", "[total]curtailment"
+CONVERSION_LOGGING_ATTRIBUTES = [
+    "total_variable_costs", "[total]load",
+]
+STORAGE_LOGGING_ATTRIBUTES = [
+    "total_variable_costs", "[total]charge_state"
+]
+GENERATOR_LOGGING_ATTRIBUTES = [
+    "total_variable_costs", "[total]curtailment"
 ]
 
 class PtxEnvironment(Environment):
@@ -166,7 +172,11 @@ class PtxEnvironment(Environment):
                  commodity_attributes=COMMODITY_ATTRIBUTES, conversion_attributes=CONVERSION_ATTRIBUTES, 
                  storage_attributes=STORAGE_ATTRIBUTES, generator_attributes=GENERATOR_ATTRIBUTES, 
                  commodity_actions=COMMODITY_ACTIONS, conversion_actions=CONVERSION_ACTIONS, 
-                 storage_actions=STORAGE_ACTIONS, generator_actions=GENERATOR_ACTIONS):
+                 storage_actions=STORAGE_ACTIONS, generator_actions=GENERATOR_ACTIONS, 
+                 commodity_logging_attributes=COMMODITY_LOGGING_ATTRIBUTES, 
+                 conversion_logging_attributes=CONVERSION_LOGGING_ATTRIBUTES, 
+                 storage_logging_attributes=STORAGE_LOGGING_ATTRIBUTES, 
+                 generator_logging_attributes=GENERATOR_LOGGING_ATTRIBUTES):
         """Create environment with PtX sytem to use and optionally specify relevant attributes 
         and actions for the agent. If in evaluation mode, the weather data provider's test data 
         will be used and relevant stats for evaluation will be logged."""
@@ -181,14 +191,19 @@ class PtxEnvironment(Environment):
         self.conversion_actions = conversion_actions
         self.storage_actions = storage_actions
         self.generator_actions = generator_actions
+        self.commodity_logging_attributes = commodity_logging_attributes
+        self.conversion_logging_attributes = conversion_logging_attributes
+        self.storage_logging_attributes = storage_logging_attributes
+        self.generator_logging_attributes = generator_logging_attributes
         self.max_steps_per_episode = self._determine_max_steps_per_episode(max_steps_per_episode)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
+        # each category contains the unique attributes of the combined attributes and logging attributes
         self.tracking_attributes = {
-            "commodity": [attr for attr in self.commodity_attributes if not attr.startswith("[total]")],
-            "generator": [attr for attr in self.generator_attributes if not attr.startswith("[total]")],
-            "conversion": [attr for attr in self.conversion_attributes if not attr.startswith("[total]")],
-            "storage": [attr for attr in self.storage_attributes if not attr.startswith("[total]")]
+            "commodity": self._initialize_tracking_attributes(commodity_attributes, commodity_logging_attributes),
+            "conversion": self._initialize_tracking_attributes(conversion_attributes, conversion_logging_attributes),
+            "storage": self._initialize_tracking_attributes(storage_attributes, storage_logging_attributes),
+            "generator": self._initialize_tracking_attributes(generator_attributes, generator_logging_attributes)
         }
         
         ptx_system.weather_provider = weather_provider
@@ -641,35 +656,33 @@ class PtxEnvironment(Environment):
         """Create dict with all logging attributes of all elements of the ptx system with their values."""
         step_stats = {}
         for commodity in self.ptx_system.get_all_commodities():
-            possible_attributes = self.observation_space_info[commodity.name]
-            for attribute in LOGGING_ATTRIBUTES_COMMODITY:
+            for attribute in self.commodity_logging_attributes:
                 if attribute.startswith("[total]"): # handle attributes
                     attribute = attribute[7:]
-                    if attribute in possible_attributes:
+                    if hasattr(commodity, attribute):
                         step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
-                elif attribute in possible_attributes: # handle attribute changes per step
+                elif hasattr(commodity, attribute): # handle attribute changes per step
                     step_stats[f"{commodity.name}_{attribute}_change_per_step"] = round(
                         commodity.tracked_attributes[attribute], 4
                     )
         for component in self.ptx_system.get_all_components():
-            possible_attributes = self.observation_space_info[component.name]
-            for attribute in LOGGING_ATTRIBUTES_COMPONENT:
+            for attribute in getattr(self, f"{component.component_type}_logging_attributes"):
                 if attribute.startswith("[total]"): # handle attributes
                     attribute = attribute[7:]
                     if attribute.startswith("[dict]"): # handle dictionaries
                         attribute = attribute[6:]
-                        if attribute in str(possible_attributes):
+                        if hasattr(component, attribute):
                             for name, value in getattr(component, attribute).items():
                                 step_stats[f"{component.name}_{attribute}_{name}"] = round(value, 4)
-                    elif attribute in possible_attributes: # handle normal values
+                    elif hasattr(component, attribute): # handle normal values
                         step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
                 else: # handle attribute changes per step
                     if attribute.startswith("[dict]"): # handle dictionaries
                         attribute = attribute[6:]
-                        if attribute in str(possible_attributes):
+                        if hasattr(component, attribute):
                             for name, value in component.tracked_attributes[attribute].items():
                                 step_stats[f"{component.name}_{attribute}_{name}_change_per_step"] = round(value, 4)
-                    elif attribute in possible_attributes: # handle normal values
+                    elif hasattr(component, attribute): # handle normal values
                         step_stats[f"{component.name}_{attribute}_change_per_step"] = round(
                             component.tracked_attributes[attribute], 4
                         )
@@ -684,6 +697,11 @@ class PtxEnvironment(Environment):
                 (generators, self.generator_attributes, self.generator_actions), 
                 (conversions, self.conversion_attributes, self.conversion_actions), 
                 (storages, self.storage_attributes, self.storage_actions)]
+    
+    def _initialize_tracking_attributes(self, attributes, logging_attributes):
+        """Return list of unique attributes to track."""
+        return [attr for attr in dict.fromkeys(attributes + logging_attributes) 
+                if not attr.startswith("[total]")]
     
     def _determine_max_steps_per_episode(self, max_steps_per_episode):
         """Determine max steps per episode based on weather data size and weather forecast days."""
