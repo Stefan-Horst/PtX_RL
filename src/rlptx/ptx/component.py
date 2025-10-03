@@ -17,6 +17,7 @@ class BaseComponent(Element):
         self.name = str(name)
         self.component_type = None
         self.variable_om = float(variable_om)
+        self.has_cost = variable_om > 0
         self.fixed_capacity = float(fixed_capacity)
         self.total_variable_costs = float(total_variable_costs)
 
@@ -73,6 +74,10 @@ class ConversionComponent(BaseComponent):
         self.produced_commodities = produced_commodities
         self._initialize_result_dictionaries()
         
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {
+            "total_variable_costs": ("has_cost",)
+        }
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {
             ConversionComponent.ramp_up_or_down: (None, -self.ramp_down, self.ramp_up)
@@ -426,6 +431,10 @@ class StorageComponent(BaseComponent):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
         
+        # observation attributes of this class with their enabled flags, ones without flag not included
+        self.observation_spec = {
+            "total_variable_costs": ("has_cost",)
+        }
         # action methods of this class with their enabled flags and min/max input values
         max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
         self.action_spec = {
@@ -660,7 +669,8 @@ class GenerationComponent(BaseComponent):
         
         # observation attributes of this class with their enabled flags, ones without flag not included
         self.observation_spec = {
-            "curtailment": ("curtailment_possible",)
+            "curtailment": ("curtailment_possible",),
+            "total_variable_costs": ("has_cost",)
         }
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {

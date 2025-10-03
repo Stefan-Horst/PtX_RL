@@ -65,6 +65,7 @@ class Commodity(Element):
         # observation attributes of this class with their enabled flags, ones without flag not included
         self.observation_spec = {
             "purchased_quantity": ("purchasable",),
+            "purchase_costs": ("purchasable",),
             "sold_quantity": ("saleable",),
             "selling_revenue": ("saleable",),
             "demanded_quantity": ("demanded",),
