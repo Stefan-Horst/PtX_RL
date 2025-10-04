@@ -62,7 +62,7 @@ class Commodity(Element):
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
         
-        # observation attributes of this class with their enabled flags, ones without flag not included
+        # observation attributes of this class with their enabled flags, these can also just be booleans
         self.observation_spec = {
             "purchased_quantity": ("purchasable",),
             "purchase_costs": ("purchasable",),

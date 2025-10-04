@@ -46,8 +46,10 @@ class Element(ABC):
             for k, v in self.observation_spec.items():
                 if attribute == k:
                     enabled_flag = v[0]
-                    if (isinstance(enabled_flag, bool) and enabled_flag or enabled_flag is None
-                        or isinstance(enabled_flag, str) and getattr(self, enabled_flag) == True):
+                    if (
+                        isinstance(enabled_flag, bool) and enabled_flag 
+                        or isinstance(enabled_flag, str) and getattr(self, enabled_flag) == True
+                    ):
                         possible_attributes.append(attribute_name)
                     handled = True
             if not handled and hasattr(self, attribute):

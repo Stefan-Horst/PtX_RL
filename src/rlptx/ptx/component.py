@@ -74,7 +74,7 @@ class ConversionComponent(BaseComponent):
         self.produced_commodities = produced_commodities
         self._initialize_result_dictionaries()
         
-        # observation attributes of this class with their enabled flags, ones without flag not included
+        # observation attributes of this class with their enabled flags, these can also just be booleans
         self.observation_spec = {
             "total_variable_costs": ("has_cost",)
         }
@@ -431,7 +431,7 @@ class StorageComponent(BaseComponent):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
         
-        # observation attributes of this class with their enabled flags, ones without flag not included
+        # observation attributes of this class with their enabled flags, these can also just be booleans
         self.observation_spec = {
             "total_variable_costs": ("has_cost",)
         }
@@ -667,7 +667,7 @@ class GenerationComponent(BaseComponent):
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
         
-        # observation attributes of this class with their enabled flags, ones without flag not included
+        # observation attributes of this class with their enabled flags, these can also just be booleans
         self.observation_spec = {
             "curtailment": ("curtailment_possible",),
             "total_variable_costs": ("has_cost",)
