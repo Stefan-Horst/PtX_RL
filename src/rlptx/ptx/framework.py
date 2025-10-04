@@ -31,6 +31,9 @@ class PtxSystem:
             components = {}
         self.commodities = commodities
         self.components = components
+        if self.commodities is not None:
+            for commodity in self.commodities.values():
+                self._set_commodity_observation_spec_based_on_components(commodity)
     
     def set_initial_balance(self, balance):
         self.balance = balance
@@ -65,6 +68,26 @@ class PtxSystem:
     def flush_commodities_available_quantity(self):
         for commodity in self.get_all_commodities():
             commodity.available_quantity = 0
+    
+    def _set_commodity_observation_spec_based_on_components(self, commodity):
+        """Set produced quantity to observable only if a component produces this commodity etc."""
+        for component in self.components.values():
+            if component.component_type == "conversion":
+                observable = True if commodity.name in component.inputs.keys() else False
+                commodity.observation_spec["consumed_quantity"] = (observable,)
+                observable = True if commodity.name in component.outputs.keys() else False
+                commodity.observation_spec["produced_quantity"] = (observable,)
+                commodity.observation_spec["total_production_costs"] = (observable,)
+            elif component.component_type == "storage":
+                observable = True if commodity.name == component.stored_commodity else False
+                commodity.observation_spec["stored_quantity"] = (observable,)
+                commodity.observation_spec["charged_quantity"] = (observable,)
+                commodity.observation_spec["discharged_quantity"] = (observable,)
+                commodity.observation_spec["total_storage_costs"] = (observable,)
+            elif component.component_type == "generator":
+                observable = True if commodity.name == component.generated_commodity else False
+                commodity.observation_spec["generated_quantity"] = (observable,)
+                commodity.observation_spec["total_generation_costs"] = (observable,)
     
     def get_component_variable_om_parameters(self):
         variable_om = {}
@@ -351,6 +374,7 @@ class PtxSystem:
 
     def add_commodity(self, name, commodity):
         self.commodities.update({name: commodity})
+        self._set_commodity_observation_spec_based_on_components(commodity)
 
     def remove_commodity_entirely(self, name):
         self.commodities.pop(name)

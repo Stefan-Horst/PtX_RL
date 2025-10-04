@@ -148,8 +148,8 @@ GENERATOR_ACTIONS = [
 # Element attributes which are logged for each step.
 COMMODITY_LOGGING_ATTRIBUTES = [
     "purchased_quantity", "sold_quantity", "emitted_quantity", "consumed_quantity", 
-    "produced_quantity", "generated_quantity", "total_storage_costs", 
-    "total_production_costs", "total_generation_costs", "purchase_costs"
+    "produced_quantity", "generated_quantity", "charged_quantity", "discharged_quantity", 
+    "total_storage_costs", "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
 CONVERSION_LOGGING_ATTRIBUTES = ["total_variable_costs", "[total]load",]
 STORAGE_LOGGING_ATTRIBUTES =    ["total_variable_costs", "[total]charge_state"]
@@ -552,7 +552,7 @@ class PtxEnvironment(Environment):
         
         # append attributes of ptx system and its elements
         observation_space.append(self.ptx_system.balance)
-        for category, attributes, _ in element_categories:
+        for category, attributes, _, _ in element_categories:
             for element in category:
                 possible_attributes = element.get_possible_observation_attributes(attributes)
                 for attribute in possible_attributes:
@@ -584,7 +584,7 @@ class PtxEnvironment(Environment):
         """Create list with tuples of each element and its possible actions."""
         action_space = []
         element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, action_tuples in element_categories:
+        for category, _, action_tuples, _ in element_categories:
             for element in category:
                 possible_actions = element.get_possible_action_methods(action_tuples)
                 for action in possible_actions:
@@ -597,7 +597,7 @@ class PtxEnvironment(Environment):
         action_space_info = {}
         action_space_spec = {"low": [], "high": []}
         element_categories = self._get_element_categories_with_attributes_and_actions()
-        for category, _, action_tuples in element_categories:
+        for category, _, action_tuples, _ in element_categories:
             for element in category:
                 element_actions = []
                 possible_action_tuples = element.get_possible_action_methods(action_tuples)
@@ -626,7 +626,7 @@ class PtxEnvironment(Environment):
                     environment_data.append(f"day{i+1}_hour{h}_{generator.name}")
         observation_space_info = {"environment": environment_data, "ptx_system": ["balance"]}
         
-        for category, attributes, _ in element_categories:
+        for category, attributes, _, _ in element_categories:
             for element in category:
                 element_attributes = []
                 possible_attributes = element.get_possible_observation_attributes(attributes)
@@ -648,41 +648,31 @@ class PtxEnvironment(Environment):
     def _get_step_stats(self):
         """Create dict with all logging attributes of all elements of the ptx system with their values."""
         step_stats = {}
-        for commodity in self.ptx_system.get_all_commodities():
-            attributes = commodity.get_possible_observation_attributes(self.commodity_logging_attributes)
-            for attribute in attributes:
-                if attribute.startswith("[total]"): # handle attributes
-                    attribute = attribute[7:]
-                    if hasattr(commodity, attribute):
-                        step_stats[f"{commodity.name}_{attribute}"] = round(getattr(commodity, attribute), 4)
-                elif hasattr(commodity, attribute): # handle attribute changes per step
-                    step_stats[f"{commodity.name}_{attribute}_change_per_step"] = round(
-                        commodity.tracked_attributes[attribute], 4
-                    )
-        for component in self.ptx_system.get_all_components():
-            attributes = component.get_possible_observation_attributes(
-                getattr(self, f"{component.component_type}_logging_attributes")
-            )
-            for attribute in attributes:
-                if attribute.startswith("[total]"): # handle attributes
-                    attribute = attribute[7:]
-                    if attribute.startswith("[dict]"): # handle dictionaries
-                        attribute = attribute[6:]
-                        if hasattr(component, attribute):
-                            for name, value in getattr(component, attribute).items():
-                                step_stats[f"{component.name}_{attribute}_{name}"] = round(value, 4)
-                    elif hasattr(component, attribute): # handle normal values
-                        step_stats[f"{component.name}_{attribute}"] = round(getattr(component, attribute), 4)
-                else: # handle attribute changes per step
-                    if attribute.startswith("[dict]"): # handle dictionaries
-                        attribute = attribute[6:]
-                        if hasattr(component, attribute):
-                            for name, value in component.tracked_attributes[attribute].items():
-                                step_stats[f"{component.name}_{attribute}_{name}_change_per_step"] = round(value, 4)
-                    elif hasattr(component, attribute): # handle normal values
-                        step_stats[f"{component.name}_{attribute}_change_per_step"] = round(
-                            component.tracked_attributes[attribute], 4
-                        )
+        element_categories = self._get_element_categories_with_attributes_and_actions()
+        for category, _, _, logging_attributes in element_categories:
+            for element in category:
+                logging_attributes_filtered = element.get_possible_observation_attributes(logging_attributes)
+                for attribute in logging_attributes_filtered:
+                    if attribute.startswith("[total]"): # handle attributes
+                        attribute = attribute[7:]
+                        if attribute.startswith("[dict]"): # handle dictionaries
+                            attribute = attribute[6:]
+                            if hasattr(element, attribute):
+                                for name, value in getattr(element, attribute).items():
+                                    step_stats[f"{element.name}_{attribute}_{name}"] = round(value, 4)
+                        elif hasattr(element, attribute): # handle normal values
+                            step_stats[f"{element.name}_{attribute}"] = round(getattr(element, attribute), 4)
+                    else: # handle attribute changes per step
+                        if attribute.startswith("[dict]"): # handle dictionaries
+                            attribute = attribute[6:]
+                            if hasattr(element, attribute):
+                                for name, value in element.tracked_attributes[attribute].items():
+                                    step_stats[f"{element.name}_{attribute}_{name}_change_per_step"] \
+                                        = round(value, 4)
+                        elif hasattr(element, attribute): # handle normal values
+                            step_stats[f"{element.name}_{attribute}_change_per_step"] = round(
+                                element.tracked_attributes[attribute], 4
+                            )
         return step_stats
 
     def _get_element_categories_with_attributes_and_actions(self):
@@ -690,10 +680,10 @@ class PtxEnvironment(Environment):
         generators = self.ptx_system.get_generator_components_objects()
         conversions = self.ptx_system.get_conversion_components_objects()
         storages = self.ptx_system.get_storage_components_objects()
-        return [(commodities, self.commodity_attributes, self.commodity_actions), 
-                (generators, self.generator_attributes, self.generator_actions), 
-                (conversions, self.conversion_attributes, self.conversion_actions), 
-                (storages, self.storage_attributes, self.storage_actions)]
+        return [(commodities, self.commodity_attributes, self.commodity_actions, self.commodity_logging_attributes), 
+                (generators, self.generator_attributes, self.generator_actions, self.generator_logging_attributes), 
+                (conversions, self.conversion_attributes, self.conversion_actions, self.conversion_logging_attributes), 
+                (storages, self.storage_attributes, self.storage_actions, self.storage_logging_attributes)]
     
     def _initialize_tracking_attributes(self, attributes, logging_attributes):
         """Return list of unique attributes to track."""
