@@ -293,7 +293,7 @@ class PtxEnvironment(Environment):
         total_leftover_available_commodities = sum(
             [commodity.available_quantity for commodity in self.ptx_system.get_all_commodities()]
         )
-        reward = self._calculate_reward(balance_difference)
+        reward = self._calculate_reward(balance_difference, total_leftover_available_commodities)
         self.cumulative_reward += reward
         self.current_episode_reward += reward
         # set available quantities of commodities to 0 as the episode does not terminate due to leftovers
@@ -343,23 +343,18 @@ class PtxEnvironment(Environment):
                 log(episode_msg, loggername=loggername, deferred=(log_mode == "deferred"))
         return observation, reward, self.terminated, self.truncated, info
     
-    def _calculate_reward(self, revenue):
+    def _calculate_reward(self, revenue, total_leftover_available_commodities):
         """Calculate the reward for the current step based on the increase of balance of 
         the ptx system since the last step and if any conversion has failed."""
         # Negative reward if system fails (i.e. conversion with set load is not possible).
+        # The value is chosen to be pretty much the most negative reward possible.
         if self.terminated:
-            return -1000000 # arbitrary number that should be larger than the commodity penalty
-        
-        # Negative reward if any "loose" commodities are left in the system at the end of a step. 
-        # The negative reward is proportional to the amount of commodities left.
-        total_available_commodities = sum(
-            [commodity.available_quantity for commodity in self.ptx_system.get_all_commodities()]
-        )
-        if total_available_commodities >= 0:
-            return -total_available_commodities
-        
-        # If the system has not failed, the positive revenue value is the reward.
-        return revenue
+            return -10
+        # Punishment for any "loose" commodities left in the system at the end of a step 
+        # (available_quantity of commodity). The size is proportional to the amount of commodities 
+        # left and it's size is adjusted to not outweight any other part of the reward.
+        leftover_commodities_punishment = round(total_leftover_available_commodities / 100000, 4)
+        return revenue + self.step - leftover_commodities_punishment
     
     def _apply_action(self, action):
         """Call the specified action methods of the elements of the 
