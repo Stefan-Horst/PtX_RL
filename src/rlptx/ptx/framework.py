@@ -31,9 +31,13 @@ class PtxSystem:
             components = {}
         self.commodities = commodities
         self.components = components
+        # log commodities' available quantity before and after conversion as well as after sell/charge/emit
+        self.available_commodities_conversion_log = ({}, {}, {})
         if self.commodities is not None:
             for commodity in self.commodities.values():
                 self._set_commodity_observation_spec_based_on_components(commodity)
+                for log in self.available_commodities_conversion_log:
+                    log[commodity.name] = commodity.available_quantity
     
     def set_initial_balance(self, balance):
         self.balance = balance
@@ -64,6 +68,10 @@ class PtxSystem:
         weather_data = self.weather_provider.get_weather_of_tick(self.current_step)
         weather_of_source = weather_data[source_name]
         return weather_of_source
+    
+    def update_available_commodities_conversion_log(self, index):
+        for commodity in self.get_all_commodities():
+            self.available_commodities_conversion_log[index][commodity.name] = commodity.available_quantity
     
     def flush_commodities_available_quantity(self):
         for commodity in self.get_all_commodities():
@@ -375,6 +383,8 @@ class PtxSystem:
     def add_commodity(self, name, commodity):
         self.commodities.update({name: commodity})
         self._set_commodity_observation_spec_based_on_components(commodity)
+        for log in self.available_commodities_conversion_log:
+            log[commodity.name] = commodity.available_quantity
 
     def remove_commodity_entirely(self, name):
         self.commodities.pop(name)

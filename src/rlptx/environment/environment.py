@@ -382,12 +382,16 @@ class PtxEnvironment(Environment):
             state_change_infos.append(state_change_info)
             exact_completion_info[element.name] = exact_completion
             total_success = total_success and success
+        # log available commodities before conversion
+        self.ptx_system.update_available_commodities_conversion_log(0)
         
         state_change_info, conversion_exact_completion_info, success = \
             self._handle_conversion_action_method_execution(conversion_eavs)
         state_change_infos.extend(state_change_info)
         exact_completion_info.update(conversion_exact_completion_info)
         total_success = total_success and success
+        # log available commodities after conversion
+        self.ptx_system.update_available_commodities_conversion_log(1)
         
         for element, action_method_tuple, value in post_conversion_eavs:
             state_change_info, success, exact_completion = self._execute_action(
@@ -396,6 +400,8 @@ class PtxEnvironment(Environment):
             state_change_infos.append(state_change_info)
             exact_completion_info[element.name] = exact_completion
             total_success = total_success and success
+        # log available commodities after storage and sale
+        self.ptx_system.update_available_commodities_conversion_log(2)
         return state_change_infos, exact_completion_info, total_success
 
     def _handle_conversion_action_method_execution(self, conversion_eavs):
@@ -576,6 +582,10 @@ class PtxEnvironment(Environment):
                             )
                         else:
                             observation_space.append(element.tracked_attributes[attribute])
+                # append change in commodity's availalable quantity between before and after conversions
+                if hasattr(element, "available_quantity"):
+                    for log in self.ptx_system.available_commodities_conversion_log:
+                        observation_space.append(log[element.name])
         return observation_space
     
     ##### INITIALIZATION #####
@@ -640,6 +650,10 @@ class PtxEnvironment(Environment):
                         )
                     else:
                         element_attributes.append(attribute)
+                if hasattr(element, "available_quantity"):
+                    element_attributes.append(
+                        "available_quantity_pre_conv, available_quantity_post_conv, available_quantity_end_step"
+                    )
                 observation_space_info[element.name] = element_attributes
         return observation_space_info
     
