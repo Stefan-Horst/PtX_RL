@@ -306,6 +306,7 @@ class PtxEnvironment(Environment):
         if self.evaluation_mode:
             current_step_stats = self._get_step_stats()
             current_step_stats["Leftover commodities"] = round(total_leftover_available_commodities, 4)
+            current_step_stats["Balance"] = round(self.ptx_system.balance, 4)
             current_step_stats["Reward"] = round(reward, 4)
             current_step_stats["Episode reward"] = round(self.current_episode_reward, 4)
             current_step_stats["Revenue"] = round(balance_difference, 4)
