@@ -56,7 +56,7 @@ def _plot_log(log_df, name, variable, x="", save=False, save_path=LOGFILE_PATH):
     ax.set(title=f"{variable} of {name}", xlabel=xlabel, ylabel=variable)
     ax.grid(axis="y")
     if save:
-        filename = variable.replace(" ", "_").replace("/", "_").replace(":", "_").lower()
+        filename = f"{name}_{variable}".replace(" ", "_").replace("/", "_").replace(":", "_").lower()
         plt.savefig(PROJECT_DIR / (save_path + f"{filename}.png"), format="png")
     plt.show()
     
