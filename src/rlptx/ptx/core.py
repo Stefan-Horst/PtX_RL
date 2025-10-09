@@ -17,24 +17,29 @@ class Element(ABC):
         pass
     
     def update_tracked_attributes(self, attributes):
-        """Track class attributes in a dict and set their values to the 
-        difference between the current value and the last tracked value 
-        or to the current value if the attribute has not been tracked yet."""
+        """Track class attributes in a dict and set their values to a tuple with the 
+        current value and the difference between the current value and the last tracked 
+        value or also to the current value if the attribute has not been tracked yet. 
+        Format: {attribute: (current_value, difference_to_last_value)}."""
         for attribute in attributes:
             if attribute in self.tracked_attributes:
                 # track dictionary value changes in a sub-dict
                 if attribute.startswith("[dict]"):
                     attribute = attribute[6:]
                     for name, value in getattr(self, attribute).items():
-                        self.tracked_attributes[attribute][name] = \
-                            value - self.tracked_attributes[attribute][name]
+                        difference = value - self.tracked_attributes[attribute][name][0]
+                        self.tracked_attributes[attribute][name] = (value, difference) 
                 else:
-                    self.tracked_attributes[attribute] = (getattr(self, attribute) 
-                                                          - self.tracked_attributes[attribute])
+                    difference = getattr(self, attribute) - self.tracked_attributes[attribute][0]
+                    self.tracked_attributes[attribute] = (getattr(self, attribute), difference)
             else: # start tracking new attribute with current value
                 if attribute.startswith("[dict]"):
                     attribute = attribute[6:]
-                self.tracked_attributes[attribute] = getattr(self, attribute)
+                    self.tracked_attributes[attribute] = {
+                        k: (v, 0) for k, v in getattr(self, attribute).items()
+                    }
+                else:
+                    self.tracked_attributes[attribute] = (getattr(self, attribute), 0)
     
     def get_possible_observation_attributes(self, relevant_attributes):
         """Out of a given list return all strings whose corresponding attributes of the class 

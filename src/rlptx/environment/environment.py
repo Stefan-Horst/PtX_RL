@@ -574,10 +574,10 @@ class PtxEnvironment(Environment):
                         if attribute.startswith("[dict]"):
                             attribute = attribute[6:]
                             observation_space.extend(
-                                list(element.tracked_attributes[attribute].values())
+                                [v[1] for v in element.tracked_attributes[attribute].values()]
                             )
                         else:
-                            observation_space.append(element.tracked_attributes[attribute])
+                            observation_space.append(element.tracked_attributes[attribute][1])
                 # append change in commodity's availalable quantity between before and after conversions
                 if hasattr(element, "available_quantity"):
                     for log in self.ptx_system.available_commodities_conversion_log:
@@ -676,12 +676,12 @@ class PtxEnvironment(Environment):
                         if attribute.startswith("[dict]"): # handle dictionaries
                             attribute = attribute[6:]
                             if hasattr(element, attribute):
-                                for name, value in element.tracked_attributes[attribute].items():
+                                for name, values in element.tracked_attributes[attribute].items():
                                     step_stats[f"{element.name}_{attribute}_{name}_change_per_step"] \
-                                        = round(value, 4)
+                                        = round(values[1], 4)
                         elif hasattr(element, attribute): # handle normal values
                             step_stats[f"{element.name}_{attribute}_change_per_step"] = round(
-                                element.tracked_attributes[attribute], 4
+                                element.tracked_attributes[attribute][1], 4
                             )
         return step_stats
 
