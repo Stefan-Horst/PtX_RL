@@ -1,11 +1,12 @@
 from matplotlib import pyplot as plt
 
 from rlptx.evaluation.core import load_log
+from rlptx.util import get_most_recent_file, PROJECT_DIR
 from rlptx.logger import LOGFILE_PATH
-from rlptx.util import get_most_recent_file
 
 
-def plot_log(filename="", type="episode", path=LOGFILE_PATH, plot_variables=[], cycle=[1], episode=[]):
+def plot_log(filename="", type="episode", path=LOGFILE_PATH, plot_variables=[], 
+             cycle=[1], episode=[], save=False, save_path=LOGFILE_PATH):
     """Plot a log file for the given log of the given type or the most recent one of 
     that type if no filename is given. If only some variables should be plotted, they 
     can be specified. Cycle and episode are only relevant for evaluation logs. They 
@@ -45,14 +46,17 @@ def plot_log(filename="", type="episode", path=LOGFILE_PATH, plot_variables=[], 
             print(f"Skipped plots for {empty_plots} episodes because they only contain one step.")
     else:
         for variable in plot_variables:
-            _plot_log(log_df, filename, variable)
+            _plot_log(log_df, filename, variable, save=save, save_path=save_path)
 
-def _plot_log(log_df, name, variable, x=""):
+def _plot_log(log_df, name, variable, x="", save=False, save_path=LOGFILE_PATH):
     """Plot a single variable of a log file."""
     x, xlabel = (log_df.index, "Episode") if x == "" else (log_df[x], "Step")
     fig, ax = plt.subplots()
     ax.plot(x, log_df[variable])
     ax.set(title=f"{variable} of {name}", xlabel=xlabel, ylabel=variable)
     ax.grid(axis="y")
+    if save:
+        filename = variable.replace(" ", "_").replace("/", "_").replace(":", "_").lower()
+        plt.savefig(PROJECT_DIR / (save_path + f"{filename}.png"), format="png")
     plt.show()
-    plt.close()
+    
