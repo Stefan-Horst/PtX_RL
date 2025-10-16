@@ -64,10 +64,12 @@ class PtxSystem:
         for storage in self.get_storage_components_objects():
             storage.update_tracked_attributes(category_attributes["storage"]) 
     
-    def get_current_weather_coefficient(self, source_name):
+    def get_current_weather_coefficient(self, source_name=None):
         weather_data = self.weather_provider.get_weather_of_tick(self.current_step)
-        weather_of_source = weather_data[source_name]
-        return weather_of_source
+        if source_name is None:
+            return weather_data
+        else:
+            return weather_data[source_name]
     
     def update_available_commodities_conversion_log(self, index):
         for commodity in self.get_all_commodities():

@@ -151,7 +151,7 @@ COMMODITY_LOGGING_ATTRIBUTES = [
     "produced_quantity", "generated_quantity", "charged_quantity", "discharged_quantity", 
     "total_storage_costs", "total_production_costs", "total_generation_costs", "purchase_costs"
 ]
-CONVERSION_LOGGING_ATTRIBUTES = ["total_variable_costs", "[total]load",]
+CONVERSION_LOGGING_ATTRIBUTES = ["total_variable_costs", "[total]load"]
 STORAGE_LOGGING_ATTRIBUTES =    ["total_variable_costs", "[total]charge_state"]
 GENERATOR_LOGGING_ATTRIBUTES =  ["total_variable_costs", "[total]curtailment"]
 
@@ -311,6 +311,9 @@ class PtxEnvironment(Environment):
             current_step_stats["Episode reward"] = round(self.current_episode_reward, 4)
             current_step_stats["Revenue"] = round(balance_difference, 4)
             current_step_stats["Episode revenue"] = round(self.current_episode_revenue, 4)
+            current_weather = self.ptx_system.get_current_weather_coefficient()
+            for name, value in current_weather.drop(["time", "dayofyear", "hour"]).items():
+                current_step_stats[name] = value
             self.stats_log.append(current_step_stats)
         
         # logging below
@@ -438,7 +441,7 @@ class PtxEnvironment(Environment):
                         conversion_eavs.remove(item)
                         progress_made = True
                     else:
-                        # Calculate deviation between specified quantity and actually possible 
+                        # Calculate difference between specified quantity and actually possible 
                         # quantity and update the item with the lowest deviation.
                         deviation = abs(values[0] - value)
                         if deviation < lowest_quantity_deviation:
