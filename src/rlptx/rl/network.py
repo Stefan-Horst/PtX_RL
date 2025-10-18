@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from rlptx.rl import DEVICE
 
 # hyperparameters taken from sac paper (as well as activation function and optimizer)
-HIDDEN_SIZES = (256, 256)
+HIDDEN_SIZES = (512, 512, 512, 512)
 LEARNING_RATE = 3e-4
 STANDARD_DEVIATION_BOUNDS = (-20, 2) # values from spinningup implementation
 
@@ -48,7 +48,7 @@ class Actor(nn.Module):
         # The network outputs the log of the standard deviation, meaning the actual 
         # standard deviation needs to be calculated. The log values have the advantage 
         # that they are more numerically stable by having a wider range of values with 
-        # negative values being legal. They are clamped before being exponentiated so that 
+        # negative values being valid. They are clamped before being exponentiated so that 
         # the resulting actual standard deviation is not too small to computationally handle.
         log_standard_deviations = self.standard_deviation_layer(policy_output)
         log_standard_deviations = torch.clamp(log_standard_deviations, *STANDARD_DEVIATION_BOUNDS)
