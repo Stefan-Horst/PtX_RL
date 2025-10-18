@@ -1,6 +1,7 @@
 pyyaml
 numpy
 pandas
+scikit-learn
 matplotlib
 torch
 gymnasium
