@@ -20,7 +20,8 @@ Available additional parameters are:
 | --- | --- |
 | `--eps` | Amount of training episodes, default 100 |
 | `--warmup` | Sampling steps before actual training, default 1000 |
-| `--update` | Amount of steps between agent updates, default 1 |
+| `--updateevery` | Amount of steps between agent updates, default 1 |
+| `--updates` | Amount of updates during each update phase, default 1 |
 | `--maxsteps` | Max amount of steps per episode, default none (set by environment) |
 | `--forecast` | Days of weather forecast included in each observation, default 1, only for ptx |
 | `--test` | Testing interval, -1 for testing of final model, default 10000 |

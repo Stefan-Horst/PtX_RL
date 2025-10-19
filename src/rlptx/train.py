@@ -16,7 +16,7 @@ from rlptx.test import test_ptx_agent_from_train
 REPLAY_BUFFER_SIZE = 10**6
 
 
-def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
+def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, updates=1, max_steps_per_episode=None, 
                            test_interval=10, test_episodes=10, save_threshold=None, epoch_save_interval=None, 
                            agent=None, replay_buffer=None, progress_bar=False, seed=None, device="cpu"):
     """Train the SAC agent on the gym HalfCheetah-v5 environment for testing. Returns the trained agent."""
@@ -33,11 +33,11 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, m
         replay_buffer = ReplayBuffer(
             REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
+    _train_sac(episodes, warmup_steps, update_interval, updates, env, agent, replay_buffer, test_interval, 
                test_episodes, save_threshold, epoch_save_interval, progress_bar, seed)
     return agent, replay_buffer, env # for use in notebooks etc
 
-def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_steps_per_episode=None, 
+def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, updates=1, max_steps_per_episode=None, 
                      weather_forecast_days=1, test_interval=10000, test_episodes=10, 
                      save_threshold=1000, epoch_save_interval=None, agent=None, replay_buffer=None, 
                      progress_bar=True, seed=None, device="cpu"):
@@ -48,8 +48,9 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
     :param warmup_steps: [int] 
         - The number of steps before training where actions are sampled to the replay buffer.
     :param update_interval: [int] 
-        - The number of steps between agent updates. The agent is updated the same 
-        amount of times so that the amount of steps and updates is equal.
+        - The number of steps between agent updates.
+    :param updates: [int] 
+        - The number of times the agent is updated every update_interval.
     :param max_steps_per_episode: [int] 
         - The maximum number of steps per episode after which the environment is truncated. 
         With the default value of None, the value is set to the amount of available weather data.
@@ -99,11 +100,11 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, max_ste
         replay_buffer = ReplayBuffer(
             REPLAY_BUFFER_SIZE, env.observation_space_size, env.action_space_size, device=device, seed=seed
         )
-    _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
+    _train_sac(episodes, warmup_steps, update_interval, updates, env, agent, replay_buffer, test_interval, 
                test_episodes, save_threshold, epoch_save_interval, progress_bar, seed)
     return agent, replay_buffer, env # for use in notebooks etc
 
-def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffer, test_interval, 
+def _train_sac(episodes, warmup_steps, update_interval, updates, env, agent, replay_buffer, test_interval, 
                test_episodes, save_threshold, epoch_save_interval, use_progress_bar=True, seed=None):
     """Execute the main SAC training loop."""
     log_mode = "deferred" if use_progress_bar else "default"
@@ -169,12 +170,11 @@ def _train_sac(episodes, warmup_steps, update_interval, env, agent, replay_buffe
             if reward > 0:
                 successful_steps += 1
             
-            # Train the agent every update_interval steps. The agent is updated an equal number 
-            # of times so that the update amount is equal to the total number of steps.
-            # As SAC is an off-policy algorithm, it is not trained on the data of the 
-            # current step, but on random samples from the replay buffer.
+            # Train the agent every update_interval steps. The agent is updated an amount of times 
+            # equal to the updates parameter. As SAC is an off-policy algorithm, it is not trained 
+            # on the data of the current step, but on random samples from the replay buffer.
             if total_steps % update_interval == 0:
-                for _ in range(update_interval):
+                for _ in range(updates):
                     o, a, r, o2, t = replay_buffer.sample()
                     agent.update(o, a, r, o2, t)
             
@@ -239,7 +239,8 @@ if __name__ == "__main__":
     parser.add_argument("env", choices=["gym", "ptx"])
     parser.add_argument("--eps", default=100, type=int)
     parser.add_argument("--warmup", default=1000, type=int)
-    parser.add_argument("--update", default=1, type=int)
+    parser.add_argument("--updateevery", default=1, type=int)
+    parser.add_argument("--updates", default=1, type=int)
     parser.add_argument("--maxsteps", default=None, type=int)
     parser.add_argument("--forecast", default=1, type=int)
     parser.add_argument("--test", default=20000, type=int)
@@ -252,9 +253,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     disable_logger("main")
-    log(f"Train with config: Environment: {args.env}, Episodes: {args.eps}, Warmup steps: {args.warmup}, " 
-        f"Update interval: {args.update}, Max steps per episode: {args.maxsteps}, Weather forecast " 
-        f"days: {args.forecast}, Test interval: {args.test}, Test episodes: {args.testeps}, Save threshold: " 
+    log(f"Train with config: Environment: {args.env}, Episodes: {args.eps}, Warmup steps: {args.warmup}, Update " 
+        f"interval: {args.updateevery}, Update amount: {args.updates}, Max steps per episode: {args.maxsteps}, Weather " 
+        f"forecast days: {args.forecast}, Test interval: {args.test}, Test episodes: {args.testeps}, Save threshold: " 
         f"{args.savethresh}, Epoch save interval: {args.save}, Device: {args.device}, Seed: {args.seed}", "episode")
     
     if args.load is not None:
@@ -267,13 +268,13 @@ if __name__ == "__main__":
     
     if args.env == "gym":
         train_gym_half_cheetah(
-            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update, max_steps_per_episode=args.maxsteps, 
-            test_interval=args.test, test_episodes=args.testeps, save_threshold=args.savethresh, 
+            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.updateevery, updates=args.updates, 
+            max_steps_per_episode=args.maxsteps, test_interval=args.test, test_episodes=args.testeps, save_threshold=args.savethresh, 
             epoch_save_interval=args.save, device=args.device, agent=agent, replay_buffer=replay_buffer, seed=seed
         )
     elif args.env == "ptx":
         train_ptx_system(
-            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.update,
+            episodes=args.eps, warmup_steps=args.warmup, update_interval=args.updateevery, updates=args.updates,
             max_steps_per_episode=args.maxsteps, weather_forecast_days=args.forecast, test_interval=args.test, 
             test_episodes=args.testeps, save_threshold=args.savethresh, epoch_save_interval=args.save, 
             device=args.device, agent=agent, replay_buffer=replay_buffer, seed=seed
