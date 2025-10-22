@@ -736,7 +736,7 @@ class GenerationComponent(BaseComponent):
             quantity = -curtail_strip_quantity
         # no change in production
         else: # quantity == 0
-            generated = possible_current_generation - self.curtailment
+            generated = max(0, possible_current_generation - self.curtailment)
             status = f"No curtailment applied or stripped in {self.name}, generating {generated:.4f} MWh"
         
         # calculate cost and make sure it is not higher than available balance
