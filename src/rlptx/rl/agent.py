@@ -112,11 +112,11 @@ class SacAgent(Agent):
         # networks, but to more slowly update the target network by taking a 
         # weighted average of the critic and target networks with the polyak 
         # coefficient controlling the weighting; this increases stability.
-        for critic_param, target_param in zip(
-            self.critic.parameters(), self.target_critic.parameters()
+        for target_param, critic_param in zip(
+            self.target_critic.parameters(), self.critic.parameters()
         ):
             target_param.data.copy_(
-                self.polyak * critic_param.data + (1 - self.polyak) * target_param.data
+                self.polyak * target_param.data + (1 - self.polyak) * critic_param.data
             )
         
         # Perform gradient descent steps for entropy coefficient. This is a more simple 
