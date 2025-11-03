@@ -40,19 +40,24 @@ def plot_log(filename="", type="episode", path=LOGFILE_PATH, plot_variables=[],
                     continue # don't plot episodes with just one step
                 for variable in plot_variables:
                     _plot_log(
-                        episode_df, f"{filename} - cycle {cycle} - episode {episode}", variable, x="Step"
+                        episode_df, f"{filename} - cycle {cycle} - episode {episode}", variable, type, x="Step"
                     )
         if empty_plots > 0:
             print(f"Skipped plots for {empty_plots} episodes because they only contain one step.")
     else:
         for variable in plot_variables:
-            _plot_log(log_df, filename, variable, save=save, save_path=save_path)
+            _plot_log(log_df, filename, variable, type, save=save, save_path=save_path)
 
-def _plot_log(log_df, name, variable, x="", save=False, save_path=LOGFILE_PATH):
+def _plot_log(log_df, name, variable, type, x="", save=False, save_path=LOGFILE_PATH):
     """Plot a single variable of a log file."""
     x, xlabel = (log_df.index, "Episode") if x == "" else (log_df[x], "Step")
     fig, ax = plt.subplots()
-    ax.plot(x, log_df[variable])
+    main_linewidth = 1 if type == "evaluation" else 0.5
+    ax.plot(x, log_df[variable], color="#00C1A7", linewidth=main_linewidth)
+    if type != "evaluation":
+        rolling_window = 100 if type == "test" else 10000
+        var_smoothed = log_df[variable].rolling(window=rolling_window).mean()
+        ax.plot(x, var_smoothed, color="#3B5799", linewidth=1)
     ax.set(title=f"{variable} of {name}", xlabel=xlabel, ylabel=variable)
     ax.grid(axis="y")
     if save:
