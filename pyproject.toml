@@ -4,9 +4,23 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rlptx"
-version = "0.0.1"
+version = "1.0.0"
 authors = [{ name="Stefan Horst", email="stefan-horst@gmx.de" }]
 description = "Optimizing Power-to-X Systems with Reinforcement Learning"
+dependencies = [
+    "pyyaml",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+    "torch",
+    "gymnasium",
+    "gymnasium[mujoco]",
+    "mujoco==3.2.5",
+    "pytest",
+    "pytest-mock",
+    "tqdm"
+]
 
 [tool.pytest.ini_options]
 addopts = [
