@@ -29,14 +29,13 @@ class Agent(ABC):
     def update(self, observation: Any, action: Any, reward: float, 
                next_observation: Any, terminated: bool) -> None:
         """Update the agent's networks based on the given observation, action, 
-        reward, next observation, and whether the itertaion is terminated."""
+        reward, next observation, and whether the iteration is terminated."""
         pass
 
 
 class SacAgent(Agent):
-    """Soft actor-critic agent implementation following the two original 
-    SAC papers by Haarnoja et al. (2018). This includes the actor and 
-    critic classes from the network module."""
+    """Soft actor-critic agent implementation including the 
+    actor and critic classes from the network module."""
     
     def __init__(self, observation_size, action_size, action_upper_bounds, discount=DISCOUNT_FACTOR, 
                  polyak=POLYAK_COEFFICIENT, initial_entropy=INITIAL_ENTROPY_COEFFICIENT, 
@@ -85,7 +84,7 @@ class SacAgent(Agent):
         """Update the agent's networks by calculating their losses and applying gradient descent. 
         This is also done for the entropy coefficient. The target critic network is updated 
         separately using polyak averaging instead of gradient descent."""
-        # Perform pytorch gradient descent steps for actor.
+        # Perform pytorch gradient descent steps for critic.
         self.critic.optimizer.zero_grad()
         loss_critic = self._calculate_critic_loss(
             observation, action, next_observation, reward, terminated
@@ -121,7 +120,7 @@ class SacAgent(Agent):
         
         # Perform gradient descent steps for entropy coefficient. This is a more simple 
         # process as the entropy coefficient is a single value and not a network. 
-        # The entropy loss is determined by the entropy of the action plus the 
+        # The entropy coef loss is determined by the entropy of the action minus the 
         # (always negative) heuristic target entropy value (action dimension). 
         # This trains the coefficient to converge to the target entropy value.
         self.entropy_optimizer.zero_grad()
@@ -137,9 +136,9 @@ class SacAgent(Agent):
         """Critic loss is determined by how much the quality value of the current 
         action in the current state differs from the received reward for the current 
         action and the discounted expected quality of the next action in the next 
-        state as well as the entropy of that action (i.e. how unlikely it is). This 
+        state including the entropy of that action (i.e. how unlikely it is). This 
         trains the critic to predict the quality of the current and next action while 
-        rewarding overvaluing of more unlikely next actions, encouraging exploration."""
+        rewarding more unlikely next actions, encouraging exploration."""
         q1, q2 = self.critic(observation, action)
         with torch.no_grad():
             next_action, next_log_probability = self.actor(next_observation)
@@ -152,16 +151,16 @@ class SacAgent(Agent):
             # The value of the next state is 0 if the iteration is terminated.
             target_q = (reward + self.discount * (1 - terminated) 
                         * (next_q - entropy_regularization * next_log_probability))
-        loss_q1 = F.mse_loss(q1, target_q)
+        loss_q1 = F.mse_loss(q1, target_q) # mean squared error between q and target q
         loss_q2 = F.mse_loss(q2, target_q)
         loss = loss_q1 + loss_q2
         return loss
     
     def _calculate_actor_loss(self, observation):
         """Actor loss is determined by the entropy of the action (i.e. how 
-        unlikely it is) balanced by the quality value of the action. This 
-        trains the actor to choose actions with high quality while also 
-        rewarding unlikely actions, encouraging exploration."""
+        unlikely it is) and the quality value of the action. This trains 
+        the actor to choose actions with high quality that are also more 
+        unlikely, encouraging exploration."""
         action, log_probability = self.actor(observation)
         # Clipped double q trick: use two q networks and take the minimum value.
         # This improves the q value because it counteracts overestimation.
