@@ -44,7 +44,7 @@ commodity:
     purchasable: false
     purchase_price: 0.0
     saleable: true
-    selling_price: 1.0 # todo set realistic price
+    selling_price: 1.0
     total_demand: true
     unit: t
   Hydrogen:
@@ -93,17 +93,17 @@ component:
     ramp_down: 1.0
     ramp_up: 1.0
     variable_om: 0.0
-  #CO2 compressed storage:  not in use due to capacity of 0
-  #  charging_efficiency: 1.0
-  #  component_type: storage
-  #  discharging_efficiency: 1.0
-  #  fixed_capacity: 0.0
-  #  stored_commodity: CO2 compressed
-  #  max_soc: 1.0
-  #  min_soc: 0.0
-  #  name: CO2 compressed storage
-  #  ratio_capacity_p: 1.0
-  #  variable_om: 0.0
+#  CO2 compressed storage: # inactive due to capacity of 0
+#    charging_efficiency: 1.0
+#    component_type: storage
+#    discharging_efficiency: 1.0
+#    fixed_capacity: 0.0
+#    stored_commodity: CO2 compressed
+#    max_soc: 1.0
+#    min_soc: 0.0
+#    name: CO2 compressed storage
+#    ratio_capacity_p: 1.0
+#    variable_om: 0.0
   DAC:
     component_type: conversion
     fixed_capacity: 26.69146705077701
@@ -142,17 +142,6 @@ component:
     ramp_down: 1.0
     ramp_up: 1.0
     variable_om: 0.0
-  #Hydrogen storage:  not in use due to capacity of 0
-  #  charging_efficiency: 1.0
-  #  component_type: storage
-  #  discharging_efficiency: 1.0
-  #  fixed_capacity: 0.0
-  #  stored_commodity: Hydrogen
-  #  max_soc: 1.0
-  #  min_soc: 0.0
-  #  name: Hydrogen storage
-  #  ratio_capacity_p: 1.0
-  #  variable_om: 0.0
   Hydrogen compressed storage:
     charging_efficiency: 1.0
     component_type: storage
