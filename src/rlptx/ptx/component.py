@@ -74,13 +74,21 @@ class ConversionComponent(BaseComponent):
         self.produced_commodities = produced_commodities
         self._initialize_result_dictionaries()
         
-        # observation attributes of this class with their enabled flags, these can also just be booleans
+        # Observation attributes of this class with their enabled flags, these can also just be booleans.
+        # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
-            "total_variable_costs": ("has_cost",)
+            "total_variable_costs": ("has_cost", 0, max(self.variable_om * self.fixed_capacity, 1)),
+            "load": (True, self.min_p, self.max_p),
+            "consumed_commodities": (
+                True, [(0, max(self.fixed_capacity * ratio, 1)) for ratio in self.inputs.values()],
+            ),
+            "produced_commodities": (
+                True, [(0, max(self.fixed_capacity * ratio, 1)) for ratio in self.outputs.values()]
+            )
         }
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {
-            ConversionComponent.ramp_up_or_down: (None, -self.ramp_down, self.ramp_up)
+            ConversionComponent.ramp_up_or_down: (True, -self.ramp_down, self.ramp_up)
         }
         self.assert_specs_match_class()
     
@@ -431,15 +439,19 @@ class StorageComponent(BaseComponent):
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
         
-        # observation attributes of this class with their enabled flags, these can also just be booleans
+        max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
+        # Observation attributes of this class with their enabled flags, these can also just be booleans.
+        # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
-            "total_variable_costs": ("has_cost",)
+            "total_variable_costs": ("has_cost", 0, max(self.variable_om * self.fixed_capacity, 1)),
+            "charge_state": (True, self.min_soc * self.fixed_capacity, self.max_soc * self.fixed_capacity),
+            "charged_quantity": (True, 0, max_possible_quantity),
+            "discharged_quantity": (True, 0, max_possible_quantity)
         }
         # action methods of this class with their enabled flags and min/max input values
-        max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
         self.action_spec = {
             StorageComponent.charge_or_discharge_quantity: (
-                None, -max_possible_quantity, max_possible_quantity
+                True, -max_possible_quantity, max_possible_quantity
             )
         }
         self.assert_specs_match_class()
@@ -667,10 +679,13 @@ class GenerationComponent(BaseComponent):
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
         
-        # observation attributes of this class with their enabled flags, these can also just be booleans
+        # Observation attributes of this class with their enabled flags, these can also just be booleans.
+        # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
-            "curtailment": ("curtailment_possible",),
-            "total_variable_costs": ("has_cost",)
+            "total_variable_costs": ("has_cost", 0, max(self.variable_om * self.fixed_capacity, 1)),
+            "curtailment": ("curtailment_possible", 0, self.fixed_capacity),
+            "generated_quantity": (True, 0, self.fixed_capacity),
+            "potential_generation_quantity": ("curtailment_possible", 0, self.fixed_capacity)
         }
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {

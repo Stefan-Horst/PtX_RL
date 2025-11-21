@@ -1,9 +1,9 @@
 from rlptx.ptx.core import Element
 
 
-# Upper bound for actions can theoretically be infinite, but sac needs concrete values. Use arbitrary 
-# value not smaller than realistic possible quantities, but also not too large to scale properly.
-ACTIONS_UPPER_BOUND = 100
+# Upper bound for observations and actions can theoretically be infinite, but sac needs concrete values. 
+# Use arbitrary value not smaller than realistic possible quantities, but also not too large to scale properly.
+UPPER_BOUND = 100
 
 
 class Commodity(Element):
@@ -54,21 +54,31 @@ class Commodity(Element):
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
         
-        # observation attributes of this class with their enabled flags, these can also just be booleans
+        # Observation attributes of this class with their enabled flags, these can also just be booleans.
+        # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
-            "purchased_quantity": ("purchasable",),
-            "purchase_costs": ("purchasable",),
-            "sold_quantity": ("saleable",),
-            "selling_revenue": ("saleable",),
-            "emitted_quantity": ("emittable",)
+            "purchased_quantity": ("purchasable", 0, UPPER_BOUND),
+            "purchase_costs": ("purchasable", 0, UPPER_BOUND * max(self.purchase_price, 1)),
+            "sold_quantity": ("saleable", 0, UPPER_BOUND),
+            "selling_revenue": ("saleable", 0, UPPER_BOUND * max(self.sale_price, 1)),
+            "emitted_quantity": ("emittable", 0, UPPER_BOUND),
+            # only used in logging
+            "consumed_quantity": (True,),
+            "produced_quantity": (True,),
+            "generated_quantity": (True,),
+            "charged_quantity": (True,),
+            "discharged_quantity": (True,),
+            "total_storage_costs": (True,),
+            "total_production_costs": (True,),
+            "total_generation_costs": (True,)
         }
         # action methods of this class with their enabled flags and min/max input values
         self.action_spec = {
             # arbitrary upper bounds because no fixed ceiling, just use values higher than probably possible
             # cannot use inf because sac agent actually uses values to scale actions
-            Commodity.purchase_commodity: ("purchasable", 0, ACTIONS_UPPER_BOUND),
-            Commodity.sell_commodity: ("saleable", 0, ACTIONS_UPPER_BOUND),
-            Commodity.emit_commodity: ("emittable", 0, ACTIONS_UPPER_BOUND)
+            Commodity.purchase_commodity: ("purchasable", 0, UPPER_BOUND),
+            Commodity.sell_commodity: ("saleable", 0, UPPER_BOUND),
+            Commodity.emit_commodity: ("emittable", 0, UPPER_BOUND)
         }
         self.assert_specs_match_class()
 
