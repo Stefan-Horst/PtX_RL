@@ -76,31 +76,37 @@ class Element(ABC):
             for k, v in self.action_spec.items():
                 if method_tuple[0] == k:
                     enabled_flag = v[0]
-                    if enabled_flag is None or getattr(self, enabled_flag) == True:
+                    if enabled_flag or getattr(self, enabled_flag) == True:
                         possible_methods.append(method_tuple)
         return possible_methods
     
     def assert_specs_match_class(self):
         """Assert that the attributes and methods specified in the 
         observation and action specs actually exist in the class."""
-        assert self._check_observation_spec_matches_class_attributes(), \
-               "Observation spec does not match class attributes."
-        assert self._check_action_spec_matches_class_methods_and_attributes(), \
-               "Action spec does not match class attributes."
+        self._check_observation_spec_matches_class_attributes()
+        self._check_action_spec_matches_class_methods_and_attributes()
     
     def _check_observation_spec_matches_class_attributes(self):
-        match = True
-        for attr in [x[0] for x in self.observation_spec.values()] + list(self.observation_spec.keys()):
-            if attr is not None and attr not in self.__dict__.keys():
-                match = False
-                break
-        return match
+        for attr in self.observation_spec.keys():
+            assert attr in self.__dict__.keys(), f"Observation '{attr}' does not exist in class."
+        for attr in self.observation_spec.values():
+            if isinstance(attr[0], str):
+                assert attr[0] in self.__dict__.keys(), \
+                    f"Observation enabled flag '{attr[0]}' does not exist in class."
+            if len(attr) > 1: # if lower and upper bounds exist
+                if isinstance(attr[1], list): # handle value lists for dicts
+                    for bounds in attr[1]:
+                        assert bounds[0] <= bounds[1], \
+                            f"Observation spec range of '{attr[0]}' is invalid, lower value must be smaller than upper value."
+                else:
+                    assert attr[1] <= attr[2], \
+                        f"Observation spec range of '{attr[0]}' is invalid, lower value must be smaller than upper value."
     
     def _check_action_spec_matches_class_methods_and_attributes(self):
-        match = True
-        for attr in [x[0] for x in self.action_spec.values()]:
-            if attr is not None and attr not in self.__dict__.keys():
-                match = False
-                break
-        return match
+        for attr in self.action_spec.values():
+            if isinstance(attr[0], str):
+                assert attr[0] in self.__dict__.keys(), \
+                    f"Action enabled flag '{attr[0]}' does not exist in class."
+            assert attr[1] <= attr[2], \
+                f"Action spec range of '{attr[0]}' is invalid, lower value must be smaller than upper value."
     
