@@ -12,6 +12,11 @@ class Element(ABC):
         self.tracked_attributes = {}
     
     @abstractmethod
+    def update_spec(self) -> None:
+        """Set or update the observation and action specs for this element."""
+        pass
+    
+    @abstractmethod
     def apply_action_method(self, method: Callable, ptx_system: PtxSystem, values: tuple) -> bool:
         """Apply the values returned by a specific action method to the element and the ptx system."""
         pass

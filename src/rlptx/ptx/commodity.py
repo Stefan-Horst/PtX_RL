@@ -53,7 +53,10 @@ class Commodity(Element):
         self.total_production_costs = total_production_costs
         self.generated_quantity = generated_quantity
         self.total_generation_costs = total_generation_costs
-        
+        self.update_spec()
+
+    def update_spec(self):
+        """Set or update the observation and action specs for this commodity."""
         # Observation attributes of this class with their enabled flags, these can also just be booleans.
         # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {

@@ -75,6 +75,8 @@ def init_project(ptx_system, case_data):
 
         component.main_input = case_data['conversions'][c]['main_input']
         component.main_output = case_data['conversions'][c]['main_output']
+        component._normalize_commodity_ratios_based_on_main_input()
+        component.update_spec()
 
     # Commodities
     for c in [*case_data['commodity'].keys()]:

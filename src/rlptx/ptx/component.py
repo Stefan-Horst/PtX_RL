@@ -50,7 +50,6 @@ class ConversionComponent(BaseComponent):
         """
         super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
         self.component_type = 'conversion'
-
         if inputs is None:
             self.inputs = {}
             self.outputs = {}
@@ -61,6 +60,8 @@ class ConversionComponent(BaseComponent):
             self.outputs = outputs
             self.main_input = main_input
             self.main_output = main_output
+            if self.inputs[self.main_input] != 1:
+                self._normalize_commodity_ratios_based_on_main_input()
         if commodities is None:
             self.commodities = []
         else:
@@ -73,7 +74,10 @@ class ConversionComponent(BaseComponent):
         self.consumed_commodities = consumed_commodities
         self.produced_commodities = produced_commodities
         self._initialize_result_dictionaries()
+        self.update_spec()
         
+    def update_spec(self):
+        """Set or update the observation and action specs for this component."""
         # Observation attributes of this class with their enabled flags, these can also just be booleans.
         # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
@@ -125,9 +129,6 @@ class ConversionComponent(BaseComponent):
         and whether the conversion could be completed exactly as requested."""
         empty_values = (0,0,[],[])
         current_capacity = self.get_current_capacity_level()
-        
-        if self.inputs[self.main_input] != 1:
-            self._normalize_commodity_ratios_based_on_main_input()
         
         input_commodities = list(map(ptx_system.commodities.get, list(self.inputs.keys())))
         input_ratios = list(self.inputs.values())
@@ -207,18 +208,6 @@ class ConversionComponent(BaseComponent):
         
         values = (quantity, cost, input_values, output_values)
         return values, status, True, exact_completion # conversion succeeded
-
-    def _normalize_commodity_ratios_based_on_main_input(self):
-        """Normalize inputs and outputs based on the main input by setting the main input to one and 
-        adjusting the other ratios. This is necessary because the capacity of conversions directly 
-        relates to how much of the main input is consumed."""
-        main_input_ratio = self.inputs[self.main_input]
-        self.inputs[self.main_input] = 1
-        for input in self.inputs.keys():
-            if input != self.main_input:
-                self.inputs[input] = self.inputs[input] / main_input_ratio
-        for output in self.outputs.keys():
-            self.outputs[output] = self.outputs[output] / main_input_ratio
 
     def _try_convert_commodities(self, input_values, output_values, status):
         convert_status = ""
@@ -306,27 +295,45 @@ class ConversionComponent(BaseComponent):
                 quantity = adapted_quantity
         return quantity, new_load, exact_completion, status
     
+    def _normalize_commodity_ratios_based_on_main_input(self):
+        """Normalize inputs and outputs based on the main input by setting the main input to one and 
+        adjusting the other ratios. This is necessary because the capacity of conversions directly 
+        relates to how much of the main input is consumed."""
+        main_input_ratio = self.inputs[self.main_input]
+        self.inputs[self.main_input] = 1
+        for input in self.inputs.keys():
+            if input != self.main_input:
+                self.inputs[input] = self.inputs[input] / main_input_ratio
+        for output in self.outputs.keys():
+            self.outputs[output] = self.outputs[output] / main_input_ratio
+    
     def get_current_capacity_level(self):
         return self.load * self.fixed_capacity
 
     def add_input(self, input_commodity, coefficient):
         self.inputs.update({input_commodity: float(coefficient)})
         self.add_commodity(input_commodity)
+        if input_commodity == self.main_input and coefficient != 1:
+            self._normalize_commodity_ratios_based_on_main_input()
+        self.update_spec()
         self._initialize_result_dictionaries()
 
     def remove_input(self, input_commodity):
         self.inputs.pop(input_commodity)
         self.remove_commodity(input_commodity)
+        self.update_spec()
         self._initialize_result_dictionaries()
 
     def add_output(self, output_commodity, coefficient):
         self.outputs.update({output_commodity: float(coefficient)})
         self.add_commodity(output_commodity)
+        self.update_spec()
         self._initialize_result_dictionaries()
 
     def remove_output(self, output_commodity):
         self.outputs.pop(output_commodity)
         self.remove_commodity(output_commodity)
+        self.update_spec()
         self._initialize_result_dictionaries()
 
     def add_commodity(self, commodity):
@@ -424,7 +431,6 @@ class StorageComponent(BaseComponent):
         """
         super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
         self.component_type = 'storage'
-
         self.charging_efficiency = float(charging_efficiency)
         self.discharging_efficiency = float(discharging_efficiency)
         self.ratio_capacity_p = float(ratio_capacity_p)
@@ -438,7 +444,10 @@ class StorageComponent(BaseComponent):
             self.charge_state = charge_state
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
+        self.update_spec()
         
+    def update_spec(self):
+        """Set or update the observation and action specs for this component."""
         max_possible_quantity = self.fixed_capacity * self.ratio_capacity_p
         # Observation attributes of this class with their enabled flags, these can also just be booleans.
         # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
@@ -671,14 +680,16 @@ class GenerationComponent(BaseComponent):
         """
         super().__init__(name=name, variable_om=variable_om, fixed_capacity=fixed_capacity)
         self.component_type = 'generator'
-
         self.generated_commodity = generated_commodity
         self.curtailment_possible = bool(curtailment_possible)
         self.fixed_capacity = float(fixed_capacity)
         self.potential_generation_quantity = potential_generation_quantity
         self.generated_quantity = generated_quantity
         self.curtailment = curtailment
+        self.update_spec()
         
+    def update_spec(self):
+        """Set or update the observation and action specs for this component."""
         # Observation attributes of this class with their enabled flags, these can also just be booleans.
         # Upper bounds are arbitrary because no fixed ceiling, but try to reasonably scale based on available data.
         self.observation_spec = {
