@@ -85,7 +85,7 @@ def save_sac_agent(agent, replay_buffer, filename, path=MODEL_SAVE_PATH):
         "entropy_learning_rate": agent.entropy_learning_rate,
         "discount": agent.discount, 
         "polyak": agent.polyak, 
-        "action_upper_bounds": actor.action_upper_bounds, 
+        "action_bounds": actor.action_bounds, 
         "actor_learning_rate": actor.learning_rate, 
         "actor_hidden_sizes": actor.hidden_sizes,
         "critic_learning_rate": critic.learning_rate, 
@@ -103,7 +103,7 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH, seed=None):
     model = torch.load(PROJECT_DIR / (path + filename + ".tar"), weights_only=True)
     seed = model["seed"] if seed is None else seed
     set_seed(seed)
-    actor = Actor(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
+    actor = Actor(model["observation_size"], model["action_size"], model["action_bounds"], 
                   hidden_sizes=model["actor_hidden_sizes"], learning_rate=model["actor_learning_rate"])
     actor.load_state_dict(model["actor"])
     critic = Critic(model["observation_size"], model["action_size"], hidden_sizes=model["critic_hidden_sizes"], 
@@ -111,7 +111,7 @@ def load_sac_agent(filename, path=MODEL_SAVE_PATH, seed=None):
     critic.load_state_dict(model["critic"])
     target_critic = deepcopy(critic)
     target_critic.load_state_dict(model["target_critic"])
-    agent = SacAgent(model["observation_size"], model["action_size"], model["action_upper_bounds"], 
+    agent = SacAgent(model["observation_size"], model["action_size"], model["action_bounds"], 
                      discount=model["discount"], polyak=model["polyak"], initial_entropy=model["initial_entropy"], 
                      entropy_learning_rate=model["entropy_learning_rate"], actor=actor, critic=critic, seed=seed)
     agent.target_critic = target_critic

@@ -37,14 +37,14 @@ class SacAgent(Agent):
     """Soft actor-critic agent implementation including the 
     actor and critic classes from the network module."""
     
-    def __init__(self, observation_size, action_size, action_upper_bounds, discount=DISCOUNT_FACTOR, 
+    def __init__(self, observation_size, action_size, action_bounds, discount=DISCOUNT_FACTOR, 
                  polyak=POLYAK_COEFFICIENT, initial_entropy=INITIAL_ENTROPY_COEFFICIENT, 
                  entropy_learning_rate=ENTROPY_LEARNING_RATE, actor=None, critic=None, seed=None, device=DEVICE):
         self.seed = seed
         self.observation_size = observation_size
         self.action_size = action_size
         self.actor = Actor(
-            observation_size, action_size, action_upper_bounds, device=device
+            observation_size, action_size, action_bounds, device=device
         ) if actor is None else actor
         self.critic = Critic(
             observation_size, action_size, device=device

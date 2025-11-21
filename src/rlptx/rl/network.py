@@ -17,10 +17,10 @@ class Actor(nn.Module):
     parallel output layers for mean and standard deviation values. They are used to 
     create normal distributions from which the actual output values are sampled."""
     
-    def __init__(self, observation_size, action_size, action_upper_bounds, 
+    def __init__(self, observation_size, action_size, action_bounds, 
                  hidden_sizes=HIDDEN_SIZES, learning_rate=LEARNING_RATE, device=DEVICE):
         super().__init__()
-        self.action_upper_bounds = action_upper_bounds
+        self.action_bounds = action_bounds
         self.hidden_sizes = hidden_sizes
         self.learning_rate = learning_rate
         self.device = device
@@ -76,8 +76,14 @@ class Actor(nn.Module):
     
     def _squash_scale_actions(self, actions):
         """Squash actions to [-1, 1] with tanh and scale them to their environment bounds."""
+        bounds = []
+        for i in range(len(actions)):
+            if actions[i] > 0: # positive upper bound action
+                bounds.append(self.action_bounds[1][i])
+            else: # negative lower bound action
+                bounds.append(-self.action_bounds[0][i])
         return (torch.tanh(actions) 
-                * torch.tensor(self.action_upper_bounds, dtype=torch.float32, device=self.device))
+                * torch.tensor(bounds, dtype=torch.float32, device=self.device))
 
 
 class Critic(nn.Module):

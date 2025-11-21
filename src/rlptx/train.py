@@ -27,7 +27,8 @@ def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, u
     env = GymEnvironment("HalfCheetah-v5", max_steps_per_episode=max_steps_per_episode)
     if agent is None:
         agent = SacAgent(
-            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device, seed=seed
+            env.observation_space_size, env.action_space_size, 
+            (env.action_space_spec["low"], env.action_space_spec["high"]), device=device, seed=seed
         )
     if replay_buffer is None:
         replay_buffer = ReplayBuffer(
@@ -94,7 +95,8 @@ def train_ptx_system(episodes=100, warmup_steps=1000, update_interval=1, updates
     )
     if agent is None:
         agent = SacAgent(
-            env.observation_space_size, env.action_space_size, env.action_space_spec["high"], device=device, seed=seed
+            env.observation_space_size, env.action_space_size, 
+            (env.action_space_spec["low"], env.action_space_spec["high"]), device=device, seed=seed
         )
     if replay_buffer is None:
         replay_buffer = ReplayBuffer(
