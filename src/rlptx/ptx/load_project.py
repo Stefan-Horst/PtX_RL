@@ -85,8 +85,6 @@ def init_project(ptx_system, case_data):
         emittable = case_data['commodity'][c]['emitted']
         purchasable = case_data['commodity'][c]['purchasable']
         saleable = case_data['commodity'][c]['saleable']
-        demanded = case_data['commodity'][c]['demanded']
-        is_total_demand = case_data['commodity'][c]['total_demand']
         
         # Purchasable commodities
         purchase_price = case_data['commodity'][c]['purchase_price']
@@ -94,13 +92,9 @@ def init_project(ptx_system, case_data):
         # Saleable commodities
         selling_price = case_data['commodity'][c]['selling_price']
 
-        # Demand
-        demand = case_data['commodity'][c]['demand']
-
         commodity = Commodity(name=name, commodity_unit=commodity_unit, 
                               available=available, purchasable=purchasable, 
                               saleable=saleable, emittable=emittable,
-                              demanded=demanded, is_total_demand=is_total_demand, demand=demand,
                               purchase_price=purchase_price, sale_price=selling_price)
         ptx_system.add_commodity(name, commodity)
     

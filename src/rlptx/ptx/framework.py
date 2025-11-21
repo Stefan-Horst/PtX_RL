@@ -199,8 +199,6 @@ class PtxSystem:
         emittable_commodities = []
         purchasable_commodities = []
         saleable_commodities = []
-        demanded_commodities = []
-        total_demand_commodities = []
 
         for commodity in self.commodities:
             commodity_name = commodity.name
@@ -213,10 +211,6 @@ class PtxSystem:
                 purchasable_commodities.append(commodity_name)
             if commodity.saleable:
                 saleable_commodities.append(commodity_name)
-            if commodity.demanded:
-                demanded_commodities.append(commodity_name)
-                if commodity.is_total_demand:
-                    total_demand_commodities.append(commodity_name)
 
         generated_commodities = []
         for generator in self.get_generator_components_objects():
@@ -236,8 +230,7 @@ class PtxSystem:
                     all_outputs.append(o)
 
         return (commodities, available_commodities, emittable_commodities, purchasable_commodities, 
-                saleable_commodities, demanded_commodities, total_demand_commodities, 
-                generated_commodities, all_inputs, all_outputs)
+                saleable_commodities, generated_commodities, all_inputs, all_outputs)
 
     def get_main_input_to_input_conversions(self):
         # main input to other inputs

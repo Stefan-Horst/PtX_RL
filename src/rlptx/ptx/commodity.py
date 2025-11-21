@@ -11,10 +11,9 @@ class Commodity(Element):
     def __init__(self, name, commodity_unit,
                  emittable=False, available=False, purchasable=False, 
                  purchase_price=0, saleable=False, sale_price=0,
-                 demanded=False, demand=0, is_total_demand=False,
                  purchased_quantity=0., purchase_costs=0., sold_quantity=0., 
                  selling_revenue=0., emitted_quantity=0., available_quantity=0., 
-                 demanded_quantity=0., charged_quantity=0., discharged_quantity=0., 
+                 charged_quantity=0., discharged_quantity=0., 
                  total_storage_costs=0., consumed_quantity=0.,
                  produced_quantity=0., total_production_costs=0.,
                  generated_quantity=0., total_generation_costs=0.):
@@ -29,9 +28,6 @@ class Commodity(Element):
         :param purchase_price: [float or list] - fixed price or time varying price
         :param saleable: [boolean] - can be sold?
         :param sale_price: [float or list] - fixed price or time varying price
-        :param demanded: [boolean] - is demanded?
-        :param demand: [float] - Demand
-        :param is_total_demand: [boolean] - Demand over all time steps or for each time step
         """
         super().__init__()
         self.name = name
@@ -42,16 +38,12 @@ class Commodity(Element):
         self.purchase_price = float(purchase_price)
         self.saleable = bool(saleable)
         self.sale_price = float(sale_price)
-        self.demanded = bool(demanded)
-        self.is_total_demand = bool(is_total_demand)
-        self.demand = float(demand)
         self.purchased_quantity = purchased_quantity
         self.purchase_costs = purchase_costs
         self.sold_quantity = sold_quantity
         self.selling_revenue = selling_revenue
         self.emitted_quantity = emitted_quantity
         self.available_quantity = available_quantity
-        self.demanded_quantity = demanded_quantity
         self.charged_quantity = charged_quantity
         self.discharged_quantity = discharged_quantity
         self.total_storage_costs = total_storage_costs
@@ -68,7 +60,6 @@ class Commodity(Element):
             "purchase_costs": ("purchasable",),
             "sold_quantity": ("saleable",),
             "selling_revenue": ("saleable",),
-            "demanded_quantity": ("demanded",),
             "emitted_quantity": ("emittable",)
         }
         # action methods of this class with their enabled flags and min/max input values
@@ -182,10 +173,9 @@ class Commodity(Element):
         return values, status, True, exact_completion
 
     def __str__(self):
-        return (f"--{self.name}--(purchased_quantity={self.purchased_quantity:.4f}, "
-                f"purchase_costs={self.purchase_costs:.4f}, sold_quantity={self.sold_quantity:.4f}, "
-                f"selling_revenue={self.selling_revenue:.4f}, emitted_quantity={self.emitted_quantity:.4f}, "
-                f"available_quantity={self.available_quantity:.4f}, demanded_quantity={self.demanded_quantity:.4f}, "
+        return (f"--{self.name}--(purchased_quantity={self.purchased_quantity:.4f}, purchase_costs={self.purchase_costs:.4f}, "
+                f"sold_quantity={self.sold_quantity:.4f}, selling_revenue={self.selling_revenue:.4f}, "
+                f"emitted_quantity={self.emitted_quantity:.4f}, available_quantity={self.available_quantity:.4f}, "
                 f"charged_quantity={self.charged_quantity:.4f}, discharged_quantity={self.discharged_quantity:.4f}, "
                 f"total_storage_costs={self.total_storage_costs:.4f}, consumed_quantity={self.consumed_quantity:.4f}, "
                 f"produced_quantity={self.produced_quantity:.4f}, total_production_costs={self.total_production_costs:.4f}, "
@@ -195,25 +185,21 @@ class Commodity(Element):
         return (f"Commodity(name={self.name!r}, commodity_unit={self.commodity_unit!r}, "
                 f"emittable={self.emittable!r}, available={self.available!r}, "
                 f"purchasable={self.purchasable!r}, purchase_price={self.purchase_price!r}, "
-                f"saleable={self.saleable!r}, sale_price={self.sale_price}, demanded={self.demanded!r}, "
-                f"demand={self.demand!r}, is_total_demand={self.is_total_demand!r}, "
+                f"saleable={self.saleable!r}, sale_price={self.sale_price}, "
                 f"purchased_quantity={self.purchased_quantity!r}, purchase_costs={self.purchase_costs!r}, "
                 f"sold_quantity={self.sold_quantity!r}, selling_revenue={self.selling_revenue!r}, "
                 f"emitted_quantity={self.emitted_quantity!r}, available_quantity={self.available_quantity!r}, "
-                f"demanded_quantity={self.demanded_quantity!r}, charged_quantity={self.charged_quantity!r}, "
-                f"discharged_quantity={self.discharged_quantity!r}, total_storage_costs={self.total_storage_costs!r}, "
-                f"consumed_quantity={self.consumed_quantity!r}, produced_quantity={self.produced_quantity!r}, "
-                f"total_production_costs={self.total_production_costs!r}, generated_quantity={self.generated_quantity!r}, "
-                f"total_generation_costs={self.total_generation_costs!r})")
+                f"charged_quantity={self.charged_quantity!r}, discharged_quantity={self.discharged_quantity!r}, "
+                f"total_storage_costs={self.total_storage_costs!r}, consumed_quantity={self.consumed_quantity!r}, "
+                f"produced_quantity={self.produced_quantity!r}, total_production_costs={self.total_production_costs!r}, "
+                f"generated_quantity={self.generated_quantity!r}, total_generation_costs={self.total_generation_costs!r})")
 
     def __copy__(self):
         return Commodity(name=self.name, commodity_unit=self.commodity_unit, emittable=self.emittable, 
             available=self.available, purchasable=self.purchasable, purchase_price=self.purchase_price, 
-            saleable=self.saleable, sale_price=self.sale_price, demanded=self.demanded, demand=self.demand, 
-            is_total_demand=self.is_total_demand, purchased_quantity=self.purchased_quantity, 
-            purchase_costs=self.purchase_costs, sold_quantity=self.sold_quantity, 
-            selling_revenue=self.selling_revenue, emitted_quantity=self.emitted_quantity, 
-            available_quantity=self.available_quantity, demanded_quantity=self.demanded_quantity, 
+            saleable=self.saleable, sale_price=self.sale_price, purchased_quantity=self.purchased_quantity, 
+            purchase_costs=self.purchase_costs, sold_quantity=self.sold_quantity, selling_revenue=self.selling_revenue, 
+            emitted_quantity=self.emitted_quantity, available_quantity=self.available_quantity,  
             charged_quantity=self.charged_quantity, discharged_quantity=self.discharged_quantity, 
             total_storage_costs=self.total_storage_costs, consumed_quantity=self.consumed_quantity, 
             produced_quantity=self.produced_quantity, total_production_costs=self.total_production_costs, 

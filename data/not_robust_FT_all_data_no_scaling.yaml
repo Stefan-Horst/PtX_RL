@@ -1,87 +1,66 @@
 commodity:
   CO2:
     available: false
-    demand: 0.0
-    demanded: false
     emitted: false
     name: CO2
     purchasable: false
     purchase_price: 0.0
     saleable: false
     selling_price: 0.0
-    total_demand: false
     unit: t
   CO2 compressed:
     available: false
-    demand: 0.0
-    demanded: false
     emitted: false
     name: CO2 compressed
     purchasable: false
     purchase_price: 0.0
     saleable: false
     selling_price: 0.0
-    total_demand: false
     unit: t
   Electricity:
     available: false
-    demand: 100.0
-    demanded: false
     emitted: false
     name: Electricity
     purchasable: false
     purchase_price: 0.1
     saleable: false
     selling_price: 0.0
-    total_demand: true
     unit: MWh
   FT:
     available: false
-    demand: 136620.0
-    demanded: true
     emitted: false
     name: FT
     purchasable: false
     purchase_price: 0.0
     saleable: true
     selling_price: 1.0
-    total_demand: true
     unit: t
   Hydrogen:
     available: false
-    demand: 1.0
-    demanded: false
     emitted: false
     name: Hydrogen
     purchasable: false
     purchase_price: 0.0
     saleable: false
     selling_price: 100.0
-    total_demand: true
     unit: MWh
   Hydrogen compressed:
     available: false
-    demand: 0.0
-    demanded: false
     emitted: false
     name: Hydrogen compressed
     purchasable: false
     purchase_price: 0.0
     saleable: false
     selling_price: 0.0
-    total_demand: false
     unit: MWh
   Water:
     available: false
-    demand: 0.0
-    demanded: false
     emitted: false
     name: Water
     purchasable: true
     purchase_price: 0.002
     saleable: false
     selling_price: 0.0
-    total_demand: false
     unit: t
 component:
   CO2 Compressor:
