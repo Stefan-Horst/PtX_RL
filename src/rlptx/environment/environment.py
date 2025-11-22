@@ -542,7 +542,8 @@ class PtxEnvironment(Environment):
     def _get_current_observation(self):
         """Get the current observation by iterating over all elements of the ptx system and adding 
         the values of their attributes (or the changes in these values since the last step), as well 
-        as the current day, time and weather data for each generator for the next specified steps."""
+        as the current day, time and weather data for each generator for the next specified steps. 
+        All values are scaled to the range [-1, 1] from the scale of their observation spec."""
         current_weather_data = self.weather_provider.get_weather_of_tick(self.step)
         observation_space = [current_weather_data["dayofyear"], current_weather_data["hour"]]
         
@@ -589,6 +590,12 @@ class PtxEnvironment(Environment):
                 if hasattr(element, "available_quantity"):
                     for log in self.ptx_system.available_commodities_conversion_log:
                         observation_space.append(log[element.name])
+        
+        # scale observations with their bounds to [-1, 1] by performing a linear conversion
+        observation_space = [
+            np.interp(obs, [lower, upper], [-1, 1]) for obs, lower, upper in zip(observation_space, 
+                self.observation_space_spec["low"], self.observation_space_spec["high"])
+        ]
         return observation_space
     
     ##### INITIALIZATION #####
