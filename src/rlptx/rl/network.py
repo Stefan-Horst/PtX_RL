@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from rlptx.rl import DEVICE
 
 # hyperparameters taken from sac paper (as well as activation function and optimizer)
-HIDDEN_SIZES = (256, 256)
+HIDDEN_SIZES = (512, 512, 512, 512)
 LEARNING_RATE = 3e-4
 STANDARD_DEVIATION_BOUNDS = (-20, 2) # values from spinningup implementation
 

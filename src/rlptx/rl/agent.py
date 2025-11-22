@@ -10,10 +10,10 @@ from rlptx.rl import DEVICE
 
 
 # hyperparameters taken from sac paper
-DISCOUNT_FACTOR = 0.99 # (/gamma) used in calculating critic loss
+DISCOUNT_FACTOR = 0.995 # (/gamma) used in calculating critic loss
 POLYAK_COEFFICIENT = 0.995 # (/tau) for polyak averaging in target
 # hyperparameters not used in paper
-INITIAL_ENTROPY_COEFFICIENT = 0.2 # (/alpha) for calculating actor loss
+INITIAL_ENTROPY_COEFFICIENT = 1 # (/alpha) for calculating actor loss
 ENTROPY_LEARNING_RATE = 3e-4
 
 

@@ -13,7 +13,7 @@ from rlptx.util import get_timestamp, set_seed
 from rlptx.test import test_ptx_agent_from_train
 
 
-REPLAY_BUFFER_SIZE = 10**6
+REPLAY_BUFFER_SIZE = 10**5
 
 
 def train_gym_half_cheetah(episodes=100, warmup_steps=1000, update_interval=1, updates=1, max_steps_per_episode=None, 
