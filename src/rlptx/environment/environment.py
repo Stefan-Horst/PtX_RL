@@ -155,6 +155,10 @@ CONVERSION_LOGGING_ATTRIBUTES = ["total_variable_costs", "[total]load"]
 STORAGE_LOGGING_ATTRIBUTES =    ["total_variable_costs", "[total]charge_state"]
 GENERATOR_LOGGING_ATTRIBUTES =  ["total_variable_costs", "[total]curtailment"]
 
+# Upper bound for observations scaling. Some of their values can theoretically be infinite, therefore 
+# use arbitrary value not smaller than realistic possible quantities, but also not too large to scale properly.
+UPPER_BOUND = 100
+
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
     the exact configuration of the system and allows for its attributes (i.e. observations) 
@@ -218,16 +222,15 @@ class PtxEnvironment(Environment):
         self.current_episode_revenue = 0.
         self.stats_log = []
         
-        observation_space_info = self._get_observation_space_info()
-        observation_space_size = len(self._get_current_observation())
-        observation_space_spec = None # implement if needed
+        observation_space_info, observation_space_spec = self._get_observation_space_info_and_spec()
         action_space_info, action_space_spec = self._get_action_space_info_and_spec()
         self._action_space = self._get_action_space()
         action_space_size = len(self._action_space)
         reward_spec = {}
         reward_info = (-100., float("inf")) # reward range
-        super().__init__(observation_space_size, observation_space_spec, observation_space_info, action_space_size, 
-                         action_space_spec, action_space_info, reward_spec, reward_info, seed)        
+        super().__init__(0, observation_space_spec, observation_space_info, action_space_size, 
+                         action_space_spec, action_space_info, reward_spec, reward_info, seed)
+        self.observation_space_size  = len(self._get_current_observation())   
         log(f"Observation space: {observation_space_info}")
         log(f"Action space: {action_space_info}")
     
@@ -619,10 +622,12 @@ class PtxEnvironment(Environment):
                 action_space_info[element.name] = element_actions
         return action_space_info, action_space_spec
 
-    def _get_observation_space_info(self):
+    def _get_observation_space_info_and_spec(self):
         """Create dict with each element of the ptx system (commodities, components) as key and 
         possible observations (attributes) as values, as well as environment data with data for 
-        each step as values. Attributes that are dicts are added with their keys as list."""
+        each step as values. Attributes that are dicts are added with their keys as list. 
+        Also create a similar dict with min and max values for each observation. Upper bounds 
+        might not be defined, so use arbitrary high number instead."""
         element_categories = self._get_element_categories_with_attributes_and_actions()
         
         environment_data = ["current_day", "current_hour"]
@@ -637,6 +642,10 @@ class PtxEnvironment(Environment):
         observation_space_info = {
             "environment": environment_data, "ptx_system": ["step", "[total]balance", "balance"]
         }
+        observation_space_spec = {
+            "low": ([0] * len(environment_data)) + [0, 0, 0], 
+            "high": ([1] * len(environment_data)) + [self.max_steps_per_episode, UPPER_BOUND, UPPER_BOUND]
+        }
         
         for category, attributes, _, _ in element_categories:
             for element in category:
@@ -650,14 +659,24 @@ class PtxEnvironment(Environment):
                         element_attributes.append(
                             {attribute: list(getattr(element, attribute).keys())}
                         )
+                        for bounds in element.observation_spec[attribute][1]:
+                            observation_space_spec["low"].append(bounds[0])
+                            observation_space_spec["high"].append(bounds[1])
                     else:
                         element_attributes.append(attribute)
+                        # for now use same upper and lower bounds for total and per step values
+                        if attribute.startswith("[total]"):
+                            attribute = attribute[7:]
+                        observation_space_spec["low"].append(element.observation_spec[attribute][1])
+                        observation_space_spec["high"].append(element.observation_spec[attribute][2])
                 if hasattr(element, "available_quantity"):
                     element_attributes.append(
                         "available_quantity_pre_conv, available_quantity_post_conv, available_quantity_end_step"
                     )
+                    observation_space_spec["low"].extend([0, 0, 0])
+                    observation_space_spec["high"].extend([UPPER_BOUND, UPPER_BOUND, UPPER_BOUND])
                 observation_space_info[element.name] = element_attributes
-        return observation_space_info
+        return observation_space_info, observation_space_spec
     
     ##### UTILITY #####
 
