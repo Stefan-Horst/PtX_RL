@@ -225,7 +225,7 @@ class ConversionComponent(BaseComponent):
                                             current_capacity, status):
         exact_completion = True
         potential_max_cost = current_capacity * main_output_ratio * self.variable_om
-        if potential_max_cost > balance:
+        if potential_max_cost > 0 and potential_max_cost > balance:
             new_capacity = balance / (main_output_ratio * self.variable_om)
             new_load = new_capacity / self.fixed_capacity
             new_quantity = new_load - self.load
@@ -606,7 +606,7 @@ class StorageComponent(BaseComponent):
 
     def _check_cost_not_higher_than_balance(self, quantity, actual_quantity, cost, balance, status):
         exact_completion = True
-        if cost > balance:
+        if cost > 0 and cost > balance:
             new_cost = balance
             quantity = new_cost / self.variable_om
             actual_quantity = quantity * self.charging_efficiency
@@ -806,7 +806,7 @@ class GenerationComponent(BaseComponent):
     def _check_cost_not_higher_than_balance(self, quantity, generated, cost, 
                                             possible_current_generation, balance, status):
         exact_completion = True
-        if cost > balance:
+        if cost > 0 and cost > balance:
             new_cost = balance
             new_generated = balance / self.variable_om
             quantity = max(quantity, possible_current_generation - self.curtailment - new_generated)

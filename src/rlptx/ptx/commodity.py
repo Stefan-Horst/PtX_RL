@@ -120,7 +120,7 @@ class Commodity(Element):
         status = None
         exact_completion = True
         cost = quantity * self.purchase_price
-        if cost > ptx_system.balance:
+        if cost > 0 and cost > ptx_system.balance:
             # try to purchase as much as possible
             new_quantity = ptx_system.balance / self.purchase_price
             new_cost = new_quantity * self.purchase_price
