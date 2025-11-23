@@ -84,6 +84,10 @@ class SacAgent(Agent):
         """Update the agent's networks by calculating their losses and applying gradient descent. 
         This is also done for the entropy coefficient. The target critic network is updated 
         separately using polyak averaging instead of gradient descent."""
+        action = torch.squeeze(action)
+        observation = torch.squeeze(observation)
+        next_observation = torch.squeeze(next_observation)
+        
         # Perform pytorch gradient descent steps for critic.
         self.critic.optimizer.zero_grad()
         loss_critic = self._calculate_critic_loss(
@@ -151,6 +155,7 @@ class SacAgent(Agent):
             # The value of the next state is 0 if the iteration is terminated.
             target_q = (reward + self.discount * (1 - terminated) 
                         * (next_q - entropy_regularization * next_log_probability))
+        target_q = torch.squeeze(target_q, 1)
         loss_q1 = F.mse_loss(q1, target_q) # mean squared error between q and target q
         loss_q2 = F.mse_loss(q2, target_q)
         loss = loss_q1 + loss_q2
