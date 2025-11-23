@@ -76,7 +76,10 @@ class Element(ABC):
             for k, v in self.action_spec.items():
                 if method_tuple[0] == k:
                     enabled_flag = v[0]
-                    if enabled_flag or getattr(self, enabled_flag) == True:
+                    if (
+                        isinstance(enabled_flag, bool) and enabled_flag 
+                        or getattr(self, enabled_flag) == True
+                    ):
                         possible_methods.append(method_tuple)
         return possible_methods
     
