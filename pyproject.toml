@@ -16,7 +16,7 @@ dependencies = [
     "torch",
     "gymnasium",
     "gymnasium[mujoco]",
-    "mujoco==3.2.5",
+    "mujoco",
     "pytest",
     "pytest-mock",
     "tqdm"
