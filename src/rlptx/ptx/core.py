@@ -56,10 +56,7 @@ class Element(ABC):
             for k, v in self.observation_spec.items():
                 if attribute == k:
                     enabled_flag = v[0]
-                    if (
-                        isinstance(enabled_flag, bool) and enabled_flag 
-                        or isinstance(enabled_flag, str) and getattr(self, enabled_flag) == True
-                    ):
+                    if self._is_enabled(enabled_flag):
                         possible_attributes.append(attribute_name)
                     handled = True
             if not handled and hasattr(self, attribute):
@@ -76,12 +73,18 @@ class Element(ABC):
             for k, v in self.action_spec.items():
                 if method_tuple[0] == k:
                     enabled_flag = v[0]
-                    if (
-                        isinstance(enabled_flag, bool) and enabled_flag 
-                        or getattr(self, enabled_flag) == True
-                    ):
+                    if self._is_enabled(enabled_flag):
                         possible_methods.append(method_tuple)
         return possible_methods
+    
+    def _is_enabled(self, enabled_flag):
+        """Check if an attribute's or method's enabled flag is enabled."""
+        if (
+            isinstance(enabled_flag, bool) and enabled_flag 
+            or isinstance(enabled_flag, str) and getattr(self, enabled_flag) == True
+        ):
+            return True
+        return False
     
     def assert_specs_match_class(self):
         """Assert that the attributes and methods specified in the 
