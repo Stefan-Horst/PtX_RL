@@ -158,6 +158,9 @@ GENERATOR_LOGGING_ATTRIBUTES =  ["total_variable_costs", "[total]curtailment"]
 # Upper bound for observations scaling. Some of their values can theoretically be infinite, therefore 
 # use arbitrary value not smaller than realistic possible quantities, but also not too large to scale properly.
 UPPER_BOUND = 100
+# Maximum probable values for reward components, used for normalization of reward.
+MAX_PROBABLE_REVENUE = 17.5
+MAX_PROBABLE_LEFTOVER_COMMODITIES = 500
 
 class PtxEnvironment(Environment):
     """Environment simulating a PtX system. The environment is flexible regarding 
@@ -351,16 +354,27 @@ class PtxEnvironment(Environment):
     
     def _calculate_reward(self, revenue, total_leftover_available_commodities):
         """Calculate the reward for the current step based on the increase of balance of 
-        the ptx system since the last step and if any conversion has failed."""
+        the ptx system since the last step combined with a penalty for leftover commodities 
+        of this step. Return a fixed negative reward instead if any conversion has failed."""
         # Negative reward if system fails (i.e. conversion with set load is not possible).
         # The value is chosen to be pretty much the most negative reward possible.
         if self.terminated:
             return -10
-        # Punishment for any "loose" commodities left in the system at the end of a step 
+        # Limit revenue reward to a range between 0 and 5, with normalization factor 
+        # based on maximum probable revenue reached during training runs.
+        range_upper_limit = 5
+        reward_scaling_factor = MAX_PROBABLE_REVENUE / range_upper_limit
+        revenue_reward = max(min(revenue / reward_scaling_factor, range_upper_limit), 0)
+        # Penalty for any "loose" commodities left in the system at the end of a step 
         # (available_quantity of commodity). The size is proportional to the amount of commodities 
-        # left and it's size is adjusted to not outweight any other part of the reward.
-        leftover_commodities_punishment = round(total_leftover_available_commodities / 100000, 4)
-        return revenue + self.step - leftover_commodities_punishment
+        # left. The value is also limited to range between 0 and 5 with a normalization factor.
+        # As this penalty should be minimized, it must be subtracted from the upper bound.
+        leftover_commodities_scaling_factor = MAX_PROBABLE_LEFTOVER_COMMODITIES / range_upper_limit
+        leftover_commodities_penalty = max(min(
+            5 - total_leftover_available_commodities / leftover_commodities_scaling_factor, range_upper_limit
+        ), 0)
+        # Reward in the range [0, 10] with equal contributions of the two variables.
+        return round(revenue_reward + leftover_commodities_penalty, 4)
     
     def _apply_action(self, action):
         """Call the specified action methods of the elements of the 
