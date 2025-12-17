@@ -1,13 +1,16 @@
 # Optimizing Power-to-X Systems with Reinforcement Learning
 
-Using Soft Actor-Critic RL algorithm to optimize the operation of PtX systems with regards to profitability as part of my master's thesis.
-This project includes two main parts. The first is a flexible PtX system simulation environment. It allows for loading arbitrary configurations of PtX systems regarding commodities, conversions, and storages with their respective properties from a yaml file. The environment features an API similar to that of gym for usage in RL.
-The second part is a customizable implementation of the SAC RL algorithm and utilities for training it in the environment, including agent saving/loading, logging, easy parameter configuration, and result visualization.
+Using the Soft Actor-Critic (SAC) RL algorithm to optimize the operation of PtX systems with regards to profitability. 
+This project includes two main parts. The first is a flexible PtX system simulation environment. It allows for loading arbitrary configurations of PtX systems regarding commodities, conversions, and storages with their respective properties from a yaml file. The environment features an API similar to that of Gymnasium for usage in RL.
+The second part is a customizable implementation of the SAC RL algorithm and utilities for training it in the environment, including agent saving/loading, logging, easy parameter configuration, and result visualization. Other RL algorithms can easily be plugged into the PtX environment instead.
+
+Check out the _evaluation.ipynb_ notebook for the results of some training runs with the provided configuration.
+
+The original component structure of the PtX simulation is adapted from [PtX-Now](https://github.com/ulicious/ptx_now). The included exemplary PtX system configuration and the weather data from Chilean Patagonia are taken from PtX-Now as well.
 
 ## Setup
 
-From the project root direcetory, run `pip install -r requirements.txt` to install the required packages. 
-Then run `pip install .` to install the project itself. 
+From the project root directory, run `pip install .` to install the required packages and the project itself. 
 After that, you can use the project and run scripts like _train.py_ to start model training.
 
 ## Training
