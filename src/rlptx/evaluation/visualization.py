@@ -52,14 +52,15 @@ def _plot_log(log_df, name, variable, type, x="", save=False, save_path=LOGFILE_
     """Plot a single variable of a log file."""
     x, xlabel = (log_df.index, "Episode") if x == "" else (log_df[x], "Step")
     fig, ax = plt.subplots()
-    main_linewidth = 1 if type == "evaluation" else 0.5
+    main_linewidth = 2 if type == "evaluation" else 0.5
     ax.plot(x, log_df[variable], color="#00C1A7", linewidth=main_linewidth)
     if type != "evaluation":
         rolling_window = 100 if type == "test" else 10000
         var_smoothed = log_df[variable].rolling(window=rolling_window).mean()
         ax.plot(x, var_smoothed, color="#3B5799", linewidth=1)
     ax.set(title=f"{variable} of {name}", xlabel=xlabel, ylabel=variable)
-    ax.grid(axis="y")
+    ax.grid(axis="x", visible=False)
+    ax.grid(axis="y", visible=True)
     if save:
         filename = f"{name}_{variable}".replace(" ", "_").replace("/", "_").replace(":", "_").lower()
         plt.savefig(PROJECT_DIR / (save_path + f"{filename}.png"), format="png")
